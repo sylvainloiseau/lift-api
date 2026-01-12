@@ -1,0 +1,16 @@
+<lift producer="SIL.FLEx 9.0.17.44670" version="0.13">
+<!--
+tiny test LIFT dictionary containing two entries.
+Three languages : tww, en, tpi
+-->
+<entry dateCreated="2015-06-19T08:46:53Z" dateModified="2023-06-09T13:23:14Z" id="nala_001199a3-0e7f-4b4d-ab9e-38cfd0fbff58" guid="001199a3-0e7f-4b4d-ab9e-38cfd0fbff58">
+<lexical-unit>
+<form lang="tww"><text>nala</text></form>
+</lexical-unit>
+</entry>
+<entry dateCreated="2015-04-28T20:28:41Z" dateModified="2015-06-16T17:15:41Z" id="kemia napuo_002794b9-f063-4c6b-b77d-39b8ecd618d1" guid="002794b9-f063-4c6b-b77d-39b8ecd618d1">
+<lexical-unit>
+<form lang="tww"><text>kemia napuo</text></form>
+</lexical-unit>
+</entry>
+</lift>
