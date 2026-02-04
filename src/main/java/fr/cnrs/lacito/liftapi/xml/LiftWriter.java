@@ -356,6 +356,9 @@ public class LiftWriter  {
         writeAbstractNotableProperties(ex);
         writeAbstractExtensibleWithFieldProperties(ex);
 
+        // The example phrase itself is stored in the main MultiText of LiftExample.
+        writeMultiText(ex.getExample());
+
         ex.getTranslations().forEach(biunchecked((type, mt) -> {
                 out.writeStartElement(LiftVocabulary.TRANSLATION_LOCAL_NAME);
                 out.writeAttribute(LiftVocabulary.TYPE_ATTRIBUTE, type);

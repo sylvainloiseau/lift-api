@@ -173,6 +173,17 @@ public final class LiftFactory implements LiftDictionaryCompoments {
         return pronunciation;
     }
 
+    /**
+     * Create and attach an empty pronunciation (editing use-case).
+     */
+    public LiftPronunciation createPronunciation(HasPronunciation parent) {
+        LiftPronunciation pronunciation = new LiftPronunciation();
+        parent.addPronunciation(pronunciation);
+        this.allPronunciations.add(pronunciation);
+        this.allObjectLanguagesMultiText.add(pronunciation.getProunciation());
+        return pronunciation;
+    }
+
     public LiftField createField(Attributes attributes, AbstractExtensibleWithField parent) {
         String type = attributes.getValue(LiftVocabulary.LIFT_URI, "type");
         if (type == null) throw new IllegalArgumentException("Attribute type on field element cannot be null");
@@ -187,6 +198,19 @@ public final class LiftFactory implements LiftDictionaryCompoments {
     public LiftTrait createTrait(Attributes attributes, HasTrait parent) {
         String name = attributes.getValue(LiftVocabulary.LIFT_URI, "name");
         String value = attributes.getValue(LiftVocabulary.LIFT_URI, "value");
+        LiftTrait trait = new LiftTrait(name, value);
+        parent.addTrait(trait);
+        this.allTraits.add(trait);
+        return trait;
+    }
+
+    /**
+     * Create and attach a new trait (editing use-case).
+     * This does NOT perform any duplicate checks; callers should remove/replace as needed.
+     */
+    public LiftTrait createTrait(String name, String value, HasTrait parent) {
+        if (name == null) throw new IllegalArgumentException("Trait name cannot be null");
+        if (value == null) value = "";
         LiftTrait trait = new LiftTrait(name, value);
         parent.addTrait(trait);
         this.allTraits.add(trait);
