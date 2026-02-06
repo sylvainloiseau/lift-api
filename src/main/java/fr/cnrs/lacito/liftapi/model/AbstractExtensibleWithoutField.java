@@ -1,8 +1,10 @@
 package fr.cnrs.lacito.liftapi.model;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import javafx.beans.property.ListProperty;
+import javafx.beans.property.SimpleListProperty;
+import javafx.collections.FXCollections;
 
 public abstract sealed class AbstractExtensibleWithoutField
     extends AbstractLiftRoot
@@ -11,16 +13,18 @@ public abstract sealed class AbstractExtensibleWithoutField
 
     protected Optional<String> dateCreated = Optional.empty();
     protected Optional<String> dateModified = Optional.empty();
-    protected final List<LiftAnnotation> annotations = new ArrayList<>();
-    protected final List<LiftTrait> traits = new ArrayList<>();
+    protected final ListProperty<LiftAnnotation> annotationsProperty =
+            new SimpleListProperty<>(this, "annotations", FXCollections.observableArrayList());
+    protected final ListProperty<LiftTrait> traitsProperty =
+            new SimpleListProperty<>(this, "traits", FXCollections.observableArrayList());
 
     public void addTrait(LiftTrait t) {
-        traits.add(t);
+        traitsProperty.add(t);
         t.setParent(this);
     }
 
     public void addAnnotation(LiftAnnotation a) {
-        annotations.add(a);
+        annotationsProperty.add(a);
         a.setParent(this);
     }
 
@@ -41,11 +45,18 @@ public abstract sealed class AbstractExtensibleWithoutField
     }
 
     public List<LiftAnnotation> getAnnotations() {
-        return annotations;
+        return annotationsProperty.get();
     }
 
     public List<LiftTrait> getTraits() {
-        return traits;
+        return traitsProperty.get();
     }
 
+    public ListProperty<LiftAnnotation> annotationsProperty() {
+        return annotationsProperty;
+    }
+
+    public ListProperty<LiftTrait> traitsProperty() {
+        return traitsProperty;
+    }
 }

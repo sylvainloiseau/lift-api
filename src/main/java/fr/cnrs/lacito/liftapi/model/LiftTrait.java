@@ -2,6 +2,10 @@ package fr.cnrs.lacito.liftapi.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import javafx.beans.property.ReadOnlyStringProperty;
+import javafx.beans.property.ReadOnlyStringWrapper;
+import javafx.beans.property.StringProperty;
+import javafx.beans.property.SimpleStringProperty;
 import lombok.Getter;
 
 /**
@@ -12,9 +16,14 @@ public final class LiftTrait
     implements HasAnnotation {
     
     @Getter final String name;
-    @Getter final String value;
+    @Getter private String value;
     @Getter protected final List<LiftAnnotation> annotations = new ArrayList<>();
     protected HasTrait parent;
+
+    private final ReadOnlyStringWrapper nameProperty;
+    private final StringProperty valueProperty;
+    private boolean syncingFromProperty = false;
+    private boolean syncingFromModel = false;
 
     @Override
     public MultiText getMainMultiText() {
@@ -29,6 +38,39 @@ public final class LiftTrait
     protected LiftTrait(String name, String value) {
         this.name = name;
         this.value = value;
+        this.nameProperty = new ReadOnlyStringWrapper(this, "name", name);
+        this.valueProperty = new SimpleStringProperty(this, "value", value);
+        this.valueProperty.addListener((obs, oldV, newV) -> {
+            if (syncingFromModel) return;
+            syncingFromProperty = true;
+            try {
+                setValue(newV);
+            } finally {
+                syncingFromProperty = false;
+            }
+        });
+    }
+
+    public ReadOnlyStringProperty nameProperty() {
+        return nameProperty.getReadOnlyProperty();
+    }
+
+    public StringProperty valueProperty() {
+        return valueProperty;
+    }
+
+    public void setValue(String value) {
+        this.value = value == null ? "" : value;
+        if (!syncingFromProperty && valueProperty != null) {
+            if (!this.value.equals(valueProperty.get())) {
+                syncingFromModel = true;
+                try {
+                    valueProperty.set(this.value);
+                } finally {
+                    syncingFromModel = false;
+                }
+            }
+        }
     }
 
     protected void setParent(HasTrait parent) {

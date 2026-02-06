@@ -6,6 +6,10 @@ import java.util.Deque;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javafx.beans.property.ReadOnlyStringProperty;
+import javafx.beans.property.ReadOnlyStringWrapper;
+import javafx.beans.property.StringProperty;
+import javafx.beans.property.SimpleStringProperty;
 import lombok.Getter;
 
 /**
@@ -24,20 +28,57 @@ public final class Form implements HasAnnotation {
     private final Deque<TextSpan> current = new ArrayDeque<>();
     private TextSpan root = new TextSpan();
     private int textSpanNumber = 0;
+
+    // JavaFX properties (javafx.base only; no UI dependency)
+    private final ReadOnlyStringWrapper langProperty;
+    private final StringProperty textProperty;
+    private boolean syncingFromProperty = false;
+    private boolean syncingFromModel = false;
     
     public Form(String lang, String text) {
         this.lang = lang;
+        this.langProperty = new ReadOnlyStringWrapper(this, "lang", lang);
+        this.textProperty = new SimpleStringProperty(this, "text", text);
+        this.textProperty.addListener((obs, oldV, newV) -> {
+            // Keep model in sync when bound from UI
+            if (syncingFromModel) return;
+            syncingFromProperty = true;
+            try {
+                changeText(newV == null ? "" : newV);
+            } finally {
+                syncingFromProperty = false;
+            }
+        });
         changeText(text);
     }
 
     protected Form(String lang) {
         this.lang = lang;
+        this.langProperty = new ReadOnlyStringWrapper(this, "lang", lang);
+        this.textProperty = new SimpleStringProperty(this, "text", "");
+        this.textProperty.addListener((obs, oldV, newV) -> {
+            if (syncingFromModel) return;
+            syncingFromProperty = true;
+            try {
+                changeText(newV == null ? "" : newV);
+            } finally {
+                syncingFromProperty = false;
+            }
+        });
         current.push(root);
         textSpanNumber += 1;
     }
 
     public String getLang() {
         return lang;
+    }
+
+    public ReadOnlyStringProperty langProperty() {
+        return langProperty.getReadOnlyProperty();
+    }
+
+    public StringProperty textProperty() {
+        return textProperty;
     }
 
     public void append(String string) {
@@ -94,6 +135,19 @@ public final class Form implements HasAnnotation {
         toText = null;
 
         parseSpanContent(input, current.peek());
+
+        // Keep observable in sync if changeText called directly by API users
+        if (!syncingFromProperty && textProperty != null) {
+            String normalized = input == null ? "" : input;
+            if (!normalized.equals(textProperty.get())) {
+                syncingFromModel = true;
+                try {
+                    textProperty.set(normalized);
+                } finally {
+                    syncingFromModel = false;
+                }
+            }
+        }
     }
 
     private void parseSpanContent(String input, TextSpan parent) {

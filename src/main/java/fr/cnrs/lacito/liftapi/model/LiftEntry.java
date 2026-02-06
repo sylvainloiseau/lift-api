@@ -1,8 +1,10 @@
 package fr.cnrs.lacito.liftapi.model;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import javafx.beans.property.ListProperty;
+import javafx.beans.property.SimpleListProperty;
+import javafx.collections.FXCollections;
 
 import lombok.Getter;
 
@@ -14,11 +16,16 @@ public final class LiftEntry
     @Getter protected Optional<String> dateDeleted = Optional.empty();
 
     @Getter final protected MultiText citations = new MultiText();
-    final protected List<LiftPronunciation> pronounciations = new ArrayList<>();
-    @Getter final protected List<LiftVariant> variants = new ArrayList<>();
-    @Getter final protected List<LiftSense> senses = new ArrayList<>();
-    @Getter final protected List<LiftRelation> relations = new ArrayList<>();
-    @Getter final protected List<LiftEtymology> etymologies = new ArrayList<>();
+    protected final ListProperty<LiftPronunciation> pronounciationsProperty =
+            new SimpleListProperty<>(this, "pronunciations", FXCollections.observableArrayList());
+    protected final ListProperty<LiftVariant> variantsProperty =
+            new SimpleListProperty<>(this, "variants", FXCollections.observableArrayList());
+    protected final ListProperty<LiftSense> sensesProperty =
+            new SimpleListProperty<>(this, "senses", FXCollections.observableArrayList());
+    protected final ListProperty<LiftRelation> relationsProperty =
+            new SimpleListProperty<>(this, "relations", FXCollections.observableArrayList());
+    protected final ListProperty<LiftEtymology> etymologiesProperty =
+            new SimpleListProperty<>(this, "etymologies", FXCollections.observableArrayList());
 
     protected LiftEntry() {
     }
@@ -33,12 +40,28 @@ public final class LiftEntry
 
     @Override
     public List<LiftPronunciation> getPronunciations() {
-        return pronounciations;
+        return pronounciationsProperty.get();
+    }
+
+    public List<LiftVariant> getVariants() {
+        return variantsProperty.get();
+    }
+
+    public List<LiftSense> getSenses() {
+        return sensesProperty.get();
+    }
+
+    public List<LiftRelation> getRelations() {
+        return relationsProperty.get();
+    }
+
+    public List<LiftEtymology> getEtymologies() {
+        return etymologiesProperty.get();
     }
 
     @Override
     public void addPronunciation(LiftPronunciation pronunciation) {
-        this.pronounciations.add(pronunciation);
+        this.pronounciationsProperty.add(pronunciation);
         pronunciation.setParent(this);
     }
 
@@ -51,24 +74,44 @@ public final class LiftEntry
     }
 
     public void addVariant(LiftVariant variant) {
-        this.variants.add(variant);
+        this.variantsProperty.add(variant);
         variant.setParent(this);
     }
 
     public void addSense(LiftSense sense) {
-        this.senses.add(sense);
+        this.sensesProperty.add(sense);
         sense.setParent(this);
     }
 
     @Override
     public void addRelation(LiftRelation relation) {
-        this.relations.add(relation);
+        this.relationsProperty.add(relation);
         relation.setParent(this);
     }
 
     protected void addEtymology(LiftEtymology etymology) {
-        this.etymologies.add(etymology);
+        this.etymologiesProperty.add(etymology);
         etymology.setParent(this);
+    }
+
+    public ListProperty<LiftPronunciation> pronunciationsProperty() {
+        return pronounciationsProperty;
+    }
+
+    public ListProperty<LiftVariant> variantsProperty() {
+        return variantsProperty;
+    }
+
+    public ListProperty<LiftSense> sensesProperty() {
+        return sensesProperty;
+    }
+
+    public ListProperty<LiftRelation> relationsProperty() {
+        return relationsProperty;
+    }
+
+    public ListProperty<LiftEtymology> etymologiesProperty() {
+        return etymologiesProperty;
     }
 
 }
