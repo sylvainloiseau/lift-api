@@ -106,6 +106,16 @@ public final class Form implements HasAnnotation {
         return toText;
     }
 
+    /**
+     * Returns only the textual content, stripping all {@code <span>} markup.
+     * Use this for UI display; use {@link #toString()} for serialization.
+     */
+    public String toPlainText() {
+        StringBuffer strb = new StringBuffer();
+        current.peek().toPlainText(strb);
+        return strb.toString();
+    }
+
     @Override
     public void addAnnotation(LiftAnnotation a) {
         annotations.add(a);

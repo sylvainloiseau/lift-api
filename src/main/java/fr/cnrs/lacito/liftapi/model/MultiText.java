@@ -95,7 +95,7 @@ public final class MultiText {
         if (key.isEmpty()) return new SimpleStringProperty("");
 
         return formTextProperties.computeIfAbsent(key, l -> {
-            SimpleStringProperty p = new SimpleStringProperty(this, "formText[" + l + "]", getForm(l).map(Form::toString).orElse(""));
+            SimpleStringProperty p = new SimpleStringProperty(this, "formText[" + l + "]", getForm(l).map(Form::toPlainText).orElse(""));
             AtomicBoolean syncing = new AtomicBoolean(false);
             AtomicReference<Form> currentFormRef = new AtomicReference<>(getForm(l).orElse(null));
             AtomicReference<ChangeListener<String>> formTextListenerRef = new AtomicReference<>(null);
@@ -163,7 +163,7 @@ public final class MultiText {
             ObservableMap<String, Form> map = formsProperty.get();
             MapChangeListener<String, Form> listener = change -> {
                 if (!l.equals(change.getKey())) return;
-                String newText = Optional.ofNullable(formsProperty.get(l)).map(Form::toString).orElse("");
+                String newText = Optional.ofNullable(formsProperty.get(l)).map(Form::toPlainText).orElse("");
                 if (!newText.equals(p.get())) {
                     if (syncing.get()) return;
                     syncing.set(true);

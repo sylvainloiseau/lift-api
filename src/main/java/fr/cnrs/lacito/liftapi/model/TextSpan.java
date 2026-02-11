@@ -92,6 +92,25 @@ public final class TextSpan extends TextComponent {
         }
     }
 
+    /**
+     * Returns only the textual content, stripping all {@code <span>} markup.
+     */
+    public String toPlainText() {
+        StringBuffer strb = new StringBuffer();
+        toPlainText(strb);
+        return strb.toString();
+    }
+
+    public void toPlainText(StringBuffer strb) {
+        if (isTerminal()) {
+            strb.append(this.terminalOrNull);
+        } else {
+            for (TextSpan ts : innerContent) {
+                ts.toPlainText(strb);
+            }
+        }
+    }
+
     public void walkTextSpanTree(List<TextSpan> result) {
         result.add(this);
         if (!isTerminal()) {
