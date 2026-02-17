@@ -45,6 +45,7 @@ import fr.cnrs.lacito.liftapi.model.LiftTrait;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
 import fr.cnrs.lacito.liftapi.model.MultiText;
 import fr.cnrs.lacito.liftapi.model.Form;
+import fr.cnrs.lacito.liftapi.model.TextSpan;
 
 public class LiftWriter  {
 
@@ -407,19 +408,44 @@ public class LiftWriter  {
             out.writeStartElement(elementName); // can be form or gloss
             out.writeAttribute(LiftVocabulary.LANG_ATTRIBUTE, text.getLang());
             out.writeStartElement(LiftVocabulary.TEXT_LOCAL_NAME);
-            String txt = text.toString();
-            // TODO : write the span content if any
-            if (txt != null && !txt.isEmpty()) out.writeCharacters(txt);
+            writeTextSpanChildren(text.getTextSpanRoot());
             out.writeEndElement(); //text
             text.getAnnotations().forEach(unchecked(this::writeAnnotation));
             out.writeEndElement(); //form
         }
     }
 
+    /**
+     * Recursively writes the children of a TextSpan node.
+     * For the root TextSpan (which has no attributes and acts as a wrapper),
+     * this writes only its children, producing the correct XML without
+     * an extraneous wrapping {@code <span>}.
+     */
+    private void writeTextSpanChildren(TextSpan span) throws Exception {
+        if (span.isTerminal()) {
+            String text = span.getTerminalText();
+            if (text != null && !text.isEmpty()) out.writeCharacters(text);
+        } else {
+            for (TextSpan child : span.getInnerContent()) {
+                if (child.isTerminal()) {
+                    String text = child.getTerminalText();
+                    if (text != null && !text.isEmpty()) out.writeCharacters(text);
+                } else {
+                    out.writeStartElement(LiftVocabulary.SPAN_LOCAL_NAME);
+                    if (child.getLang().isPresent()) out.writeAttribute(LiftVocabulary.LANG_ATTRIBUTE, child.getLang().get());
+                    if (child.getSClass().isPresent()) out.writeAttribute("class", child.getSClass().get());
+                    if (child.getHref().isPresent()) out.writeAttribute(LiftVocabulary.HREF_ATTRIBUTE, child.getHref().get());
+                    writeTextSpanChildren(child);
+                    out.writeEndElement(); // span
+                }
+            }
+        }
+    }
+
     // Note and Trait writers use the generic helper
     private void writeNote(LiftNote n) throws Exception {
         out.writeStartElement(LiftVocabulary.NOTE_LOCAL_NAME);
-        out.writeAttribute(LiftVocabulary.TYPE_ATTRIBUTE, n.getType().orElse(""));
+        if (n.getType().isPresent()) out.writeAttribute(LiftVocabulary.TYPE_ATTRIBUTE, n.getType().get());
         writeAbstractExtensibleWithoutFieldProperties(n);
         writeAbstractExtensibleWithFieldProperties(n);
         writeMultiText(n.getText());
@@ -459,6 +485,7 @@ public class LiftWriter  {
 
     private void writeField(LiftField f) throws Exception {
         out.writeStartElement(LiftVocabulary.FIELD_LOCAL_NAME);
+        out.writeAttribute(LiftVocabulary.TYPE_ATTRIBUTE, f.getName());
         writeAbstractExtensibleWithoutFieldProperties(f);
         writeMultiText(f.getText());
         out.writeEndElement();

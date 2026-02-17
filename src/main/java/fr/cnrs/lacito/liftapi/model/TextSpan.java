@@ -50,8 +50,22 @@ public final class TextSpan extends TextComponent {
         return sClass;
     }
 
-    protected boolean isTerminal() {
+    public boolean isTerminal() {
         return terminalOrNull != null;
+    }
+
+    /**
+     * Returns the text content of this terminal node, or null if non-terminal.
+     */
+    public String getTerminalText() {
+        return terminalOrNull;
+    }
+
+    /**
+     * Returns the child TextSpan nodes (empty for terminal nodes).
+     */
+    public List<TextSpan> getInnerContent() {
+        return innerContent;
     }
 
     protected void setString(String s) {

@@ -96,6 +96,14 @@ public final class Form implements HasAnnotation {
         this.current.pop();
     }
 
+    /**
+     * Returns the root of the TextSpan tree that represents the text content of this form.
+     * The root itself is a wrapper (no attributes); its children are the actual content.
+     */
+    public TextSpan getTextSpanRoot() {
+        return current.peek();
+    }
+
     @Override
     public String toString() {
         if (toText == null) {
