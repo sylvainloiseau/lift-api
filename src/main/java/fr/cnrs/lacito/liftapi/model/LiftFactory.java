@@ -122,6 +122,22 @@ public final class LiftFactory implements LiftDictionaryCompoments {
         return sense;
     }
 
+    public LiftReversal createReversal(Attributes attributes, LiftSense sense) {
+        LiftReversal reversal = new LiftReversal();
+        String type = attributes.getValue(LiftVocabulary.LIFT_URI, "type");
+        if (type != null) reversal.setType(type);
+        sense.addReversal(reversal);
+        this.allMetaLanguagesMultiText.add(reversal.getForms());
+        return reversal;
+    }
+
+    public LiftReversal createReversalMain(LiftReversal parent) {
+        LiftReversal main = new LiftReversal();
+        parent.setMain(main);
+        this.allMetaLanguagesMultiText.add(main.getForms());
+        return main;
+    }
+
     public LiftEtymology createEtymology(Attributes attributes, LiftEntry parent) {
         String type = attributes.getValue(LiftVocabulary.LIFT_URI, "type");
         if (type == null) throw new IllegalArgumentException();

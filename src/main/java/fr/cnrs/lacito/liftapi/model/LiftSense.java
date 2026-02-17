@@ -22,6 +22,8 @@ public final class LiftSense
             new SimpleListProperty<>(this, "illustrations", FXCollections.observableArrayList());
     protected final ListProperty<LiftSense> subSensesProperty =
             new SimpleListProperty<>(this, "subSenses", FXCollections.observableArrayList());
+    protected final ListProperty<LiftReversal> reversalsProperty =
+            new SimpleListProperty<>(this, "reversals", FXCollections.observableArrayList());
     private HasSense parent;
     
     protected LiftSense() {
@@ -71,6 +73,10 @@ public final class LiftSense
         illustration.setParent(this);
     }
 
+    public void addReversal(LiftReversal reversal) {
+        reversalsProperty.add(reversal);
+    }
+
     public void setOrder(int order) {
         this.order = Optional.of(order);
     }
@@ -105,5 +111,13 @@ public final class LiftSense
 
     public ListProperty<LiftSense> subSensesProperty() {
         return subSensesProperty;
+    }
+
+    public List<LiftReversal> getReversals() {
+        return reversalsProperty.get();
+    }
+
+    public ListProperty<LiftReversal> reversalsProperty() {
+        return reversalsProperty;
     }
 }

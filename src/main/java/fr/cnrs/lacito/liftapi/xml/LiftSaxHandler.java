@@ -28,6 +28,8 @@ import fr.cnrs.lacito.liftapi.model.LiftExample;
 import fr.cnrs.lacito.liftapi.model.LiftFactory;
 import fr.cnrs.lacito.liftapi.model.LiftNote;
 import fr.cnrs.lacito.liftapi.model.LiftPronunciation;
+import fr.cnrs.lacito.liftapi.model.LiftRelation;
+import fr.cnrs.lacito.liftapi.model.LiftReversal;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
 import fr.cnrs.lacito.liftapi.model.LiftMedia;
@@ -247,10 +249,21 @@ public final class LiftSaxHandler extends DefaultHandler {
             case LiftVocabulary.HEADER_DESCRIPTION_LOCAL_NAME:
                  break;
             case LiftVocabulary.REVERSAL_LOCAL_NAME:
+                if (elementStack.peek() instanceof LiftSense s_rev) {
+                    elementStack.push(liftFactory.createReversal(attributes, s_rev));
+                } else {
+                    throw new IllegalStateException("Expecting a LiftSense for reversal, found: " + elementStack.peek().toString());
+                }
+                break;
             case LiftVocabulary.MAIN_LOCAL_NAME:
+                if (elementStack.peek() instanceof LiftReversal parentRev) {
+                    elementStack.push(liftFactory.createReversalMain(parentRev));
+                } else {
+                    throw new IllegalStateException("Expecting a LiftReversal for main, found: " + elementStack.peek().toString());
+                }
+                break;
             case LiftVocabulary.USAGE_LOCAL_NAME:
-                 throw new IllegalStateException("Not implemented yet");
-                 //break;
+                 break;
             default:
                 throw new IllegalStateException("Unknown start element: " + localName);
                 //break;
@@ -318,10 +331,26 @@ public final class LiftSaxHandler extends DefaultHandler {
                 }
                 break;
             case LiftVocabulary.REVERSAL_LOCAL_NAME:
+                if (elementStack.peek() instanceof LiftReversal rev) {
+                    multiTextStack.push(rev.getForms());
+                } else {
+                    throw new IllegalStateException("Expecting LiftReversal on stack for reversal multitext");
+                }
+                break;
             case LiftVocabulary.MAIN_LOCAL_NAME:
+                if (elementStack.peek() instanceof LiftReversal revMain) {
+                    multiTextStack.push(revMain.getForms());
+                } else {
+                    throw new IllegalStateException("Expecting LiftReversal on stack for main multitext");
+                }
+                break;
             case LiftVocabulary.USAGE_LOCAL_NAME:
-                 throw new IllegalStateException("Not implemented: " + localName);
-                 //break;
+                if (elementStack.peek() instanceof LiftRelation rel) {
+                    multiTextStack.push(rel.getUsage());
+                } else {
+                    throw new IllegalStateException("Expecting LiftRelation for usage, found: " + elementStack.peek().toString());
+                }
+                break;
             case LiftVocabulary.HEADER_DESCRIPTION_LOCAL_NAME:
                 // in header: elements header, range, range-element, field-definition
                 switch(elementStack.peek()) {
@@ -407,9 +436,12 @@ public final class LiftSaxHandler extends DefaultHandler {
                 break;
             case LiftVocabulary.REVERSAL_LOCAL_NAME:
             case LiftVocabulary.MAIN_LOCAL_NAME:
+                multiTextStack.pop();
+                elementStack.pop();
+                break;
             case LiftVocabulary.USAGE_LOCAL_NAME:
-                throw new IllegalStateException("Not implemented: " + localName);
-                //break;
+                multiTextStack.pop();
+                break;
             case LiftVocabulary.TEXT_LOCAL_NAME:
             case LiftVocabulary.FORM_LOCAL_NAME:
             case LiftVocabulary.ENTRY_LOCAL_NAME:

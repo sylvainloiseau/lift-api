@@ -14,7 +14,8 @@ import java.util.Map;
  */
 public sealed abstract class AbstractLiftRoot
     permits AbstractExtensibleWithoutField, LiftAnnotation,
-    LiftIllustration, LiftMedia, LiftTrait, LiftHeader, LiftHeaderFieldDefinition {
+    LiftIllustration, LiftMedia, LiftTrait, LiftHeader, LiftHeaderFieldDefinition,
+    LiftReversal {
         
     private final MultiText mainMultiText = new MultiText();
     protected final Map<String,String> otherXmlAttributes = new HashMap<>();

@@ -39,6 +39,7 @@ import fr.cnrs.lacito.liftapi.model.LiftMedia;
 import fr.cnrs.lacito.liftapi.model.LiftNote;
 import fr.cnrs.lacito.liftapi.model.LiftPronunciation;
 import fr.cnrs.lacito.liftapi.model.LiftRelation;
+import fr.cnrs.lacito.liftapi.model.LiftReversal;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
@@ -298,7 +299,27 @@ public class LiftWriter  {
         if (r.getOrder().isPresent()) out.writeAttribute(LiftVocabulary.ORDER_ATTRIBUTE, r.getOrder().get().toString());
         writeAbstractExtensibleWithoutFieldProperties(r);
         writeAbstractExtensibleWithFieldProperties(r);
-        writeMultiText(r.getUsage());
+        if (!r.getUsage().isEmpty()) {
+            out.writeStartElement(LiftVocabulary.USAGE_LOCAL_NAME);
+            writeMultiText(r.getUsage());
+            out.writeEndElement();
+        }
+        out.writeEndElement();
+    }
+
+    private void writeReversal(LiftReversal rev) throws Exception {
+        out.writeStartElement(LiftVocabulary.REVERSAL_LOCAL_NAME);
+        if (rev.getType().isPresent()) out.writeAttribute(LiftVocabulary.TYPE_ATTRIBUTE, rev.getType().get());
+        writeMultiText(rev.getForms());
+        if (rev.getMain() != null) {
+            out.writeStartElement(LiftVocabulary.MAIN_LOCAL_NAME);
+            writeMultiText(rev.getMain().getForms());
+            // recursive: main can have nested main
+            if (rev.getMain().getMain() != null) {
+                writeReversal(rev.getMain()); // reuse for nested
+            }
+            out.writeEndElement();
+        }
         out.writeEndElement();
     }
 
@@ -338,6 +359,7 @@ public class LiftWriter  {
         sense.getRelations().forEach(unchecked(this::writeRelation));
         sense.getExamples().forEach(unchecked(this::writeExample));
         sense.getIllustrations().forEach(unchecked(this::writeIllustration));
+        sense.getReversals().forEach(unchecked(this::writeReversal));
         sense.getSubSenses().forEach(unchecked(this::writeSense));
 
         out.writeEndElement();
