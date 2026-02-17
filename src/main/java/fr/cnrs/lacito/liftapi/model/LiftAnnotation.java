@@ -1,8 +1,10 @@
 package fr.cnrs.lacito.liftapi.model;
 
 import java.util.Optional;
-
-import lombok.Getter;
+import javafx.beans.property.ReadOnlyStringProperty;
+import javafx.beans.property.ReadOnlyStringWrapper;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 import lombok.Setter;
 
 /**
@@ -19,38 +21,80 @@ import lombok.Setter;
 public final class LiftAnnotation
     extends AbstractLiftRoot {
 
-    @Getter protected final String name;
-    @Getter protected Optional<String> value = Optional.empty();
-    @Getter protected Optional<String> who = Optional.empty();
-    @Getter protected Optional<String> when = Optional.empty();
-    @Setter @Getter protected HasAnnotation parent;
+    protected final String name;
+    protected Optional<String> value = Optional.empty();
+    protected Optional<String> who = Optional.empty();
+    protected Optional<String> when = Optional.empty();
+    @Setter protected HasAnnotation parent;
+
+    private final ReadOnlyStringWrapper namePropertyWrapper;
+    private final StringProperty valueProperty;
+    private final StringProperty whoProperty;
+    private final StringProperty whenProperty;
 
     /**
      * Create an annotation. The name is the only mandatory component of an annotation.
-     * 
-     * @param name the name of the annotation.
-     * @param value the value of the annotation. Can be {@code null}.
-     * @param who the name giving the author of the annotation. can be {@code null}.
-     * @param when the date of the annotation. can be {@code null}.
      */
     protected LiftAnnotation(String name) {
         this.name = name;
+        this.namePropertyWrapper = new ReadOnlyStringWrapper(this, "name", name);
+        this.valueProperty = new SimpleStringProperty(this, "value", "");
+        this.whoProperty = new SimpleStringProperty(this, "who", "");
+        this.whenProperty = new SimpleStringProperty(this, "when", "");
     }
 
     public MultiText getText() {
         return getMainMultiText();
     }
 
+    public String getName() {
+        return name;
+    }
+
+    public Optional<String> getValue() {
+        return value;
+    }
+
+    public Optional<String> getWho() {
+        return who;
+    }
+
+    public Optional<String> getWhen() {
+        return when;
+    }
+
+    public HasAnnotation getParent() {
+        return parent;
+    }
+
     protected void setValue(String value) {
         this.value = Optional.of(value);
+        this.valueProperty.set(value);
     }
 
     protected void setWho(String who) {
         this.who = Optional.of(who);
+        this.whoProperty.set(who);
     }
 
     protected void setWhen(String when) {
         this.when = Optional.of(when);
+        this.whenProperty.set(when);
     }
 
+    public ReadOnlyStringProperty nameProperty() {
+        return namePropertyWrapper.getReadOnlyProperty();
+    }
+
+    public StringProperty valueProperty() {
+        return valueProperty;
+    }
+
+    public StringProperty whoProperty() {
+        return whoProperty;
+    }
+
+    public StringProperty whenProperty() {
+        return whenProperty;
+    }
 }

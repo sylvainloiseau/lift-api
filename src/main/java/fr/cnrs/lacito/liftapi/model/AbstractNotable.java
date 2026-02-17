@@ -1,9 +1,9 @@
 package fr.cnrs.lacito.liftapi.model;
 
-import java.util.HashMap;
 import java.util.Map;
-
-import lombok.Getter;
+import javafx.beans.property.MapProperty;
+import javafx.beans.property.SimpleMapProperty;
+import javafx.collections.FXCollections;
 
 /**
  * Can receive Note (not to be confused with annotation).
@@ -15,7 +15,8 @@ public abstract sealed class AbstractNotable
     implements HasNote
     permits AbstractIdentifiable, LiftExample {
 
-    @Getter protected final Map<String, LiftNote> notes = new HashMap<>();
+    protected final MapProperty<String, LiftNote> notesProperty =
+            new SimpleMapProperty<>(this, "notes", FXCollections.observableHashMap());
 
     @Override
     public void addNote(LiftNote n) throws DuplicateTypeException {
@@ -25,19 +26,26 @@ public abstract sealed class AbstractNotable
         } else {
             key = n.type.get();
         }
-        if (notes.containsKey(key)) {
+        if (notesProperty.containsKey(key)) {
             throw new IllegalStateException("Duplicate Note type: " + key + "; Id: " + ((AbstractIdentifiable)this).getId());
         }
-        notes.put(key, n);
+        notesProperty.put(key, n);
         n.setParent(this);
     }
 
     @Override
     public LiftNote getNote(String type) {
-        if (!notes.containsKey(type)) {
+        if (!notesProperty.containsKey(type)) {
             throw new IllegalArgumentException("Not note with type: " + type  + ".");
         }
-        return notes.get(type);
+        return notesProperty.get(type);
     }
 
+    public Map<String, LiftNote> getNotes() {
+        return notesProperty.get();
+    }
+
+    public MapProperty<String, LiftNote> notesProperty() {
+        return notesProperty;
+    }
 }

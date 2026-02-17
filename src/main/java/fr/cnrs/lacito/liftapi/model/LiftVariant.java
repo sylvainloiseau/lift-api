@@ -1,8 +1,10 @@
 package fr.cnrs.lacito.liftapi.model;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import javafx.beans.property.ListProperty;
+import javafx.beans.property.SimpleListProperty;
+import javafx.collections.FXCollections;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -11,8 +13,10 @@ public final class LiftVariant
     implements HasPronunciation, HasRelations {
 
     @Getter protected Optional<String> refId = Optional.empty();
-    protected final List<LiftPronunciation> pronunciations = new ArrayList<>();
-    @Getter protected final List<LiftRelation> relations = new ArrayList<>();
+    protected final ListProperty<LiftPronunciation> pronunciationsProperty =
+            new SimpleListProperty<>(this, "pronunciations", FXCollections.observableArrayList());
+    protected final ListProperty<LiftRelation> relationsProperty =
+            new SimpleListProperty<>(this, "relations", FXCollections.observableArrayList());
     @Setter @Getter protected LiftEntry parent;
 
     protected LiftVariant() {
@@ -24,12 +28,12 @@ public final class LiftVariant
 
     @Override
     public List<LiftPronunciation> getPronunciations() {
-        return pronunciations;
+        return pronunciationsProperty.get();
     }
 
     @Override
     public void addPronunciation(LiftPronunciation pronounciation) {
-        pronunciations.add(pronounciation);
+        pronunciationsProperty.add(pronounciation);
         pronounciation.setParent(this);
     }
 
@@ -39,8 +43,19 @@ public final class LiftVariant
 
     @Override
     public void addRelation(LiftRelation relation) {
-        this.relations.add(relation);
+        this.relationsProperty.add(relation);
         relation.setParent(this);
     }
 
+    public List<LiftRelation> getRelations() {
+        return relationsProperty.get();
+    }
+
+    public ListProperty<LiftPronunciation> pronunciationsProperty() {
+        return pronunciationsProperty;
+    }
+
+    public ListProperty<LiftRelation> relationsProperty() {
+        return relationsProperty;
+    }
 }

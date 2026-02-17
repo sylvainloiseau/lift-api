@@ -1,8 +1,8 @@
 package fr.cnrs.lacito.liftapi.model;
 
 import java.util.Optional;
-
-import lombok.Getter;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 import lombok.Setter;
 
 /**
@@ -22,8 +22,10 @@ import lombok.Setter;
  */
 public final class LiftNote extends AbstractExtensibleWithField {
 
-    @Getter protected Optional<String> type = Optional.empty();
+    protected Optional<String> type = Optional.empty();
     @Setter protected AbstractNotable parent;
+
+    private final StringProperty typeProperty = new SimpleStringProperty(this, "type", "");
 
     protected LiftNote() {
     }
@@ -32,8 +34,16 @@ public final class LiftNote extends AbstractExtensibleWithField {
         return getMainMultiText();
     }
 
-    protected void setType(String type) {
-        this.type = Optional.of(type);
+    public Optional<String> getType() {
+        return type;
     }
 
+    protected void setType(String type) {
+        this.type = Optional.of(type);
+        this.typeProperty.set(type);
+    }
+
+    public StringProperty typeProperty() {
+        return typeProperty;
+    }
 }
