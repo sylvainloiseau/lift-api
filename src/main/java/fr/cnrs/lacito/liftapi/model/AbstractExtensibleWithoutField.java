@@ -28,12 +28,12 @@ public abstract sealed class AbstractExtensibleWithoutField
         a.setParent(this);
     }
 
-    protected void setDateCreated(String value) {
-        this.dateCreated = Optional.of(value);
+    public void setDateCreated(String value) {
+        this.dateCreated = Optional.ofNullable(value);
     }
 
-    protected void setDateModified(String value) {
-        this.dateModified = Optional.of(value);
+    public void setDateModified(String value) {
+        this.dateModified = Optional.ofNullable(value);
     }
 
     public Optional<String> getDateCreated() {
