@@ -38,7 +38,7 @@ public final class LiftNote extends AbstractExtensibleWithField {
         return type;
     }
 
-    protected void setType(String type) {
+    public void setType(String type) {
         this.type = Optional.of(type);
         this.typeProperty.set(type);
     }

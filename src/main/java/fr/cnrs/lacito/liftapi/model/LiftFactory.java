@@ -388,6 +388,49 @@ public final class LiftFactory implements LiftDictionaryCompoments {
         return hre;
     }
 
+    public LiftHeaderRange createRange(String id, LiftHeader parent) {
+        LiftHeaderRange hr = new LiftHeaderRange(id, parent);
+        parent.getRanges().add(hr);
+        return hr;
+    }
+
+    public LiftHeaderRangeElement createRangeElement(String id, LiftHeaderRange parent) {
+        LiftHeaderRangeElement hre = new LiftHeaderRangeElement(id, parent);
+        parent.getRangeElements().add(hre);
+        return hre;
+    }
+
+    public LiftHeaderFieldDefinition createFieldDefinition(String name, LiftHeader parent) {
+        LiftHeaderFieldDefinition fd = new LiftHeaderFieldDefinition(name, parent);
+        parent.getFields().add(fd);
+        return fd;
+    }
+
+    public LiftNote createNote(String type, AbstractNotable parent) {
+        LiftNote n = new LiftNote();
+        if (type != null) n.setType(type);
+        parent.addNote(n);
+        this.allNotes.add(n);
+        this.allMetaLanguagesMultiText.add(n.getText());
+        return n;
+    }
+
+    public LiftField createField(String type, AbstractExtensibleWithField parent) {
+        LiftField f = new LiftField(type);
+        parent.addField(f);
+        this.allFields.add(f);
+        this.allMetaLanguagesMultiText.add(f.getText());
+        return f;
+    }
+
+    public LiftAnnotation createAnnotation(String name, HasAnnotation parent) {
+        LiftAnnotation a = new LiftAnnotation(name);
+        parent.addAnnotation(a);
+        this.allAnnotations.add(a);
+        this.allMetaLanguagesMultiText.add(a.getText());
+        return a;
+    }
+
     public LiftIllustration create_illustration(Attributes attributes, LiftSense parent) {
         String href = attributes.getValue(LiftVocabulary.LIFT_URI, "href");
         if (href == null) throw new IllegalArgumentException();
