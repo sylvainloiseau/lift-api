@@ -400,6 +400,26 @@ public final class LiftFactory implements LiftDictionaryCompoments {
         return hre;
     }
 
+    /**
+     * Post-process field-definitions with UNKNOWN kind by checking whether
+     * the name matches a trait name or a field name actually used in the dictionary.
+     * A name that appears as a trait name is classified as TRAIT; as a field name, FIELD.
+     */
+    public void resolveFieldDefinitionKinds() {
+        if (header == null) return;
+        java.util.Set<String> traitNames = allTraits.stream().map(LiftTrait::getName).collect(java.util.stream.Collectors.toSet());
+        java.util.Set<String> fieldNames = allFields.stream().map(LiftField::getName).collect(java.util.stream.Collectors.toSet());
+
+        for (LiftHeaderFieldDefinition fd : header.getFields()) {
+            if (fd.getKind() != FieldDefinitionKind.UNKNOWN) continue;
+            if (traitNames.contains(fd.getName())) {
+                fd.setKind(FieldDefinitionKind.TRAIT);
+            } else if (fieldNames.contains(fd.getName())) {
+                fd.setKind(FieldDefinitionKind.FIELD);
+            }
+        }
+    }
+
     public LiftHeaderFieldDefinition createFieldDefinition(String name, LiftHeader parent) {
         LiftHeaderFieldDefinition fd = new LiftHeaderFieldDefinition(name, parent);
         parent.getFields().add(fd);

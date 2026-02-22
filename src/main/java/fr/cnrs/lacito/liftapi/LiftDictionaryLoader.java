@@ -48,6 +48,8 @@ public final class LiftDictionaryLoader {
             e.printStackTrace();
         }
         
+        liftFactory.resolveFieldDefinitionKinds();
+
         LiftDictionary d = new LiftDictionary(liftFactory.getLiftDictionaryCompoments());
         d.setLiftVersion(liftFactory.getLiftVersion());
         d.setLiftProducer(liftFactory.getLiftProducer());
