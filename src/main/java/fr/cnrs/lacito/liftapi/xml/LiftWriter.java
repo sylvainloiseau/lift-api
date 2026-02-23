@@ -31,7 +31,7 @@ import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftExample;
 import fr.cnrs.lacito.liftapi.model.LiftField;
 import fr.cnrs.lacito.liftapi.model.LiftHeader;
-import fr.cnrs.lacito.liftapi.model.LiftHeaderFieldDefinition;
+import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
 import fr.cnrs.lacito.liftapi.model.LiftHeaderRange;
 import fr.cnrs.lacito.liftapi.model.LiftHeaderRangeElement;
 import fr.cnrs.lacito.liftapi.model.LiftIllustration;
@@ -149,10 +149,10 @@ public class LiftWriter  {
             out.writeEndElement();
         }
 
-        List<LiftHeaderFieldDefinition> fields = header.getFields();
+        List<LiftFieldAndTraitDefinition> fields = header.getFields();
         if (fields != null && !fields.isEmpty()) {
             out.writeStartElement(LiftVocabulary.HEADER_FIELDS_DEFINITION_LOCAL_NAME);
-            for (LiftHeaderFieldDefinition f : fields) {
+            for (LiftFieldAndTraitDefinition f : fields) {
                 writeHeaderFieldDescription(f);
             }
             out.writeEndElement(); // LiftVocabulary.HEADER_FIELDS_DESCRIPTION_LOCAL_NAME
@@ -199,6 +199,7 @@ public class LiftWriter  {
     private void writeHeaderRangeElement(LiftHeaderRangeElement el) throws Exception {
         out.writeStartElement(LiftVocabulary.HEADER_RANGE_ELEMENT_LOCAL_NAME);
         out.writeAttribute(LiftVocabulary.ID_ATTRIBUTE, el.getId());
+        if (el.getParentId().isPresent()) out.writeAttribute("parent", el.getParentId().get());
         if (el.getGuid().isPresent()) out.writeAttribute(LiftVocabulary.GUID_ATTRIBUTE, el.getGuid().get());
         writeAbstractExtensibleWithoutFieldProperties(el);
         writeAbstractExtensibleWithFieldProperties(el);
@@ -218,7 +219,7 @@ public class LiftWriter  {
         out.writeEndElement(); // LiftVocabulary.HEADER_RANGE_ELEMENT_ELEMENT_LOCAL_NAME
     }
     
-    private void writeHeaderFieldDescription(LiftHeaderFieldDefinition f) throws Exception {
+    private void writeHeaderFieldDescription(LiftFieldAndTraitDefinition f) throws Exception {
         out.writeStartElement(LiftVocabulary.HEADER_FIELD_DEFINITION_LOCAL_NAME);
         
         out.writeAttribute(LiftVocabulary.GUID_ATTRIBUTE, f.getName());

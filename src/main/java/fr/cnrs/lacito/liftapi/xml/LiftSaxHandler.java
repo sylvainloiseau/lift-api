@@ -18,7 +18,7 @@ import fr.cnrs.lacito.liftapi.model.HasPronunciation;
 import fr.cnrs.lacito.liftapi.model.HasRelations;
 import fr.cnrs.lacito.liftapi.model.HasTrait;
 import fr.cnrs.lacito.liftapi.model.LiftHeader;
-import fr.cnrs.lacito.liftapi.model.LiftHeaderFieldDefinition;
+import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
 import fr.cnrs.lacito.liftapi.model.LiftHeaderRange;
 import fr.cnrs.lacito.liftapi.model.LiftHeaderRangeElement;
 import fr.cnrs.lacito.liftapi.model.LiftIllustration;
@@ -321,7 +321,7 @@ public final class LiftSaxHandler extends DefaultHandler {
                 multiTextStack.push(((LiftSense)elementStack.peek()).getDefinition());
                 break;
             case LiftVocabulary.HEADER_FIELD_DEFINITION_LOCAL_NAME:
-                multiTextStack.push(((LiftHeaderFieldDefinition)elementStack.peek()).getDescription());
+                multiTextStack.push(((LiftFieldAndTraitDefinition)elementStack.peek()).getDescription());
                 break;
             case LiftVocabulary.TRANSLATION_LOCAL_NAME:
                 String type = attributes.getValue(LiftVocabulary.LIFT_URI, "type");
@@ -359,7 +359,7 @@ public final class LiftSaxHandler extends DefaultHandler {
                     case LiftHeader h -> multiTextStack.push(h.getDescription());
                     case LiftHeaderRange r -> multiTextStack.push(r.getDescription());
                     case LiftHeaderRangeElement re -> multiTextStack.push(re.getDescription());
-                    case LiftHeaderFieldDefinition fd -> multiTextStack.push(fd.getDescription());
+                    case LiftFieldAndTraitDefinition fd -> multiTextStack.push(fd.getDescription());
                     default -> throw new IllegalStateException();
                 }
                 break;
@@ -376,7 +376,7 @@ public final class LiftSaxHandler extends DefaultHandler {
                 switch(elementStack.peek()) {
                     case LiftHeaderRange r -> multiTextStack.push(r.getLabel());
                     case LiftHeaderRangeElement re -> multiTextStack.push(re.getLabel());
-                    case LiftHeaderFieldDefinition fd -> multiTextStack.push(fd.getLabel());
+                    case LiftFieldAndTraitDefinition fd -> multiTextStack.push(fd.getLabel());
                     case LiftIllustration i -> multiTextStack.push(i.getLabel());
                     case LiftMedia m -> multiTextStack.push(m.getLabel());
                     default -> throw new IllegalStateException();

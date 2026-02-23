@@ -4,23 +4,33 @@ import java.util.Optional;
 
 import lombok.Getter;
 
-public final class LiftHeaderRangeElement extends AbstractExtensibleWithField{
+public final class LiftHeaderRangeElement extends AbstractExtensibleWithField {
     @Getter final String id;
-    final LiftHeaderRange parent;
+    final LiftHeaderRange parentRange;
 
-    Optional<String> parentRange = Optional.empty();
+    /** The id of the parent range-element (for hierarchical organisation). */
+    @Getter Optional<String> parentId = Optional.empty();
     @Getter Optional<String> guid = Optional.empty();
 
     @Getter MultiText label = new MultiText();
     @Getter MultiText abbrev = new MultiText();
-    
+
     protected LiftHeaderRangeElement(String id, LiftHeaderRange parent) {
         this.id = id;
-        this.parent = parent;
+        this.parentRange = parent;
     }
-    
+
+    public LiftHeaderRange getParentRange() { return parentRange; }
+
+    /** Set the {@code @parent} attribute (id of parent range-element). */
+    public void setParentId(String parentId) {
+        this.parentId = Optional.ofNullable(parentId);
+    }
+
+    /** @deprecated Use {@link #setParentId(String)} — kept for existing callers. */
+    @Deprecated
     public void setOtherParent(String otherParent) {
-        this.parentRange = Optional.of(otherParent);
+        setParentId(otherParent);
     }
 
     public void setGuid(String guid) {
@@ -30,5 +40,4 @@ public final class LiftHeaderRangeElement extends AbstractExtensibleWithField{
     public MultiText getDescription() {
         return getMainMultiText();
     }
-
 }

@@ -5,7 +5,7 @@ import java.util.List;
 
 public final class LiftHeader extends AbstractLiftRoot {
 
-    private List<LiftHeaderFieldDefinition> fields = new ArrayList<>();
+    private List<LiftFieldAndTraitDefinition> fields = new ArrayList<>();
     private List<LiftHeaderRange> ranges = new ArrayList<>();
 
     protected LiftHeader() {
@@ -19,7 +19,7 @@ public final class LiftHeader extends AbstractLiftRoot {
         return ranges;
     }
 
-    public List<LiftHeaderFieldDefinition> getFields() {
+    public List<LiftFieldAndTraitDefinition> getFields() {
         return fields;
     }
 }

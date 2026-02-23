@@ -353,10 +353,10 @@ public final class LiftFactory implements LiftDictionaryCompoments {
         return hr;
     }
 
-    public LiftHeaderFieldDefinition create_field_definition(Attributes attributes, LiftHeader parent) {
+    public LiftFieldAndTraitDefinition create_field_definition(Attributes attributes, LiftHeader parent) {
         String name = attributes.getValue(LiftVocabulary.LIFT_URI, "name");
         if (name == null) throw new IllegalArgumentException("An attribute 'name' is required on field definition");
-        LiftHeaderFieldDefinition f = new LiftHeaderFieldDefinition(name, parent);
+        LiftFieldAndTraitDefinition f = new LiftFieldAndTraitDefinition(name, parent);
 
         String fieldclass = attributes.getValue(LiftVocabulary.LIFT_URI, "class");
         if (fieldclass != null) f.setFClass(Optional.of(fieldclass));
@@ -410,18 +410,21 @@ public final class LiftFactory implements LiftDictionaryCompoments {
         java.util.Set<String> traitNames = allTraits.stream().map(LiftTrait::getName).collect(java.util.stream.Collectors.toSet());
         java.util.Set<String> fieldNames = allFields.stream().map(LiftField::getName).collect(java.util.stream.Collectors.toSet());
 
-        for (LiftHeaderFieldDefinition fd : header.getFields()) {
-            if (fd.getKind() != FieldDefinitionKind.UNKNOWN) continue;
-            if (traitNames.contains(fd.getName())) {
-                fd.setKind(FieldDefinitionKind.TRAIT);
-            } else if (fieldNames.contains(fd.getName())) {
-                fd.setKind(FieldDefinitionKind.FIELD);
+        for (LiftFieldAndTraitDefinition fd : header.getFields()) {
+            if (fd.getKind() == FieldDefinitionKind.UNKNOWN) {
+                if (traitNames.contains(fd.getName())) {
+                    fd.setKind(FieldDefinitionKind.TRAIT);
+                } else if (fieldNames.contains(fd.getName())) {
+                    fd.setKind(FieldDefinitionKind.FIELD);
+                }
             }
+            // Link option-range to actual LiftHeaderRange object (m/)
+            fd.resolveRange(header);
         }
     }
 
-    public LiftHeaderFieldDefinition createFieldDefinition(String name, LiftHeader parent) {
-        LiftHeaderFieldDefinition fd = new LiftHeaderFieldDefinition(name, parent);
+    public LiftFieldAndTraitDefinition createFieldDefinition(String name, LiftHeader parent) {
+        LiftFieldAndTraitDefinition fd = new LiftFieldAndTraitDefinition(name, parent);
         parent.getFields().add(fd);
         return fd;
     }
