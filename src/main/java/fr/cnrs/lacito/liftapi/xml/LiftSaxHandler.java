@@ -133,12 +133,14 @@ public final class LiftSaxHandler extends DefaultHandler {
                 break;
             case LiftVocabulary.ANNOTATION_LOCAL_NAME:
                 // annotation has no other possible child than form. An annotation can be on
-                // AbstractExtensibleWithoutField object, field, trait, or formContent (form or gloss).
+                // AbstractExtensibleWithoutField object, field, trait, MultiText, or formContent (form or gloss).
                 HasAnnotation parent = null;
                 if (inText) {
                     throw new IllegalStateException("Annotation cannot be in text element.");
                 } else if (currentFormContent != null) {
                     parent = currentFormContent;
+                } else if (!multiTextStack.isEmpty() && multiTextStack.peek() instanceof HasAnnotation haMt) {
+                    parent = haMt;
                 } else {
                     if (elementStack.peek() instanceof HasAnnotation ha) {
                         parent = ha;

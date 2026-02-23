@@ -1,0 +1,10 @@
+<lift producer="test" version="0.13">
+  <entry id="entry-1" guid="guid-1">
+    <lexical-unit>
+      <annotation name="source" value="elicitation" who="alice" when="2026-02-22">
+        <form lang="en"><text>lexical-unit note</text></form>
+      </annotation>
+      <form lang="tww"><text>nala</text></form>
+    </lexical-unit>
+  </entry>
+</lift>

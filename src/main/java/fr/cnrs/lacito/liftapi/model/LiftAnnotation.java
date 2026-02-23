@@ -41,6 +41,18 @@ public final class LiftAnnotation
         this.valueProperty = new SimpleStringProperty(this, "value", "");
         this.whoProperty = new SimpleStringProperty(this, "who", "");
         this.whenProperty = new SimpleStringProperty(this, "when", "");
+        this.valueProperty.addListener((obs, oldV, newV) -> {
+            String v = newV == null ? "" : newV.trim();
+            this.value = v.isEmpty() ? Optional.empty() : Optional.of(v);
+        });
+        this.whoProperty.addListener((obs, oldV, newV) -> {
+            String v = newV == null ? "" : newV.trim();
+            this.who = v.isEmpty() ? Optional.empty() : Optional.of(v);
+        });
+        this.whenProperty.addListener((obs, oldV, newV) -> {
+            String v = newV == null ? "" : newV.trim();
+            this.when = v.isEmpty() ? Optional.empty() : Optional.of(v);
+        });
     }
 
     public MultiText getText() {
@@ -68,18 +80,21 @@ public final class LiftAnnotation
     }
 
     protected void setValue(String value) {
-        this.value = Optional.of(value);
-        this.valueProperty.set(value);
+        String v = value == null ? "" : value.trim();
+        this.value = v.isEmpty() ? Optional.empty() : Optional.of(v);
+        this.valueProperty.set(v);
     }
 
     protected void setWho(String who) {
-        this.who = Optional.of(who);
-        this.whoProperty.set(who);
+        String v = who == null ? "" : who.trim();
+        this.who = v.isEmpty() ? Optional.empty() : Optional.of(v);
+        this.whoProperty.set(v);
     }
 
     protected void setWhen(String when) {
-        this.when = Optional.of(when);
-        this.whenProperty.set(when);
+        String v = when == null ? "" : when.trim();
+        this.when = v.isEmpty() ? Optional.empty() : Optional.of(v);
+        this.whenProperty.set(v);
     }
 
     public ReadOnlyStringProperty nameProperty() {

@@ -403,6 +403,8 @@ public class LiftWriter  {
     }
 
     private void writeMultiText(String elementName, MultiText mt) throws Exception {
+        if (mt == null) return;
+        mt.getAnnotations().forEach(unchecked(this::writeAnnotation));
         Collection<Form> texts = mt.getForms();
         for (Form text : texts) {
             out.writeStartElement(elementName); // can be form or gloss

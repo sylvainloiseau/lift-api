@@ -5,7 +5,7 @@ package fr.cnrs.lacito.liftapi.model;
  * 
  */
 public sealed interface HasAnnotation
-    permits AbstractExtensibleWithoutField, Form, LiftTrait {
+    permits AbstractExtensibleWithoutField, Form, LiftTrait, MultiText {
 
     public void addAnnotation(LiftAnnotation a);
 

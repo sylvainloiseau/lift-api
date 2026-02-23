@@ -33,12 +33,12 @@ import javafx.collections.ObservableMap;
  * 
  * @see Form
  */
-public final class MultiText {
+public final class MultiText implements HasAnnotation {
 
     protected final MapProperty<String, Form> formsProperty =
             new SimpleMapProperty<>(FXCollections.observableHashMap());
     protected final static Set<String> EMPTY_LANG_SET = Collections.unmodifiableSet(new HashSet<>());
-    protected List<LiftAnnotation> annotations = new ArrayList<>();
+    protected final List<LiftAnnotation> annotations = new ArrayList<>();
     private final ConcurrentHashMap<String, StringProperty> formTextProperties = new ConcurrentHashMap<>();
 
     protected MultiText() {
@@ -55,6 +55,10 @@ public final class MultiText {
 
     public Collection<Form> getForms() {
         return formsProperty.values();
+    }
+
+    public List<LiftAnnotation> getAnnotations() {
+        return annotations;
     }
 
     public void removeForm(String lang) {
@@ -76,6 +80,12 @@ public final class MultiText {
         String lang = f.lang;
         if (formsProperty.containsKey(lang)) throw new DuplicateLangException("Duplicate lang: " + lang);
         formsProperty.put(lang, f);
+    }
+
+    @Override
+    public void addAnnotation(LiftAnnotation a) {
+        annotations.add(a);
+        a.setParent(this);
     }
 
     /**
