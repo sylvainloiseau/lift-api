@@ -46,4 +46,8 @@ public final class LiftNote extends AbstractExtensibleWithField {
     public StringProperty typeProperty() {
         return typeProperty;
     }
+
+    public AbstractNotable getParent() {
+        return parent;
+    }
 }
