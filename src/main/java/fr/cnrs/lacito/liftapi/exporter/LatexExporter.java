@@ -7,8 +7,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.logging.Logger;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerException;
@@ -21,97 +21,55 @@ import javax.xml.transform.stream.StreamSource;
 public class LatexExporter {
 
     private static final Logger LOGGER = Logger.getLogger(LatexExporter.class.getName());
-    private final static String STYLESHEET_FILENAME= "";
+    private static final String STYLESHEET_FILENAME = "";
 
     private File inputFile;
     private File outFile;
 
     public void transform2Latex(File outfile) {
-        // try (
-        //     InputStream is = new FileInputStream(this.file);
-        //     OutputStream outs = new FileOutputStream(outfile);
-        //     InputStream stylesheet = LiftDocument.class.getResourceAsStream(STYLESHEET_FILENAME);
-        //         ) {
-        //             System.out.println("foo");
-        // } catch (FileNotFoundException e) {
-        //     Alert alert = new Alert(AlertType.WARNING);
-        //     alert.setTitle("Impossible d'exécuter la transformation");
-        //     alert.setHeaderText(null);
-        //     alert.setContentText("The source file does not exist: " + outfile);
-        //     alert.showAndWait();
-        //     return;
-        // } catch (IOException e) {
-        // // TODO Auto-generated catch block
-        // e.printStackTrace();
-        // }
-
         InputStream is = null;
+        OutputStream outs = null;
+        InputStream stylesheet = null;
         try {
             is = new FileInputStream(this.inputFile);
-        } catch (FileNotFoundException e) {
-            // Alert alert = new Alert(AlertType.WARNING);
-            // alert.setTitle("Impossible d'exécuter la transformation");
-            // alert.setHeaderText(null);
-            // alert.setContentText("The source file does not exist: " + outfile);
-            // alert.showAndWait();
-            return;
-        }
-        LOGGER.info("Loading dictionary: " + outfile);
+            LOGGER.info("Loading dictionary: " + outfile);
 
-        OutputStream outs = null;
-        try {
             outs = new FileOutputStream(outfile);
-        } catch (FileNotFoundException e) {
-            // Alert alert = new Alert(AlertType.WARNING);
-            // alert.setTitle("Impossible d'exécuter la transformation");
-            // alert.setHeaderText(null);
-            // alert.setContentText("Can't create the output file");
-            // alert.showAndWait();
-            return;
-        }
-        LOGGER.info("Outputstream opened: " + outfile.toString());
+            LOGGER.info("Outputstream opened: " + outfile);
 
-        InputStream stylesheet = LatexExporter.class.getResourceAsStream(STYLESHEET_FILENAME);
-        LOGGER.info("Stylesheet loaded: " + LatexExporter.class.getResource(STYLESHEET_FILENAME).toString());
+            stylesheet = LatexExporter.class.getResourceAsStream(STYLESHEET_FILENAME);
+            LOGGER.info("Stylesheet loaded: " + LatexExporter.class.getResource(STYLESHEET_FILENAME));
 
-        TransformerFactory tf;
-        tf = TransformerFactory.newInstance();
-        try {
+            TransformerFactory tf = TransformerFactory.newInstance();
             Transformer transformer = tf.newTransformer(new StreamSource(stylesheet));
             transformer.transform(new StreamSource(is), new StreamResult(outs));
+            LOGGER.log(Level.INFO, "transformation succeed");
+        } catch (FileNotFoundException e) {
+            LOGGER.log(Level.SEVERE, "File not found during LaTeX export", e);
         } catch (TransformerException e) {
             LOGGER.log(Level.SEVERE, e.getMessage(), e);
-            // Alert alert = new Alert(AlertType.ERROR);
-            // alert.setTitle("Erreur lors de l'exécution de la transformation");
-            // alert.setHeaderText(null);
-            // alert.setContentText(e.getMessageAndLocation());
-            // alert.showAndWait();
-            return;
-        }
-
-        LOGGER.log(Level.INFO, "transformation succeed");
-        // Alert alert = new Alert(AlertType.INFORMATION);
-        // alert.setTitle("Transformation succeed");
-        // alert.setHeaderText(null);
-        // alert.setContentText("Transformation succeed");
-        // alert.showAndWait();
-
-        try {
-            is.close();
-        } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, e.getMessage(), e);
-        }
-        try {
-            outs.close();
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        try {
-            stylesheet.close();
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+        } finally {
+            if (is != null) {
+                try {
+                    is.close();
+                } catch (IOException e) {
+                    LOGGER.log(Level.SEVERE, "Error while closing LaTeX export input stream", e);
+                }
+            }
+            if (outs != null) {
+                try {
+                    outs.close();
+                } catch (IOException e) {
+                    LOGGER.log(Level.SEVERE, "Error while closing LaTeX export output stream", e);
+                }
+            }
+            if (stylesheet != null) {
+                try {
+                    stylesheet.close();
+                } catch (IOException e) {
+                    LOGGER.log(Level.SEVERE, "Error while closing LaTeX export stylesheet stream", e);
+                }
+            }
         }
     }
 }

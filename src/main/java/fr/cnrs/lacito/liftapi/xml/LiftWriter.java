@@ -107,7 +107,8 @@ public class LiftWriter  {
             out = XMLOutputFactory.newInstance().createXMLStreamWriter(
                     new OutputStreamWriter(outputStream, "utf-8"));
         } catch (UnsupportedEncodingException | XMLStreamException | FactoryConfigurationError e) {
-            e.printStackTrace();
+            LOGGER.log(java.util.logging.Level.SEVERE, "Unable to initialize XML writer", e);
+            throw e;
         }
 
         LiftDictionaryCompoments c = d.getLiftDictionaryComponents();

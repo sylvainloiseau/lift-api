@@ -6,4 +6,12 @@ public final class LiftDocumentLoadingException extends Exception {
         super(string);
     }
 
+    public LiftDocumentLoadingException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
+    public LiftDocumentLoadingException(Throwable cause) {
+        super(cause);
+    }
+
 }

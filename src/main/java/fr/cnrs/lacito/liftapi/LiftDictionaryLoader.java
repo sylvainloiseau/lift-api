@@ -2,6 +2,7 @@ package fr.cnrs.lacito.liftapi;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -15,7 +16,7 @@ import fr.cnrs.lacito.liftapi.xml.LiftSaxHandler;
 
 public final class LiftDictionaryLoader {
 
-    private static final Logger LOGGER = Logger.getLogger(LiftDictionary.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(LiftDictionaryLoader.class.getName());
 
     public final static LiftDictionary LoadWithSax(File f, boolean validate) throws LiftDocumentLoadingException {
         // URL schemaUrl = LiftDictionaryLoader.class.getResource("schema/lift-0.13.xsd");
@@ -32,8 +33,8 @@ public final class LiftDictionaryLoader {
         try {
             saxParser = saxFactory.newSAXParser();
         } catch (ParserConfigurationException | SAXException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Unable to initialize SAX parser for file: " + f.getAbsolutePath(), e);
+            throw new LiftDocumentLoadingException(e);
         }
 
         LiftFactory liftFactory = new LiftFactory();
@@ -41,11 +42,11 @@ public final class LiftDictionaryLoader {
         try {
             saxParser.parse(f, lsh);
         } catch (SAXException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Invalid XML while parsing LIFT file: " + f.getAbsolutePath(), e);
+            throw new LiftDocumentLoadingException(e);
         } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "I/O error while parsing LIFT file: " + f.getAbsolutePath(), e);
+            throw new LiftDocumentLoadingException(e);
         }
         
         liftFactory.resolveFieldDefinitionKinds();
