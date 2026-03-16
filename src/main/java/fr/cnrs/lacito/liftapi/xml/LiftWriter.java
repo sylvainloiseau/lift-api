@@ -6,8 +6,11 @@ import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
+import java.net.URI;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
@@ -93,8 +96,10 @@ public class LiftWriter  {
 
     private XMLStreamWriter out = null;
     private OutputStream outputStream = null;
+    private File outputFile;
 
     public LiftWriter(File f) throws FileNotFoundException {
+        this.outputFile = f;
         outputStream = new FileOutputStream(f);
     }
 
@@ -121,6 +126,7 @@ public class LiftWriter  {
         LiftHeader header = c.getHeader();
         if (header != null) writeHeader(header);
         out.writeCharacters(NEW_LINE);
+        if (header != null && header.getRanges() != null) writeRangesToExternalFiles(header);
 
         List<LiftEntry> entries = c.getAllEntries();
         if (entries != null) {
@@ -163,35 +169,179 @@ public class LiftWriter  {
     }
 
     /*
-     * Description of a system of values
+     * Description of a system of values.
+     * When range has href: write only minimal (id, href, guid) in main file; full content goes to external file.
      */
     private void writeHeaderRange(LiftHeaderRange range) throws Exception {
         out.writeStartElement(LiftVocabulary.HEADER_RANGE_LOCAL_NAME);
         out.writeAttribute(LiftVocabulary.ID_ATTRIBUTE, range.getId());
         if (range.getGuid().isPresent()) out.writeAttribute(LiftVocabulary.GUID_ATTRIBUTE, range.getGuid().get());
         if (range.getHref().isPresent()) out.writeAttribute(LiftVocabulary.HREF_ATTRIBUTE, range.getHref().get());
-        writeAbstractExtensibleWithoutFieldProperties(range);
-        writeAbstractExtensibleWithFieldProperties(range);
-
-        out.writeStartElement(LiftVocabulary.HEADER_DESCRIPTION_LOCAL_NAME);
-        writeMultiText(range.getDescription());
-        out.writeEndElement();
-
-        out.writeStartElement(LiftVocabulary.LABEL_LOCAL_NAME);
-        writeMultiText(range.getLabel());
-        out.writeEndElement();
-        
-        out.writeStartElement(LiftVocabulary.HEADER_RANGE_ABBREV_LOCAL_NAME);
-        writeMultiText(range.getAbbrev());
-        out.writeEndElement();
-
-        // range elements
-        List<LiftHeaderRangeElement> elems = range.getRangeElements();
-            for (LiftHeaderRangeElement e : elems) {
+        if (!range.getHref().isPresent()) {
+            writeAbstractExtensibleWithoutFieldProperties(range);
+            writeAbstractExtensibleWithFieldProperties(range);
+            out.writeStartElement(LiftVocabulary.HEADER_DESCRIPTION_LOCAL_NAME);
+            writeMultiText(range.getDescription());
+            out.writeEndElement();
+            out.writeStartElement(LiftVocabulary.LABEL_LOCAL_NAME);
+            writeMultiText(range.getLabel());
+            out.writeEndElement();
+            out.writeStartElement(LiftVocabulary.HEADER_RANGE_ABBREV_LOCAL_NAME);
+            writeMultiText(range.getAbbrev());
+            out.writeEndElement();
+            for (LiftHeaderRangeElement e : range.getRangeElements()) {
                 writeHeaderRangeElement(e);
             }
-
+        }
         out.writeEndElement(); // LiftVocabulary.HEADER_RANGE_LOCAL_NAME
+    }
+
+    /**
+     * Write ranges with href to external files. Ranges sharing the same href are written
+     * together to avoid overwriting a shared file multiple times.
+     */
+    private void writeRangesToExternalFiles(LiftHeader header) throws Exception {
+        if (outputFile == null) return;
+        File baseDir = outputFile.getParentFile();
+        if (baseDir == null) baseDir = new File(".");
+
+        Map<File, List<LiftHeaderRange>> byHref = new LinkedHashMap<>();
+        for (LiftHeaderRange r : header.getRanges()) {
+            if (!r.getHref().isPresent()) continue;
+            String href = r.getHref().get();
+            if (href == null || href.isBlank()) continue;
+            File targetFile = resolveHrefToFile(href, baseDir);
+            byHref.computeIfAbsent(targetFile, k -> new java.util.ArrayList<>()).add(r);
+        }
+
+        for (Map.Entry<File, List<LiftHeaderRange>> e : byHref.entrySet()) {
+            writeLiftRangesFile(e.getKey(), e.getValue());
+        }
+    }
+
+    private File resolveHrefToFile(String href, File baseDir) {
+        href = href.trim();
+        if (href.startsWith("file:///")) {
+            try {
+                return new File(URI.create(href));
+            } catch (Exception ex) {
+                LOGGER.warning("Invalid file href: " + href);
+            }
+        }
+        if (href.startsWith("file://")) {
+            try {
+                return new File(URI.create(href));
+            } catch (Exception ex) {
+                LOGGER.warning("Invalid file href: " + href);
+            }
+        }
+        return new File(baseDir, href);
+    }
+
+    private void writeLiftRangesFile(File file, List<LiftHeaderRange> ranges) throws Exception {
+        try (FileOutputStream fos = new FileOutputStream(file);
+             OutputStreamWriter osw = new OutputStreamWriter(fos, "utf-8")) {
+            XMLStreamWriter rangesOut = XMLOutputFactory.newInstance().createXMLStreamWriter(osw);
+            rangesOut.writeStartDocument("utf-8", "1.0");
+            rangesOut.writeCharacters(NEW_LINE);
+            rangesOut.writeStartElement(LiftVocabulary.LIFT_RANGES_ROOT);
+            rangesOut.writeCharacters(NEW_LINE);
+            for (LiftHeaderRange r : ranges) {
+                writeHeaderRangeToWriter(rangesOut, r);
+            }
+            rangesOut.writeEndElement();
+            rangesOut.writeEndDocument();
+            rangesOut.flush();
+        }
+    }
+
+    private void writeHeaderRangeToWriter(XMLStreamWriter w, LiftHeaderRange range) throws Exception {
+        w.writeStartElement(LiftVocabulary.HEADER_RANGE_LOCAL_NAME);
+        w.writeAttribute(LiftVocabulary.ID_ATTRIBUTE, range.getId());
+        if (range.getGuid().isPresent()) w.writeAttribute(LiftVocabulary.GUID_ATTRIBUTE, range.getGuid().get());
+        writeAbstractExtensibleWithoutFieldPropertiesToWriter(w, range);
+        writeAbstractExtensibleWithFieldPropertiesToWriter(w, range);
+        w.writeStartElement(LiftVocabulary.HEADER_DESCRIPTION_LOCAL_NAME);
+        writeMultiTextToWriter(w, range.getDescription());
+        w.writeEndElement();
+        w.writeStartElement(LiftVocabulary.LABEL_LOCAL_NAME);
+        writeMultiTextToWriter(w, range.getLabel());
+        w.writeEndElement();
+        w.writeStartElement(LiftVocabulary.HEADER_RANGE_ABBREV_LOCAL_NAME);
+        writeMultiTextToWriter(w, range.getAbbrev());
+        w.writeEndElement();
+        for (LiftHeaderRangeElement el : range.getRangeElements()) {
+            writeHeaderRangeElementToWriter(w, el);
+        }
+        w.writeEndElement();
+        w.writeCharacters(NEW_LINE);
+    }
+
+    private void writeHeaderRangeElementToWriter(XMLStreamWriter w, LiftHeaderRangeElement el) throws Exception {
+        w.writeStartElement(LiftVocabulary.HEADER_RANGE_ELEMENT_LOCAL_NAME);
+        w.writeAttribute(LiftVocabulary.ID_ATTRIBUTE, el.getId());
+        if (el.getParentId().isPresent()) w.writeAttribute("parent", el.getParentId().get());
+        if (el.getGuid().isPresent()) w.writeAttribute(LiftVocabulary.GUID_ATTRIBUTE, el.getGuid().get());
+        writeAbstractExtensibleWithoutFieldPropertiesToWriter(w, el);
+        writeAbstractExtensibleWithFieldPropertiesToWriter(w, el);
+        w.writeStartElement(LiftVocabulary.HEADER_DESCRIPTION_LOCAL_NAME);
+        writeMultiTextToWriter(w, el.getDescription());
+        w.writeEndElement();
+        w.writeStartElement(LiftVocabulary.LABEL_LOCAL_NAME);
+        writeMultiTextToWriter(w, el.getLabel());
+        w.writeEndElement();
+        w.writeStartElement(LiftVocabulary.HEADER_RANGE_ABBREV_LOCAL_NAME);
+        writeMultiTextToWriter(w, el.getAbbrev());
+        w.writeEndElement();
+        w.writeEndElement();
+        w.writeCharacters(NEW_LINE);
+    }
+
+    private void writeAbstractExtensibleWithoutFieldPropertiesToWriter(XMLStreamWriter w, AbstractExtensibleWithoutField obj) throws Exception {
+        if (obj.getDateCreated().isPresent()) w.writeAttribute("dateCreated", obj.getDateCreated().get());
+        if (obj.getDateModified().isPresent()) w.writeAttribute("dateModified", obj.getDateModified().get());
+        for (LiftAnnotation a : obj.getAnnotations()) writeAnnotationToWriter(w, a);
+        for (LiftTrait t : obj.getTraits()) writeTraitToWriter(w, t);
+    }
+
+    private void writeAbstractExtensibleWithFieldPropertiesToWriter(XMLStreamWriter w, AbstractExtensibleWithField obj) throws Exception {
+        for (LiftField f : obj.getFields()) writeFieldToWriter(w, f);
+    }
+
+    private void writeAnnotationToWriter(XMLStreamWriter w, LiftAnnotation a) throws Exception {
+        w.writeStartElement(LiftVocabulary.ANNOTATION_LOCAL_NAME);
+        if (a.getName() != null) w.writeAttribute(LiftVocabulary.NAME_ATTRIBUTE, a.getName());
+        if (a.getValue().isPresent()) w.writeAttribute(LiftVocabulary.VALUE_ATTRIBUTE, a.getValue().get());
+        writeMultiTextToWriter(w, a.getText());
+        w.writeEndElement();
+    }
+
+    private void writeTraitToWriter(XMLStreamWriter w, LiftTrait t) throws Exception {
+        w.writeStartElement(LiftVocabulary.TRAIT_LOCAL_NAME);
+        w.writeAttribute(LiftVocabulary.NAME_ATTRIBUTE, t.getName());
+        w.writeAttribute(LiftVocabulary.VALUE_ATTRIBUTE, t.getValue());
+        for (LiftAnnotation a : t.getAnnotations()) writeAnnotationToWriter(w, a);
+        w.writeEndElement();
+    }
+
+    private void writeFieldToWriter(XMLStreamWriter w, LiftField f) throws Exception {
+        w.writeStartElement(LiftVocabulary.FIELD_LOCAL_NAME);
+        w.writeAttribute(LiftVocabulary.TYPE_ATTRIBUTE, f.getName());
+        writeAbstractExtensibleWithoutFieldPropertiesToWriter(w, f);
+        writeMultiTextToWriter(w, f.getText());
+        w.writeEndElement();
+    }
+
+    private void writeMultiTextToWriter(XMLStreamWriter w, fr.cnrs.lacito.liftapi.model.MultiText mt) throws Exception {
+        if (mt == null) return;
+        for (Form form : mt.getForms()) {
+            w.writeStartElement(LiftVocabulary.FORM_LOCAL_NAME);
+            w.writeAttribute(LiftVocabulary.LANG_ATTRIBUTE, form.getLang());
+            w.writeStartElement(LiftVocabulary.TEXT_LOCAL_NAME);
+            w.writeCharacters(form.toPlainText() != null ? form.toPlainText() : "");
+            w.writeEndElement();
+            w.writeEndElement();
+        }
     }
 
     /*

@@ -60,6 +60,7 @@ public final class LiftVocabulary {
     public static final String HEADER_RANGE_ABBREV_LOCAL_NAME = "abbrev";
     //public static final String HEADER_RANGE_DESCRIPTION_LOCAL_NAME = "description";
     public static final String HEADER_RANGE_ELEMENT_LOCAL_NAME = "range-element";
+    public static final String LIFT_RANGES_ROOT = "lift-ranges";
     public static final String HEADER_FIELD_DEFINITION_LOCAL_NAME = "field-definition";
     //public static final String HEADER_FIELD_DESCRIPTION_LABEL_LOCAL_NAME = "label";
     //public static final String HEADER_FIELD_DESCRIPTION_DESCRIPTION_LOCAL_NAME = "description";
