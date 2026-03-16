@@ -377,6 +377,11 @@ public class LiftWriter  {
 
     private void writeExample(LiftExample ex) throws Exception {
         out.writeStartElement(LiftVocabulary.EXAMPLE_LOCAL_NAME);
+        if (ex.getSource().isPresent()) {
+            String s = ex.getSource().get();
+            if (s != null && !s.isBlank())
+                out.writeAttribute(LiftVocabulary.SOURCE_ATTRIBUTE, s);
+        }
         writeAbstractExtensibleWithoutFieldProperties(ex);
         writeAbstractNotableProperties(ex);
         writeAbstractExtensibleWithFieldProperties(ex);
