@@ -11,7 +11,8 @@ import lombok.Setter;
 public final class LiftRelation
     extends AbstractExtensibleWithField {
         
-    protected final String type;
+    /** Relation type (e.g. lexical-relation value from header ranges). Mutable for UI editing. */
+    private String type;
     protected Optional<String> refID = Optional.empty();
     @Getter protected Optional<Integer> order = Optional.empty();
     @Getter @Setter protected AbstractExtensibleWithoutField parent;
@@ -27,6 +28,13 @@ public final class LiftRelation
 
     public String getType() {
         return type;
+    }
+
+    /** Updates the relation type and the bound JavaFX property. */
+    public void setType(String newType) {
+        String v = newType != null ? newType.trim() : "";
+        this.type = v;
+        typePropertyWrapper.set(v);
     }
 
     public Optional<String> getRefID() {
