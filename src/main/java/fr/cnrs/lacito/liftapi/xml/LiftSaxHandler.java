@@ -112,15 +112,13 @@ public final class LiftSaxHandler extends DefaultHandler {
                 elementStack.push(liftFactory.create_field_definition(attributes, (LiftHeader)elementStack.peek()));
                 break;
             case LiftVocabulary.FIELD_LOCAL_NAME:
-                if (elementStack.peek() instanceof AbstractExtensibleWithField a) {
-                    // TODO : in the factory, if version == 13, then look for "tag" and not for "name"
+                if (elementStack.peek() instanceof LiftHeader h) {
+                    // LIFT 0.13: <field tag="..."> in header is the equivalent of <field-definition name="..."> in 0.15
+                    String tag = attributes.getValue(LiftVocabulary.LIFT_URI, "tag");
+                    if (tag == null) throw new IllegalStateException("Attribute 'tag' expected on <field> in header (LIFT 0.13)");
+                    elementStack.push(liftFactory.createFieldDefinition(tag, h));
+                } else if (elementStack.peek() instanceof AbstractExtensibleWithField a) {
                     elementStack.push(liftFactory.createField(attributes, a));
-                // TODO : check code below:
-                // else if (elementStack.peek() instanceof LiftHeader h) {
-                //   if (factory.getLiftVersion().equals("0.13")) {
-                //       ... TODO
-                //   }
-                //}
                 } else {
                     throw new IllegalStateException("Expecting a field-holding object, found: " + elementStack.peek().toString());
                 }
@@ -249,6 +247,8 @@ public final class LiftSaxHandler extends DefaultHandler {
             case LiftVocabulary.DEFINITION_LOCAL_NAME:
             case LiftVocabulary.TRANSLATION_LOCAL_NAME:
             case LiftVocabulary.HEADER_DESCRIPTION_LOCAL_NAME:
+            case LiftVocabulary.HEADER_RANGE_ABBREV_LOCAL_NAME:
+            case LiftVocabulary.ABREVIATION_LOCAL_NAME:
                  break;
             case LiftVocabulary.REVERSAL_LOCAL_NAME:
                 if (elementStack.peek() instanceof LiftSense s_rev) {
@@ -289,6 +289,7 @@ public final class LiftSaxHandler extends DefaultHandler {
             case LiftVocabulary.FIELD_LOCAL_NAME:
                 switch (elementStack.peek()) {
                     case LiftField f ->  multiTextStack.push(f.getText());
+                    case LiftFieldAndTraitDefinition fd -> multiTextStack.push(fd.getDescription());
                     default -> throw new IllegalStateException();
                 }
                 break;
@@ -393,6 +394,7 @@ public final class LiftSaxHandler extends DefaultHandler {
             case LiftVocabulary.HEADER_RANGES_LOCAL_NAME:
             case LiftVocabulary.GRAM_INFO_LOCAL_NAME:
             case LiftVocabulary.HEADER_RANGE_LOCAL_NAME:
+            case LiftVocabulary.HEADER_RANGE_ELEMENT_LOCAL_NAME:
             case LiftVocabulary.HEADER_FIELDS_DEFINITION_LOCAL_NAME:
             case LiftVocabulary.ILLUSTRATION_LOCAL_NAME:
             case LiftVocabulary.RELATION_LOCAL_NAME:
@@ -452,6 +454,7 @@ public final class LiftSaxHandler extends DefaultHandler {
             case LiftVocabulary.TRAIT_LOCAL_NAME:
             case LiftVocabulary.GRAM_INFO_LOCAL_NAME:
             case LiftVocabulary.HEADER_RANGE_LOCAL_NAME:
+            case LiftVocabulary.HEADER_RANGE_ELEMENT_LOCAL_NAME:
             case LiftVocabulary.GLOSS_LOCAL_NAME:
             case LiftVocabulary.HEADER_RANGES_LOCAL_NAME:
             case LiftVocabulary.HEADER_FIELDS_DEFINITION_LOCAL_NAME:
@@ -517,9 +520,15 @@ public final class LiftSaxHandler extends DefaultHandler {
             case LiftVocabulary.HEADER_RANGES_LOCAL_NAME:
             case LiftVocabulary.HEADER_FIELDS_DEFINITION_LOCAL_NAME:
             case LiftVocabulary.LIFT_LOCAL_NAME:
+            case LiftVocabulary.HEADER_DESCRIPTION_LOCAL_NAME:
+            case LiftVocabulary.HEADER_RANGE_ABBREV_LOCAL_NAME:
+            case LiftVocabulary.ABREVIATION_LOCAL_NAME:
+            case LiftVocabulary.REVERSAL_LOCAL_NAME:
+            case LiftVocabulary.MAIN_LOCAL_NAME:
+            case LiftVocabulary.USAGE_LOCAL_NAME:
                  break;
             default: 
-                throw new IllegalStateException("Unknwon end element (endElement, second switch): " + localName);
+                throw new IllegalStateException("Unknown end element (endElement, second switch): " + localName);
                 //break;
         }
         // end of second switch

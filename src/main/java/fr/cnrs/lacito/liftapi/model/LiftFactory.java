@@ -119,6 +119,7 @@ public final class LiftFactory implements LiftDictionaryCompoments {
         }
         this.allSenses.add(sense);
         this.allMetaLanguagesMultiText.add(sense.getDefinition());
+        this.allMetaLanguagesMultiText.add(sense.getGloss());
         return sense;
     }
 
@@ -355,7 +356,9 @@ public final class LiftFactory implements LiftDictionaryCompoments {
 
     public LiftFieldAndTraitDefinition create_field_definition(Attributes attributes, LiftHeader parent) {
         String name = attributes.getValue(LiftVocabulary.LIFT_URI, "name");
-        if (name == null) throw new IllegalArgumentException("An attribute 'name' is required on field definition");
+        if (name == null) name = attributes.getValue(LiftVocabulary.LIFT_URI, "tag");
+        if (name == null) name = attributes.getValue(LiftVocabulary.LIFT_URI, "guid");
+        if (name == null) throw new IllegalArgumentException("An attribute 'name', 'tag', or 'guid' is required on field-definition");
         LiftFieldAndTraitDefinition f = new LiftFieldAndTraitDefinition(name, parent);
 
         String fieldclass = attributes.getValue(LiftVocabulary.LIFT_URI, "class");
