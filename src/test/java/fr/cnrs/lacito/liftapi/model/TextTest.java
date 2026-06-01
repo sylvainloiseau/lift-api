@@ -8,9 +8,6 @@ import java.util.List;
 
 import org.junit.Test;
 
-import fr.cnrs.lacito.liftapi.model.Form;
-import fr.cnrs.lacito.liftapi.model.TextSpan;
-
 public class TextTest {
     @Test
     public void testChangeTextWithNestedSpans() {
@@ -22,8 +19,8 @@ public class TextTest {
         List<TextSpan> spanList = text.walkTextSpanTree();
         assertNotNull(spanList);
 
-        // Le root doit avoir 7 enfants : 
-        // span(), 
+        // The root should have 7 children :
+        // span(),
         //   span("Bonjour "),
         //   span(lang="en"),
         //       span("Hello "),
@@ -32,24 +29,24 @@ public class TextTest {
         //   span(" !")
         assertEquals(7, spanList.size());
 
-        // Premier enfant : texte brut
+        // First child : raw text
         assertEquals("Bonjour ", spanList.get(1).toString());
 
-        // Deuxième enfant : span anglais
+        // Second child : English span
         TextSpan enSpan = spanList.get(2);
         assertEquals("en", enSpan.getLang().get());
-        // Ce span doit avoir 2 enfants : "Hello " et un span imbriqué
+        // This Span élément should have two children : "Hello " and a nested span
         List<TextSpan> enSpanList = new ArrayList<>();
         enSpan.walkTextSpanTree(enSpanList);
         assertEquals(4, enSpanList.size());
         assertEquals("Hello ", enSpanList.get(1).toString());
 
-        // Span imbriqué : class="em"
+        // Nested Span : class="em"
         TextSpan emSpan = enSpanList.get(2);
         assertEquals("em", emSpan.getSClass().get());
         assertEquals("<span class=\"em\">world</span>", emSpan.toString());
 
-        // Troisième enfant : texte brut
+        // Third child : raw text
         assertEquals(" !", spanList.get(6).toString());
     }    
 }

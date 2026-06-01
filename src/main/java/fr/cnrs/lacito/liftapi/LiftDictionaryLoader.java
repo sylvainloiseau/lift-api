@@ -18,7 +18,7 @@ public final class LiftDictionaryLoader {
 
     private static final Logger LOGGER = Logger.getLogger(LiftDictionaryLoader.class.getName());
 
-    public final static LiftDictionary LoadWithSax(File f, boolean validate) throws LiftDocumentLoadingException {
+    public final static LiftDictionary loadWithSax(File f, boolean validate) throws LiftDocumentLoadingException {
         // URL schemaUrl = LiftDictionaryLoader.class.getResource("schema/lift-0.13.xsd");
         // File schemaFile = new File(schemaUrl.getPath());
         // if (!schemaFile.exists()) throw new LiftDocumentLoadingException("Schema not found: " + schemaFile.getAbsoluteFile());
@@ -51,7 +51,7 @@ public final class LiftDictionaryLoader {
         
         liftFactory.resolveFieldDefinitionKinds();
 
-        LiftDictionary d = new LiftDictionary(liftFactory.getLiftDictionaryCompoments());
+        LiftDictionary d = new LiftDictionary(liftFactory.getLiftDictionaryComponents());
         d.setLiftVersion(liftFactory.getLiftVersion());
         d.setLiftProducer(liftFactory.getLiftProducer());
         return d;

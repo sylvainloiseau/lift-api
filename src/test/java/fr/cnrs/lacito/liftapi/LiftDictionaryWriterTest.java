@@ -1,14 +1,9 @@
 package fr.cnrs.lacito.liftapi;
 
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
-
 import java.io.File;
 import java.net.URL;
 import java.util.logging.Logger;
 import org.junit.Test;
-
-import fr.cnrs.lacito.liftapi.model.DuplicateIdException;
 
 public class LiftDictionaryWriterTest {
 
@@ -23,7 +18,7 @@ public class LiftDictionaryWriterTest {
             LOGGER.info("Writing to " + resourceUrl.getPath() + ".written.lift");
             File resourceFile = new File(resourceUrl.getPath() + ".written.lift");
             lf.save(resourceFile);
-        } catch (WrittingLiftDocumentException e) {
+        } catch (WritingLiftDocumentException e) {
             e.printStackTrace();
         }
     }

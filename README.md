@@ -41,3 +41,13 @@ mvn install
 ```
 
 This builds and installs both `lift-api` and `dictionary-editor-fx` into your local Maven repository.
+
+# Author
+
+Master students in Computer science at [Institut Galilé, USPN University](https://galilee.univ-paris13.fr/master/master-informatique/) :
+
+- Ayman Jari
+- Erij Mazouz
+- Ermeline Bresson
+- Inès Gbadamassi
+- Maryse Goeh-Akue

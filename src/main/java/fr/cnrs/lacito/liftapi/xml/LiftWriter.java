@@ -3,6 +3,7 @@ package fr.cnrs.lacito.liftapi.xml;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
@@ -22,7 +23,7 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
-import fr.cnrs.lacito.liftapi.LiftDictionaryCompoments;
+import fr.cnrs.lacito.liftapi.LiftDictionaryComponents;
 import fr.cnrs.lacito.liftapi.model.AbstractExtensibleWithField;
 import fr.cnrs.lacito.liftapi.model.AbstractExtensibleWithoutField;
 import fr.cnrs.lacito.liftapi.model.AbstractIdentifiable;
@@ -54,6 +55,7 @@ public class LiftWriter  {
 
     private static final Logger LOGGER = Logger.getLogger(LiftWriter.class.getName());
     private final static String NEW_LINE = "\n";
+    private boolean closed = false;
 
     // Solution for throwing exception through lambda
     // https://4comprehension.com/sneakily-throwing-exceptions-in-lambda-expressions-in-java/
@@ -100,7 +102,7 @@ public class LiftWriter  {
 
     public LiftWriter(File f) throws FileNotFoundException {
         this.outputFile = f;
-        outputStream = new FileOutputStream(f);
+        this.outputStream = new FileOutputStream(f);
     }
 
     /**
@@ -108,6 +110,7 @@ public class LiftWriter  {
      * Exceptions are propagated to the caller.
      */
     public void marshall (LiftDictionary d) throws Exception {
+        if (closed) throw new IllegalStateException("Cannot marshall with a closed LiftWriter. This LiftWriter instance has most likely been used to write a previous dictionary and should be closed. Please create a new LiftWriter instance for each dictionary you want to write.");
         try {
             out = XMLOutputFactory.newInstance().createXMLStreamWriter(
                     new OutputStreamWriter(outputStream, "utf-8"));
@@ -116,7 +119,7 @@ public class LiftWriter  {
             throw e;
         }
 
-        LiftDictionaryCompoments c = d.getLiftDictionaryComponents();
+        LiftDictionaryComponents c = d.getLiftDictionaryComponents();
 
         out.writeStartDocument(); // default "utf-8", "1.0"
         out.writeStartElement(LiftVocabulary.LIFT_LOCAL_NAME);
@@ -422,7 +425,7 @@ public class LiftWriter  {
         out.writeStartElement(LiftVocabulary.PRONUNCIATION_LOCAL_NAME);
         writeAbstractExtensibleWithoutFieldProperties(p);
         writeAbstractExtensibleWithFieldProperties(p);
-        writeMultiText(p.getProunciation());
+        writeMultiText(p.getPronunciation());
         p.getMedias().forEach(unchecked(this::writeMedia));
         out.writeEndElement();
     }
@@ -657,5 +660,11 @@ public class LiftWriter  {
 
     private void writeAbstractNotableProperties(AbstractNotable obj) throws Exception {
         obj.getNotes().values().forEach(unchecked(this::writeNote));
+    }
+
+    public void close() throws XMLStreamException, IOException {
+        out.close();
+        this.outputStream.close();
+        this.closed = true;
     }
 }

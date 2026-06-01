@@ -53,7 +53,7 @@ public class LiftDictionaryTest {
     @Test
     public void testObjectLanguagesInForm () {
         LiftDictionary lf = Utils.loadDictionaryForTest("lift/tiny.xml");
-        Set<String> objectLanguages = lf.get_object_languages_in_lexical_unit();
+        Set<String> objectLanguages = lf.getObjectLanguagesInLexicalUnit();
         assertTrue(objectLanguages.containsAll(Arrays.asList("tww")));
     }
 
@@ -61,7 +61,7 @@ public class LiftDictionaryTest {
     @Test
     public void testGetTraitName() {
         LiftDictionary lf = Utils.loadDictionaryForTest("lift/20240828Lift.lift");
-        Set<String> traitNames = lf.getTraitName();
+        Set<String> traitNames = lf.getTraitNames();
         LOGGER.info(traitNames.toString());
         assertTrue(traitNames.contains("semantic-domain-ddp4"));
     }
@@ -76,7 +76,7 @@ public class LiftDictionaryTest {
     @Test
     public void testGetLangInObjectTextSpan() {
         LiftDictionary lf = Utils.loadDictionaryForTest("lift/tinyTextSpan.xml");
-        Set<String> langInSpan = lf.getLangInObjectTextSpan();
+        Set<String> langInSpan = lf.getLanguagesInObjectTextSpan();
         LOGGER.info(langInSpan.toString());
         assertTrue(langInSpan.contains("foo"));
     }

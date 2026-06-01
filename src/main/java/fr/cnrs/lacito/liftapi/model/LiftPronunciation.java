@@ -17,7 +17,7 @@ public final class LiftPronunciation
     protected LiftPronunciation() {
     }
 
-    public MultiText getProunciation() {
+    public MultiText getPronunciation() {
         return getMainMultiText();
     }
 

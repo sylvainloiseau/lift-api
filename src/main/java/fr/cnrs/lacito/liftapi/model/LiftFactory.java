@@ -6,12 +6,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.xml.sax.Attributes;
-import fr.cnrs.lacito.liftapi.LiftDictionaryCompoments;
+import fr.cnrs.lacito.liftapi.LiftDictionaryComponents;
 import fr.cnrs.lacito.liftapi.xml.LiftVocabulary;
 import lombok.Getter;
 import lombok.Setter;
 
-public final class LiftFactory implements LiftDictionaryCompoments {
+public final class LiftFactory implements LiftDictionaryComponents {
 
     @Getter @Setter private String liftVersion;
     @Getter @Setter private String liftProducer;
@@ -186,7 +186,7 @@ public final class LiftFactory implements LiftDictionaryCompoments {
         populateWithAttribute(pronunciation, attributes);
         parent.addPronunciation(pronunciation);
         this.allPronunciations.add(pronunciation);
-        this.allObjectLanguagesMultiText.add(pronunciation.getProunciation());
+        this.allObjectLanguagesMultiText.add(pronunciation.getPronunciation());
         return pronunciation;
     }
 
@@ -197,7 +197,7 @@ public final class LiftFactory implements LiftDictionaryCompoments {
         LiftPronunciation pronunciation = new LiftPronunciation();
         parent.addPronunciation(pronunciation);
         this.allPronunciations.add(pronunciation);
-        this.allObjectLanguagesMultiText.add(pronunciation.getProunciation());
+        this.allObjectLanguagesMultiText.add(pronunciation.getPronunciation());
         return pronunciation;
     }
 
@@ -467,8 +467,8 @@ public final class LiftFactory implements LiftDictionaryCompoments {
         return ill;
     }
 
-    public LiftDictionaryCompoments getLiftDictionaryCompoments() {
-        return (LiftDictionaryCompoments)this;
+    public LiftDictionaryComponents getLiftDictionaryComponents() {
+        return (LiftDictionaryComponents)this;
     }
 
     @Override
@@ -547,7 +547,7 @@ public final class LiftFactory implements LiftDictionaryCompoments {
     }
 
     @Override
-    public List<LiftMedia> getAllMedias() {
+    public List<LiftMedia> getAllMedia() {
         return allMedias;
     }
 

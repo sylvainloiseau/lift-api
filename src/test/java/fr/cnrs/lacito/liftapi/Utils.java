@@ -16,7 +16,7 @@ public class Utils {
 
         LiftDictionary lf = null;
         try {
-            lf = LiftDictionary.loadDictionaryWithFile(resourceFile);
+            lf = LiftDictionary.loadWithFile(resourceFile);
         } catch (LiftDocumentLoadingException e) {
             e.printStackTrace();
             fail(e.getMessage());

@@ -24,67 +24,79 @@ import lombok.Setter;
 public final class LiftDictionary {
     
     private static final Logger LOGGER = Logger.getLogger(LiftDictionary.class.getName());
-    @Getter protected LiftDictionaryCompoments liftDictionaryComponents;
+    @Getter protected LiftDictionaryComponents liftDictionaryComponents;
     @Getter @Setter private String liftVersion;
     @Getter @Setter private String liftProducer;
     @Getter @Setter private File source;
     
-    public final static LiftDictionary loadDictionaryWithFile(File f) throws LiftDocumentLoadingException {
-        LiftDictionary d = LiftDictionaryLoader.LoadWithSax(f, false);
+    public final static LiftDictionary loadWithFile(File f) throws LiftDocumentLoadingException {
+        LiftDictionary d = LiftDictionaryLoader.loadWithSax(f, false);
         d.setSource(f);
         return d;
     }
 
     /**
      * Save the dictionary at the location it was read.
-     * @throws WrittingLiftDocumentException
+     * @throws WritingLiftDocumentException
      */
-    public void save() throws WrittingLiftDocumentException {
+    public void save() throws WritingLiftDocumentException {
         save(this.source);
     }
 
     /** 
      * Save the dictionary at the given location.
      * @param f the File to read
-     * @throws WrittingLiftDocumentException
+     * @throws WritingLiftDocumentException
      */
-    public void save(File f) throws WrittingLiftDocumentException {
+    public void save(File f) throws WritingLiftDocumentException {
+        if (f == null) {
+            throw new IllegalArgumentException("Cannot save LiftDictionary: no file provided. Please provide a file to save the dictionary to.");
+        }
         LiftWriter liftWriter = null;
         try {
             liftWriter =  new LiftWriter(f);
-        } catch (FileNotFoundException e) {
-            throw new WrittingLiftDocumentException(e);
-        }
-
-        try {
             liftWriter.marshall(this);
-        } catch (FileNotFoundException fE) {
-            throw new WrittingLiftDocumentException(fE);
+        } catch (FileNotFoundException e) {
+            LOGGER.severe("Error while writing: " + e.getMessage());
+            throw new WritingLiftDocumentException(e);
         } catch (XMLStreamException xE) {
-            throw new WrittingLiftDocumentException(xE);
+            LOGGER.severe("Error while writing: " + xE.getMessage());
+            throw new WritingLiftDocumentException(xE);
         } catch (Exception e) {
-            throw new WrittingLiftDocumentException(e);
+            LOGGER.severe("Error while writing: " + e.getMessage());
+            throw new WritingLiftDocumentException(e);
+        } finally {
+            if (liftWriter != null) {
+                try {
+                    liftWriter.close();
+                } catch (Exception e) {
+                    LOGGER.severe("Error while closing LiftWriter: " + e.getMessage());
+                    throw new WritingLiftDocumentException(e);
+                }
+            }
         }
     }
 
-    protected LiftDictionary(LiftDictionaryCompoments ldc) {
+    protected LiftDictionary(LiftDictionaryComponents ldc) {
         LOGGER.info("Dictionary created with " + ldc.getAllEntries().size() + " entries.");
         this.liftDictionaryComponents = ldc;
     }
 
     public void addIds() {
-        // TODO
+        // TODO. Should be part of a normalize() method that would also add missing fields, traits, etc. and check the consistency of the dictionary.
+        throw new UnsupportedOperationException("Not implemented yet: addIds");
     }
 
     public void fillLexicalEntryOrderNumber() {
-        // TODO
+        // TODO. Should be part of a normalize() method that would also add missing fields, traits, etc. and check the consistency of the dictionary.
+        throw new UnsupportedOperationException("Not implemented yet: fillLexicalEntryOrderNumber");
     }
 
-    public int n_entries() {
+    public int getEntryCount() {
         return this.liftDictionaryComponents.getAllEntries().size();
     }
 
-    public Set<String> get_object_languages_in_lexical_unit() {
+    public Set<String> getObjectLanguagesInLexicalUnit() {
         Set<String> objectLanguages = new HashSet<>();
         for (LiftEntry e : this.liftDictionaryComponents.getAllEntries()) {
             // objectLanguages.addAll( ((Subfields)e.getAnnotationOrTraitOrField()).get_object_languages() );
@@ -123,13 +135,13 @@ public final class LiftDictionary {
         return getLanguagesInAllField(this.liftDictionaryComponents.getAllMetaLanguagesMultiText());
     }
 
-    public Set<String> getTraitName() {
+    public Set<String> getTraitNames() {
         return this.liftDictionaryComponents.getAllTraits().stream()
             .map(t -> t.getName())
             .collect(Collectors.toSet());
     }
 
-    public Set<String> getFieldType() {
+    public Set<String> getFieldTypes() {
         return this.liftDictionaryComponents.getAllFields().stream()
             .map(t -> t.getName())
             .collect(Collectors.toSet());
@@ -154,7 +166,7 @@ public final class LiftDictionary {
             );
     }
 
-    public Set<String> getLangInObjectTextSpan() {
+    public Set<String> getLanguagesInObjectTextSpan() {
         List<MultiText> ms = this.liftDictionaryComponents.getAllObjectLanguagesMultiText();
         Set<String> langs = new HashSet<>();
         for (MultiText m : ms) {
