@@ -22,6 +22,14 @@ public final class LiftVariant
     protected LiftVariant() {
     }
 
+    /**
+     * Factory method for creating new LiftVariant instances.
+     * Used by builders and other factory patterns.
+     */
+    public static LiftVariant create() {
+        return new LiftVariant();
+    }
+
     protected void setRefId(String refId) {
         this.refId = Optional.of(refId);
     }
@@ -35,6 +43,10 @@ public final class LiftVariant
     public void addPronunciation(LiftPronunciation pronounciation) {
         pronunciationsProperty.add(pronounciation);
         pronounciation.setParent(this);
+    }
+
+    public void addForm(Form form) {
+        addToMainMultiText(form);
     }
 
     public MultiText getForms() {

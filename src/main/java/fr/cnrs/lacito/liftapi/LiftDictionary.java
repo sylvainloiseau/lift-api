@@ -28,7 +28,14 @@ public final class LiftDictionary {
     @Getter @Setter private String liftVersion;
     @Getter @Setter private String liftProducer;
     @Getter @Setter private File source;
-    
+
+    /**
+     * Prevent instantiation
+     */
+    private LiftDictionary() {
+        
+    }
+
     public final static LiftDictionary loadWithFile(File f) throws LiftDocumentLoadingException {
         LiftDictionary d = LiftDictionaryLoader.loadWithSax(f, false);
         d.setSource(f);
@@ -52,9 +59,8 @@ public final class LiftDictionary {
         if (f == null) {
             throw new IllegalArgumentException("Cannot save LiftDictionary: no file provided. Please provide a file to save the dictionary to.");
         }
-        LiftWriter liftWriter = null;
         try {
-            liftWriter =  new LiftWriter(f);
+            LiftWriter liftWriter = new LiftWriter(f);
             liftWriter.marshall(this);
         } catch (FileNotFoundException e) {
             LOGGER.severe("Error while writing: " + e.getMessage());
@@ -65,15 +71,6 @@ public final class LiftDictionary {
         } catch (Exception e) {
             LOGGER.severe("Error while writing: " + e.getMessage());
             throw new WritingLiftDocumentException(e);
-        } finally {
-            if (liftWriter != null) {
-                try {
-                    liftWriter.close();
-                } catch (Exception e) {
-                    LOGGER.severe("Error while closing LiftWriter: " + e.getMessage());
-                    throw new WritingLiftDocumentException(e);
-                }
-            }
         }
     }
 

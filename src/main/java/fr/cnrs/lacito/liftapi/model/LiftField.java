@@ -22,6 +22,14 @@ public final class LiftField
         this.namePropertyWrapper = new ReadOnlyStringWrapper(this, "name", name);
     }
 
+    /**
+     * Factory method for creating new LiftField instances.
+     * Used by builders and other factory patterns.
+     */
+    public static LiftField create(String name) {
+        return new LiftField(name);
+    }
+
     public String getName() {
         return name;
     }
@@ -36,5 +44,10 @@ public final class LiftField
 
     public ReadOnlyStringProperty nameProperty() {
         return namePropertyWrapper.getReadOnlyProperty();
+    }
+
+    // TODO : getText should be plural if addText means add one form
+    public void addText(Form form) {
+        addToMainMultiText(form);
     }
 }

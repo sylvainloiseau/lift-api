@@ -17,6 +17,14 @@ public final class LiftPronunciation
     protected LiftPronunciation() {
     }
 
+    /**
+     * Factory method for creating new LiftPronunciation instances.
+     * Used by builders and other factory patterns.
+     */
+    public static LiftPronunciation create() {
+        return new LiftPronunciation();
+    }
+
     public MultiText getPronunciation() {
         return getMainMultiText();
     }

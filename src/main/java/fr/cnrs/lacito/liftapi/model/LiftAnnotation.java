@@ -41,6 +41,8 @@ public final class LiftAnnotation
         this.valueProperty = new SimpleStringProperty(this, "value", "");
         this.whoProperty = new SimpleStringProperty(this, "who", "");
         this.whenProperty = new SimpleStringProperty(this, "when", "");
+
+        // TODO clean the following listeners to avoid code duplication and potential bugs when adding new properties to the annotation
         this.valueProperty.addListener((obs, oldV, newV) -> {
             String v = newV == null ? "" : newV.trim();
             this.value = v.isEmpty() ? Optional.empty() : Optional.of(v);
@@ -53,6 +55,25 @@ public final class LiftAnnotation
             String v = newV == null ? "" : newV.trim();
             this.when = v.isEmpty() ? Optional.empty() : Optional.of(v);
         });
+        
+    }
+
+    /**
+     * Factory method for creating new LiftAnnotation instances.
+     * Used by builders and other factory patterns.
+     */
+    public static LiftAnnotation create(String name) {
+        return new LiftAnnotation(name);
+    }
+
+    /**
+     * Factory method for creating new LiftAnnotation instances with name and value.
+     * Used by builders and other factory patterns.
+     */
+    public static LiftAnnotation create(String name, String value) {
+        LiftAnnotation annotation = new LiftAnnotation(name);
+        annotation.setValue(value);
+        return annotation;
     }
 
     public MultiText getText() {
@@ -79,19 +100,19 @@ public final class LiftAnnotation
         return parent;
     }
 
-    protected void setValue(String value) {
+    public void setValue(String value) {
         String v = value == null ? "" : value.trim();
         this.value = v.isEmpty() ? Optional.empty() : Optional.of(v);
         this.valueProperty.set(v);
     }
 
-    protected void setWho(String who) {
+    public void setWho(String who) {
         String v = who == null ? "" : who.trim();
         this.who = v.isEmpty() ? Optional.empty() : Optional.of(v);
         this.whoProperty.set(v);
     }
 
-    protected void setWhen(String when) {
+    public void setWhen(String when) {
         String v = when == null ? "" : when.trim();
         this.when = v.isEmpty() ? Optional.empty() : Optional.of(v);
         this.whenProperty.set(v);

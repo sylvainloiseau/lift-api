@@ -26,6 +26,14 @@ public final class LiftRelation
         this.refIdProperty = new SimpleStringProperty(this, "refId", "");
     }
 
+    /**
+     * Factory method for creating new LiftRelation instances.
+     * Used by builders and other factory patterns.
+     */
+    public static LiftRelation create(String type) {
+        return new LiftRelation(type);
+    }
+
     public String getType() {
         return type;
     }

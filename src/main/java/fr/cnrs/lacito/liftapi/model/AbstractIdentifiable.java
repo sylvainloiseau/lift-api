@@ -14,11 +14,11 @@ public abstract sealed class AbstractIdentifiable
     @Getter protected Optional<String> id = Optional.empty();
     @Getter protected Optional<String> guid = Optional.empty();
 
-    protected void setId(String id) {
+    public void setId(String id) {
         this.id = Optional.of(id);
     }
 
-    protected void setGuid(String guid) {
+    public void setGuid(String guid) {
         this.guid = Optional.of(guid);
     }
 

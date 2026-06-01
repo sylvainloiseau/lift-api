@@ -30,6 +30,24 @@ public final class LiftNote extends AbstractExtensibleWithField {
     protected LiftNote() {
     }
 
+    /**
+     * Factory method for creating new LiftNote instances.
+     * Used by builders and other factory patterns.
+     */
+    public static LiftNote create() {
+        return new LiftNote();
+    }
+
+    /**
+     * Factory method for creating new LiftNote instances with a type.
+     * Used by builders and other factory patterns.
+     */
+    public static LiftNote create(String type) {
+        LiftNote note = new LiftNote();
+        note.setType(type);
+        return note;
+    }
+
     public MultiText getText() {
         return getMainMultiText();
     }
@@ -49,5 +67,10 @@ public final class LiftNote extends AbstractExtensibleWithField {
 
     public AbstractNotable getParent() {
         return parent;
+    }
+
+    // TODO : getText should be plural if addText means add one form
+    public void addText(Form form) {
+        addToMainMultiText(form);
     }
 }

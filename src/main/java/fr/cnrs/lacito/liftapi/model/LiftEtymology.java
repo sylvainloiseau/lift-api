@@ -24,6 +24,14 @@ public final class LiftEtymology
         this.sourcePropertyWrapper = new ReadOnlyStringWrapper(this, "source", source);
     }
 
+    /**
+     * Factory method for creating new LiftEtymology instances.
+     * Used by builders and other factory patterns.
+     */
+    public static LiftEtymology create(String type, String source) {
+        return new LiftEtymology(type, source);
+    }
+
     public String getType() {
         return type;
     }

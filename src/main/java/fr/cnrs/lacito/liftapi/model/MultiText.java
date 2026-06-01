@@ -41,7 +41,7 @@ public final class MultiText implements HasAnnotation {
     protected final List<LiftAnnotation> annotations = new ArrayList<>();
     private final ConcurrentHashMap<String, StringProperty> formTextProperties = new ConcurrentHashMap<>();
 
-    protected MultiText() {
+    public MultiText() {
     }
 
     public boolean isEmpty() {

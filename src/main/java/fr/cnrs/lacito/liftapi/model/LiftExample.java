@@ -29,6 +29,22 @@ public final class LiftExample extends AbstractNotable {
     }
 
     /**
+     * Factory method for creating new LiftExample instances.
+     * Used by builders and other factory patterns.
+     */
+    public static LiftExample create() {
+        return new LiftExample();
+    }
+
+    /**
+     * Factory method for creating new LiftExample instances with a source.
+     * Used by builders and other factory patterns.
+     */
+    public static LiftExample create(String source) {
+        return new LiftExample(source);
+    }
+
+    /**
      * @param type
      * @return return a new empty translation.
      * @throws DuplicateTypeException if the translation type already exists.
@@ -47,10 +63,23 @@ public final class LiftExample extends AbstractNotable {
      * @throws IllegalArgumentException if no translation of this type exists.
      */
     public MultiText get_translation(String type) {
+        if (type == null) throw new IllegalArgumentException("Translation type cannot be null");
         if (translationsProperty.containsKey(type)) {
             return translationsProperty.get(type);
         } else {
             throw new IllegalArgumentException("Unknown translation type: " + type);
+        }
+    }
+
+    public MultiText getOrCreateTranslation(String type) {
+        if (type == null) throw new IllegalArgumentException("Translation type cannot be null");
+        if (translationsProperty.containsKey(type)) {
+            return translationsProperty.get(type);
+        } else {
+            // TODO duplicated code with createTranslation
+            MultiText newTranslation = new MultiText();
+            translationsProperty.put(type, newTranslation);
+            return newTranslation;
         }
     }
 

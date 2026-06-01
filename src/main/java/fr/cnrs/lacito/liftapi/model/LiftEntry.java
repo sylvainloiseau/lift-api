@@ -30,6 +30,14 @@ public final class LiftEntry
     protected LiftEntry() {
     }
 
+    /**
+     * Factory method for creating new LiftEntry instances.
+     * Used by builders and other factory patterns.
+     */
+    public static LiftEntry create() {
+        return new LiftEntry();
+    }
+
     public void setDateDeleted(String date) {
         dateDeleted = Optional.of(date);
     }
@@ -89,7 +97,7 @@ public final class LiftEntry
         relation.setParent(this);
     }
 
-    protected void addEtymology(LiftEtymology etymology) {
+    public void addEtymology(LiftEtymology etymology) {
         this.etymologiesProperty.add(etymology);
         etymology.setParent(this);
     }
@@ -114,4 +122,19 @@ public final class LiftEntry
         return etymologiesProperty;
     }
 
+    public void addText(Form form) {
+        addToMainMultiText(form);
+    }
+
+    // TODO : check homophoneous forms for order consistency
+    public void setOrder(String order) {
+        if (order == null) {
+            throw new IllegalArgumentException("Order cannot be null");
+        } else if (this.order.isEmpty()) {
+            throw new IllegalStateException("Order is already set");
+        } else if (Integer.parseInt(order) < 0) {
+            throw new IllegalArgumentException("Order cannot be negative");
+        } 
+        this.order = Optional.of(order);
+    }
 }

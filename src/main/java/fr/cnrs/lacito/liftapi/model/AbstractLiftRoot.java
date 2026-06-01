@@ -35,4 +35,5 @@ public sealed abstract class AbstractLiftRoot
     protected void addToMainMultiText(Form t) {
         mainMultiText.add(t);
     }
+
 }

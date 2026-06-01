@@ -51,6 +51,14 @@ public final class LiftTrait
         });
     }
 
+    /**
+     * Factory method for creating new LiftTrait instances.
+     * Used by builders and other factory patterns.
+     */
+    public static LiftTrait create(String name, String value) {
+        return new LiftTrait(name, value);
+    }
+
     public ReadOnlyStringProperty nameProperty() {
         return nameProperty.getReadOnlyProperty();
     }

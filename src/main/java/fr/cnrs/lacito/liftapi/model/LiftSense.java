@@ -29,6 +29,14 @@ public final class LiftSense
     protected LiftSense() {
     }
 
+    /**
+     * Factory method for creating new LiftSense instances.
+     * Used by builders and other factory patterns.
+     */
+    public static LiftSense create() {
+        return new LiftSense();
+    }
+
     protected void setParent(HasSense parent) { 
         this.parent = parent;
     }
