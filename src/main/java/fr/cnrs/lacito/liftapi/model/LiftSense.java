@@ -6,6 +6,7 @@ import javafx.beans.property.ListProperty;
 import javafx.beans.property.SimpleListProperty;
 import javafx.collections.FXCollections;
 import lombok.Getter;
+import lombok.Setter;
 
 public final class LiftSense
     extends AbstractIdentifiable
@@ -24,13 +25,12 @@ public final class LiftSense
             new SimpleListProperty<>(this, "subSenses", FXCollections.observableArrayList());
     protected final ListProperty<LiftReversal> reversalsProperty =
             new SimpleListProperty<>(this, "reversals", FXCollections.observableArrayList());
-    private HasSense parent;
+    
+    
+    @Getter @Setter private HasSense parent;
+    @Getter @Setter private LiftEntry parentEntry;
     
     protected LiftSense() {
-    }
-
-    protected void setParent(HasSense parent) { 
-        this.parent = parent;
     }
 
     @Override
