@@ -1,28 +1,27 @@
 package fr.cnrs.lacito.liftapi;
 
-import java.util.List;
-import java.util.Map;
-
+import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
+import fr.cnrs.lacito.liftapi.model.LiftEntry;
+import fr.cnrs.lacito.liftapi.model.LiftEtymology;
+import fr.cnrs.lacito.liftapi.model.LiftExample;
+import fr.cnrs.lacito.liftapi.model.LiftField;
 import fr.cnrs.lacito.liftapi.model.LiftHeader;
 import fr.cnrs.lacito.liftapi.model.LiftIllustration;
-import fr.cnrs.lacito.liftapi.model.LiftEntry;
-import fr.cnrs.lacito.liftapi.model.LiftExample;
+import fr.cnrs.lacito.liftapi.model.LiftMedia;
 import fr.cnrs.lacito.liftapi.model.LiftNote;
 import fr.cnrs.lacito.liftapi.model.LiftPronunciation;
 import fr.cnrs.lacito.liftapi.model.LiftRelation;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
+import fr.cnrs.lacito.liftapi.model.LiftTrait;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
 import fr.cnrs.lacito.liftapi.model.MultiText;
-import fr.cnrs.lacito.liftapi.model.LiftTrait;
-import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
-import fr.cnrs.lacito.liftapi.model.LiftField;
-import fr.cnrs.lacito.liftapi.model.LiftMedia;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Convenient and efficient access to various data type of the dictionary.
  */
-public interface LiftDictionaryCompoments {
-
+public interface LiftDictionaryComponents {
     public LiftHeader getHeader();
 
     public List<LiftEntry> getAllEntries();
@@ -61,4 +60,5 @@ public interface LiftDictionaryCompoments {
 
     public List<LiftIllustration> getAllIllustrations();
 
+    public List<LiftEtymology> getAllEtymologies();
 }

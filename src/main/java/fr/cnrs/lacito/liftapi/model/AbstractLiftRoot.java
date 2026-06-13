@@ -2,23 +2,32 @@ package fr.cnrs.lacito.liftapi.model;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Root of the hierarchy for Lift objects.
  * All the concret subclasses of this class have a name starting with "Lift": LiftSense, LiftEntry, etc.
- * 
+ *
  * This abstract class provide a Multitext field used by subclasses.
  * Subclasses are responsible for exposing this field
  * with the correct accessor. For instance {@code LiftEntry#getForms()}
  * refers to this field, while renamming it.
  */
-public sealed abstract class AbstractLiftRoot
-    permits AbstractExtensibleWithoutField, LiftAnnotation,
-    LiftIllustration, LiftMedia, LiftTrait, LiftHeader, LiftFieldAndTraitDefinition,
-    LiftReversal {
-        
+public abstract sealed class AbstractLiftRoot
+    permits
+        AbstractExtensibleWithoutField,
+        LiftAnnotation,
+        LiftIllustration,
+        LiftMedia,
+        LiftTrait,
+        LiftHeader,
+        LiftFieldAndTraitDefinition,
+        LiftReversal
+{
+
     private final MultiText mainMultiText = new MultiText();
-    protected final Map<String,String> otherXmlAttributes = new HashMap<>();
+    protected final Map<String, String> otherXmlAttributes = new HashMap<>();
+    private UUID uuid;
 
     /**
      * The semantic of this multitext depends on the subclass.
@@ -28,11 +37,20 @@ public sealed abstract class AbstractLiftRoot
         return mainMultiText;
     }
 
-    public Map<String,String> getOtherXmlAttributes() {
+    public Map<String, String> getOtherXmlAttributes() {
         return otherXmlAttributes;
     }
 
     protected void addToMainMultiText(Form t) {
         mainMultiText.add(t);
+    }
+
+    // TODO should be protected, but it is used in the builder, which is in another package. We should move the builder to the same package as the model
+    public void setUUID(UUID uuid) {
+        this.uuid = uuid;
+    }
+
+    public UUID getUUID() {
+        return this.uuid;
     }
 }

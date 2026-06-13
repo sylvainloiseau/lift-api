@@ -30,7 +30,7 @@ public final class LiftSense
     @Getter @Setter private HasSense parent;
     @Getter @Setter private LiftEntry parentEntry;
     
-    protected LiftSense() {
+    public LiftSense() {
     }
 
     @Override
@@ -119,5 +119,9 @@ public final class LiftSense
 
     public ListProperty<LiftReversal> reversalsProperty() {
         return reversalsProperty;
+    }
+
+    public static LiftSense create() {
+        return new LiftSense();
     }
 }

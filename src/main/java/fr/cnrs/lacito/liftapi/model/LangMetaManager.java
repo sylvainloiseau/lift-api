@@ -6,5 +6,4 @@ public final class LangMetaManager extends LangManager<LangMeta> {
     void addLang(String lang) {
         super.langs.put(lang, new LangMeta(lang));
     }
-
 }

@@ -19,10 +19,10 @@ public final class LiftVariant
             new SimpleListProperty<>(this, "relations", FXCollections.observableArrayList());
     @Setter @Getter protected LiftEntry parent;
 
-    protected LiftVariant() {
+    public LiftVariant() {
     }
 
-    protected void setRefId(String refId) {
+    public void setRefId(String refId) {
         this.refId = Optional.of(refId);
     }
 
@@ -57,5 +57,9 @@ public final class LiftVariant
 
     public ListProperty<LiftRelation> relationsProperty() {
         return relationsProperty;
+    }
+
+    public static LiftVariant create() {
+        return new LiftVariant();
     }
 }

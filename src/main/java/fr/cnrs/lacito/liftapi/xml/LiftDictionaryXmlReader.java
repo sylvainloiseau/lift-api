@@ -1,60 +1,76 @@
-package fr.cnrs.lacito.liftapi;
+package fr.cnrs.lacito.liftapi.xml;
 
+import fr.cnrs.lacito.liftapi.LiftDictionary;
+import fr.cnrs.lacito.liftapi.LiftDocumentLoadingException;
 import java.io.File;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
-
 import org.xml.sax.SAXException;
 
-import fr.cnrs.lacito.liftapi.model.LiftFactory;
-import fr.cnrs.lacito.liftapi.xml.LiftSaxHandler;
+public final class LiftDictionaryXmlReader {
 
-public final class LiftDictionaryLoader {
+    private static final Logger LOGGER = Logger.getLogger(
+        LiftDictionaryXmlReader.class.getName()
+    );
 
-    private static final Logger LOGGER = Logger.getLogger(LiftDictionaryLoader.class.getName());
-
-    public final static LiftDictionary LoadWithSax(File f, boolean validate) throws LiftDocumentLoadingException {
+    public static final LiftDictionary loadWithSax(File f, boolean validate)
+        throws LiftDocumentLoadingException {
         // URL schemaUrl = LiftDictionaryLoader.class.getResource("schema/lift-0.13.xsd");
         // File schemaFile = new File(schemaUrl.getPath());
         // if (!schemaFile.exists()) throw new LiftDocumentLoadingException("Schema not found: " + schemaFile.getAbsoluteFile());
         // LOGGER.fine("Schema: " + schemaFile.getAbsolutePath());
 
-        if (!f.exists()) throw new LiftDocumentLoadingException("File does not exist: " + f.getAbsoluteFile());
+        if (!f.exists()) throw new LiftDocumentLoadingException(
+            "File does not exist: " + f.getAbsoluteFile()
+        );
         LOGGER.fine("Dictionary: " + f.getAbsolutePath());
-    
+
         SAXParserFactory saxFactory = SAXParserFactory.newInstance();
         saxFactory.setNamespaceAware(true);
         SAXParser saxParser = null;
         try {
             saxParser = saxFactory.newSAXParser();
         } catch (ParserConfigurationException | SAXException e) {
-            LOGGER.log(Level.SEVERE, "Unable to initialize SAX parser for file: " + f.getAbsolutePath(), e);
+            LOGGER.log(
+                Level.SEVERE,
+                "Unable to initialize SAX parser for file: " +
+                    f.getAbsolutePath(),
+                e
+            );
             throw new LiftDocumentLoadingException(e);
         }
 
-        LiftFactory liftFactory = new LiftFactory();
+        LiftXMLFactory liftFactory = new LiftXMLFactory();
         LiftSaxHandler lsh = new LiftSaxHandler(liftFactory);
         try {
             saxParser.parse(f, lsh);
         } catch (SAXException e) {
-            LOGGER.log(Level.SEVERE, "Invalid XML while parsing LIFT file: " + f.getAbsolutePath(), e);
+            LOGGER.log(
+                Level.SEVERE,
+                "Invalid XML while parsing LIFT file: " + f.getAbsolutePath(),
+                e
+            );
             throw new LiftDocumentLoadingException(e);
         } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "I/O error while parsing LIFT file: " + f.getAbsolutePath(), e);
+            LOGGER.log(
+                Level.SEVERE,
+                "I/O error while parsing LIFT file: " + f.getAbsolutePath(),
+                e
+            );
             throw new LiftDocumentLoadingException(e);
         }
-        
-        liftFactory.resolveFieldDefinitionKinds();
 
-        LiftDictionary d = new LiftDictionary(liftFactory.getLiftDictionaryCompoments());
+        liftFactory.postTreatment();
+
+        LiftDictionary d = new LiftDictionary(
+            liftFactory.getLiftDictionaryComponents()
+        );
         d.setLiftVersion(liftFactory.getLiftVersion());
         d.setLiftProducer(liftFactory.getLiftProducer());
         return d;
     }
-
 }

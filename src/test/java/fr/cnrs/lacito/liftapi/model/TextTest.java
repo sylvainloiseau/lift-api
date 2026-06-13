@@ -1,17 +1,16 @@
 package fr.cnrs.lacito.liftapi.model;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.Test;
-
-import fr.cnrs.lacito.liftapi.model.Form;
-import fr.cnrs.lacito.liftapi.model.TextSpan;
+import org.junit.jupiter.api.Test;
 
 public class TextTest {
+    
+
     @Test
     public void testChangeTextWithNestedSpans() {
         Form text = new Form("fr");

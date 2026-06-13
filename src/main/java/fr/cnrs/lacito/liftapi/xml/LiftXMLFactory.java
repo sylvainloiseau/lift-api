@@ -1,20 +1,25 @@
-package fr.cnrs.lacito.liftapi.model;
+package fr.cnrs.lacito.liftapi.xml;
 
+import fr.cnrs.lacito.liftapi.LiftDictionaryComponents;
+import fr.cnrs.lacito.liftapi.model.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import org.xml.sax.Attributes;
-import fr.cnrs.lacito.liftapi.LiftDictionaryCompoments;
-import fr.cnrs.lacito.liftapi.xml.LiftVocabulary;
 import lombok.Getter;
 import lombok.Setter;
+import org.xml.sax.Attributes;
 
-public final class LiftFactory implements LiftDictionaryCompoments {
+public final class LiftXMLFactory implements LiftDictionaryComponents {
 
-    @Getter @Setter private String liftVersion;
-    @Getter @Setter private String liftProducer;
+    @Getter
+    @Setter
+    private String liftVersion;
+
+    @Getter
+    @Setter
+    private String liftProducer;
 
     protected LiftHeader header;
 
@@ -30,24 +35,34 @@ public final class LiftFactory implements LiftDictionaryCompoments {
 
     private final List<LiftAnnotation> allAnnotations = new ArrayList<>(200);
     private final List<LiftNote> allNotes = new ArrayList<>(200);
-    private final List<LiftPronunciation> allPronunciations = new ArrayList<>(200);
+    private final List<LiftPronunciation> allPronunciations = new ArrayList<>(
+        200
+    );
     private final List<LiftField> allFields = new ArrayList<>(200);
     private final List<LiftTrait> allTraits = new ArrayList<>(200);
-    private final List<MultiText> allObjectLanguagesMultiText = new ArrayList<>(200);
-    private final List<MultiText> allMetaLanguagesMultiText = new ArrayList<>(200);
+    private final List<MultiText> allObjectLanguagesMultiText = new ArrayList<>(
+        200
+    );
+    private final List<MultiText> allMetaLanguagesMultiText = new ArrayList<>(
+        200
+    );
     private final List<LiftRelation> allRelations = new ArrayList<>(200);
     private final List<LiftExample> allExamples = new ArrayList<>(200);
     private final List<LiftVariant> allVariants = new ArrayList<>(200);
     private final List<LiftMedia> allMedias = new ArrayList<>(200);
-    private final List<LiftIllustration> allIllustrations = new ArrayList<>(200);
-    
+    private final List<LiftIllustration> allIllustrations = new ArrayList<>(
+        200
+    );
+
+    private final List<LiftEtymology> allEtymologies = new ArrayList<>(200);
+
+    private boolean finalization = false;
+
     // TODO to be completed for all types
 
-    public LiftFactory() {
-    }
+    public LiftXMLFactory() {}
 
-
-    public List<MultiText> getAllObjectMultiText () {
+    public List<MultiText> getAllObjectMultiText() {
         return allObjectLanguagesMultiText;
     }
 
@@ -61,7 +76,9 @@ public final class LiftFactory implements LiftDictionaryCompoments {
         populateWithAttribute(entry, attributes);
         Optional<String> id = entry.getId();
         if (!id.isEmpty()) {
-            if (entryById.containsKey(id.get())) throw new DuplicateIdException("Duplicate id in entries: " + id);
+            if (entryById.containsKey(id.get())) throw new DuplicateIdException(
+                "Duplicate id in entries: " + id
+            );
             entryById.put(id.get(), entry);
         } else {
             entryWithoutId.add(entry);
@@ -73,44 +90,58 @@ public final class LiftFactory implements LiftDictionaryCompoments {
         return entry;
     }
 
-    public void finalize() {
-        for (LiftEntry e : entryWithoutId) {
-            String id = generate_id();
-            e.id = Optional.of(id);
-            entryById.put(id, e);
-        }
-        for (LiftSense s : senseWithoutId) {
-            String id = generate_id();
-            s.id = Optional.of(id);
-            senseById.put(id, s);
-        }
+    public void postTreatment() {
+        resolveFieldDefinitionKinds();
+
+        // TODO offer to complete ID, and copy UUID field on ID field when not present.
+        // for (LiftEntry e : entryWithoutId) {
+        //     String id = generate_id();
+        //     e.setId(id);
+        //     entryById.put(id, e);
+        // }
+        // for (LiftSense s : senseWithoutId) {
+        //     String id = generate_id();
+        //     s.setId(id);
+        //     senseById.put(id, s);
+        // }
         for (String id : refId) {
             if (!entryById.containsKey(id)) {
-                throw new IllegalArgumentException("Reference id " + id + " not found in entries");
+                throw new IllegalArgumentException(
+                    "Reference id " + id + " not found in entries"
+                );
             }
         }
+        finalization = true;
     }
 
     private String generate_id() {
         // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'generate_id'");
+        throw new UnsupportedOperationException(
+            "Unimplemented method 'generate_id'"
+        );
     }
 
     public LiftSense createSense(Attributes attributes, LiftSense s) {
         LiftSense sense = createSense(attributes);
         s.addSense(sense);
+        HasSense parent = s.getParent();
+        while (parent instanceof LiftSense parentSense) {
+            parent = parentSense.getParent();
+        }
+        sense.setParentEntry((LiftEntry) parent);
         return sense;
     }
 
     public LiftSense createSense(Attributes attributes, LiftEntry e) {
         LiftSense sense = createSense(attributes);
         e.addSense(sense);
+        sense.setParentEntry(e);
         return sense;
     }
 
     private LiftSense createSense(Attributes attributes) {
         LiftSense sense = new LiftSense();
-        populateWithAttribute(sense, attributes);        
+        populateWithAttribute(sense, attributes);
         Optional<String> id = sense.getId();
         if (!id.isEmpty()) {
             senseById.put(id.get(), sense);
@@ -139,7 +170,10 @@ public final class LiftFactory implements LiftDictionaryCompoments {
         return main;
     }
 
-    public LiftEtymology createEtymology(Attributes attributes, LiftEntry parent) {
+    public LiftEtymology createEtymology(
+        Attributes attributes,
+        LiftEntry parent
+    ) {
         String type = attributes.getValue(LiftVocabulary.LIFT_URI, "type");
         if (type == null) throw new IllegalArgumentException();
         String source = attributes.getValue(LiftVocabulary.LIFT_URI, "source");
@@ -148,10 +182,14 @@ public final class LiftFactory implements LiftDictionaryCompoments {
         LiftEtymology etym = new LiftEtymology(type, source);
         populateWithAttribute(etym, attributes);
         parent.addEtymology(etym);
+        this.allEtymologies.add(etym);
         return etym;
     }
 
-    public LiftVariant createVariant(Attributes attributes, LiftEntry liftEntry) {
+    public LiftVariant createVariant(
+        Attributes attributes,
+        LiftEntry liftEntry
+    ) {
         LiftVariant variant = new LiftVariant();
         populateWithAttribute(variant, attributes);
         liftEntry.addVariant(variant);
@@ -160,7 +198,10 @@ public final class LiftFactory implements LiftDictionaryCompoments {
         return variant;
     }
 
-    public LiftExample createExample(Attributes attributes, LiftSense liftSense) {
+    public LiftExample createExample(
+        Attributes attributes,
+        LiftSense liftSense
+    ) {
         LiftExample example = new LiftExample();
         populateWithAttribute(example, attributes);
         liftSense.addExample(example);
@@ -169,9 +210,14 @@ public final class LiftFactory implements LiftDictionaryCompoments {
         return example;
     }
 
-    public LiftRelation createRelation(Attributes attributes, HasRelations parent) {
+    public LiftRelation createRelation(
+        Attributes attributes,
+        HasRelations parent
+    ) {
         String type = attributes.getValue(LiftVocabulary.LIFT_URI, "type");
-        if (type == null) throw new IllegalArgumentException("A relation element must have a type attribute");
+        if (type == null) throw new IllegalArgumentException(
+            "A relation element must have a type attribute"
+        );
 
         LiftRelation relation = new LiftRelation(type);
         populateWithAttribute(relation, attributes);
@@ -181,12 +227,15 @@ public final class LiftFactory implements LiftDictionaryCompoments {
         return relation;
     }
 
-    public LiftPronunciation createPronounciation(Attributes attributes, HasPronunciation parent) {
+    public LiftPronunciation createPronounciation(
+        Attributes attributes,
+        HasPronunciation parent
+    ) {
         LiftPronunciation pronunciation = new LiftPronunciation();
         populateWithAttribute(pronunciation, attributes);
         parent.addPronunciation(pronunciation);
         this.allPronunciations.add(pronunciation);
-        this.allObjectLanguagesMultiText.add(pronunciation.getProunciation());
+        this.allObjectLanguagesMultiText.add(pronunciation.getPronunciation());
         return pronunciation;
     }
 
@@ -197,13 +246,18 @@ public final class LiftFactory implements LiftDictionaryCompoments {
         LiftPronunciation pronunciation = new LiftPronunciation();
         parent.addPronunciation(pronunciation);
         this.allPronunciations.add(pronunciation);
-        this.allObjectLanguagesMultiText.add(pronunciation.getProunciation());
+        this.allObjectLanguagesMultiText.add(pronunciation.getPronunciation());
         return pronunciation;
     }
 
-    public LiftField createField(Attributes attributes, AbstractExtensibleWithField parent) {
+    public LiftField createField(
+        Attributes attributes,
+        AbstractExtensibleWithField parent
+    ) {
         String type = attributes.getValue(LiftVocabulary.LIFT_URI, "type");
-        if (type == null) throw new IllegalArgumentException("Attribute type on field element cannot be null");
+        if (type == null) throw new IllegalArgumentException(
+            "Attribute type on field element cannot be null"
+        );
         LiftField f = new LiftField(type);
         // populateWithAttribute(f, attributes);
         parent.addField(f);
@@ -226,14 +280,16 @@ public final class LiftFactory implements LiftDictionaryCompoments {
      * This does NOT perform any duplicate checks; callers should remove/replace as needed.
      */
     public LiftTrait createTrait(String name, String value, HasTrait parent) {
-        if (name == null) throw new IllegalArgumentException("Trait name cannot be null");
+        if (name == null) throw new IllegalArgumentException(
+            "Trait name cannot be null"
+        );
         if (value == null) value = "";
         LiftTrait trait = new LiftTrait(name, value);
         parent.addTrait(trait);
         this.allTraits.add(trait);
         return trait;
     }
-        
+
     public LiftNote create_note(Attributes attributes, AbstractNotable parent) {
         LiftNote n = new LiftNote();
         populateWithAttribute(n, attributes);
@@ -244,7 +300,10 @@ public final class LiftFactory implements LiftDictionaryCompoments {
     }
 
     // Not a subclass of AbstractExtensibleWithoutField.
-    public LiftMedia createMedia(Attributes attributes, LiftPronunciation pronunciation) {
+    public LiftMedia createMedia(
+        Attributes attributes,
+        LiftPronunciation pronunciation
+    ) {
         String href = attributes.getValue(LiftVocabulary.LIFT_URI, "href");
         LiftMedia m = new LiftMedia(href); // mandatory
         pronunciation.addMedia(m);
@@ -253,9 +312,14 @@ public final class LiftFactory implements LiftDictionaryCompoments {
     }
 
     // annotation is not a subclass of the AbstractX hierarchy and cannot benefit from populate...
-    public LiftAnnotation createAnnotation(Attributes attributes, HasAnnotation parent) {
+    public LiftAnnotation createAnnotation(
+        Attributes attributes,
+        HasAnnotation parent
+    ) {
         String name = attributes.getValue(LiftVocabulary.LIFT_URI, "name");
-        if (name == null) throw new IllegalArgumentException("Attribute name on annotation element cannot be null");
+        if (name == null) throw new IllegalArgumentException(
+            "Attribute name on annotation element cannot be null"
+        );
         LiftAnnotation a = new LiftAnnotation(name);
 
         String value = attributes.getValue(LiftVocabulary.LIFT_URI, "value");
@@ -271,37 +335,40 @@ public final class LiftFactory implements LiftDictionaryCompoments {
         return a;
     }
 
-    private void populateWithAttribute(AbstractExtensibleWithoutField liftObject, Attributes attributes) {
-        for (int i = 0 ; i < attributes.getLength() ; i++) {
+    private void populateWithAttribute(
+        AbstractExtensibleWithoutField liftObject,
+        Attributes attributes
+    ) {
+        for (int i = 0; i < attributes.getLength(); i++) {
             String name = attributes.getLocalName(i);
             String value = attributes.getValue(i);
             if (name.equals("id")) {
                 if (liftObject instanceof AbstractIdentifiable ai) {
                     ai.setId(value);
                 } else {
-                    liftObject.otherXmlAttributes.put(name, value);
+                    liftObject.getOtherXmlAttributes().put(name, value);
                 }
             } else if (name.equals("guid")) {
                 if (liftObject instanceof AbstractIdentifiable ai) {
                     ai.setGuid(value);
                 } else {
-                    liftObject.otherXmlAttributes.put(name, value);
+                    liftObject.getOtherXmlAttributes().put(name, value);
                 }
             } else if (name.equals("type")) {
                 if (liftObject instanceof LiftEtymology le) {
-                // } else if (liftObject instanceof LiftField lf) {
+                    // } else if (liftObject instanceof LiftField lf) {
                 } else if (liftObject instanceof LiftRelation lr) {
                 } else if (liftObject instanceof LiftNote ln) {
                     ln.setType(value);
                 } else {
-                liftObject.otherXmlAttributes.put(name, value);
+                    liftObject.getOtherXmlAttributes().put(name, value);
                 }
             } else if (name.equals("source")) {
                 if (liftObject instanceof LiftEtymology le) {
                 } else if (liftObject instanceof LiftExample le) {
                     le.setSource(value);
                 } else {
-                    liftObject.otherXmlAttributes.put(name, value);
+                    liftObject.getOtherXmlAttributes().put(name, value);
                 }
             } else if (name.equals("refid")) {
                 refId.add(value);
@@ -310,13 +377,14 @@ public final class LiftFactory implements LiftDictionaryCompoments {
                 } else if (liftObject instanceof LiftRelation lr) {
                     lr.setRefId(value);
                 } else {
-                    liftObject.otherXmlAttributes.put(name, value);
+                    liftObject.getOtherXmlAttributes().put(name, value);
                 }
-            } else if (name.equals("dateDeleted")) { // TODO use LiftVocabulary.DATE_DELETED_ATTRIBUTE
+            } else if (name.equals("dateDeleted")) {
+                // TODO use LiftVocabulary.DATE_DELETED_ATTRIBUTE
                 if (liftObject instanceof LiftEntry le) {
                     le.setDateDeleted(value);
                 } else {
-                    liftObject.otherXmlAttributes.put(name, value);
+                    liftObject.getOtherXmlAttributes().put(name, value);
                 }
             } else if (name.equals("order")) {
                 if (liftObject instanceof LiftSense ls) {
@@ -324,25 +392,30 @@ public final class LiftFactory implements LiftDictionaryCompoments {
                 } else if (liftObject instanceof LiftRelation lr) {
                     lr.setOrder(Integer.parseInt(value));
                 } else {
-                    liftObject.otherXmlAttributes.put(name, value);
+                    liftObject.getOtherXmlAttributes().put(name, value);
                 }
             } else if (name.equals("dateCreated")) {
                 liftObject.setDateCreated(value);
             } else if (name.equals("dateModified")) {
                 liftObject.setDateModified(value);
             } else {
-                liftObject.otherXmlAttributes.put(name, value);
+                liftObject.getOtherXmlAttributes().put(name, value);
             }
         }
     }
-    
+
     public List<LiftSense> getAllSenses() {
         return this.allSenses;
     }
 
-    public LiftHeaderRange create_range(Attributes attributes, LiftHeader parent) {
+    public LiftHeaderRange create_range(
+        Attributes attributes,
+        LiftHeader parent
+    ) {
         String id = attributes.getValue(LiftVocabulary.LIFT_URI, "id");
-        if (id == null) throw new IllegalArgumentException("Range ID cannot be null");
+        if (id == null) throw new IllegalArgumentException(
+            "Range ID cannot be null"
+        );
         LiftHeaderRange hr = new LiftHeaderRange(id, parent);
 
         String href = attributes.getValue(LiftVocabulary.LIFT_URI, "href");
@@ -354,35 +427,66 @@ public final class LiftFactory implements LiftDictionaryCompoments {
         return hr;
     }
 
-    public LiftFieldAndTraitDefinition create_field_definition(Attributes attributes, LiftHeader parent) {
+    public LiftFieldAndTraitDefinition create_field_definition(
+        Attributes attributes,
+        LiftHeader parent
+    ) {
         String name = attributes.getValue(LiftVocabulary.LIFT_URI, "name");
-        if (name == null) name = attributes.getValue(LiftVocabulary.LIFT_URI, "tag");
-        if (name == null) name = attributes.getValue(LiftVocabulary.LIFT_URI, "guid");
-        if (name == null) throw new IllegalArgumentException("An attribute 'name', 'tag', or 'guid' is required on field-definition");
-        LiftFieldAndTraitDefinition f = new LiftFieldAndTraitDefinition(name, parent);
+        if (name == null) name = attributes.getValue(
+            LiftVocabulary.LIFT_URI,
+            "tag"
+        );
+        if (name == null) name = attributes.getValue(
+            LiftVocabulary.LIFT_URI,
+            "guid"
+        );
+        if (name == null) throw new IllegalArgumentException(
+            "An attribute 'name', 'tag', or 'guid' is required on field-definition"
+        );
+        LiftFieldAndTraitDefinition f = new LiftFieldAndTraitDefinition(
+            name,
+            parent
+        );
 
-        String fieldclass = attributes.getValue(LiftVocabulary.LIFT_URI, "class");
+        String fieldclass = attributes.getValue(
+            LiftVocabulary.LIFT_URI,
+            "class"
+        );
         if (fieldclass != null) f.setFClass(Optional.of(fieldclass));
 
         String type = attributes.getValue(LiftVocabulary.LIFT_URI, "type");
         if (type != null) f.setType(Optional.of(type));
 
-        String optionRange = attributes.getValue(LiftVocabulary.LIFT_URI, "option-range");
+        String optionRange = attributes.getValue(
+            LiftVocabulary.LIFT_URI,
+            "option-range"
+        );
         if (optionRange != null) f.setOptionRange(Optional.of(optionRange));
 
-        String writingSystem = attributes.getValue(LiftVocabulary.LIFT_URI, "writing-system");
-        if (writingSystem != null) f.setWritingSystem(Optional.of(writingSystem));
-        
+        String writingSystem = attributes.getValue(
+            LiftVocabulary.LIFT_URI,
+            "writing-system"
+        );
+        if (writingSystem != null) f.setWritingSystem(
+            Optional.of(writingSystem)
+        );
+
         parent.getFields().add(f);
         return f;
     }
 
-    public LiftHeaderRangeElement create_range_element(Attributes attributes, LiftHeaderRange parent) {
+    public LiftHeaderRangeElement create_range_element(
+        Attributes attributes,
+        LiftHeaderRange parent
+    ) {
         String id = attributes.getValue(LiftVocabulary.LIFT_URI, "id");
         if (id == null) throw new IllegalArgumentException();
         LiftHeaderRangeElement hre = new LiftHeaderRangeElement(id, parent);
 
-        String otherparent = attributes.getValue(LiftVocabulary.LIFT_URI, "parent");
+        String otherparent = attributes.getValue(
+            LiftVocabulary.LIFT_URI,
+            "parent"
+        );
         if (otherparent != null) hre.setOtherParent(otherparent);
         String guid = attributes.getValue(LiftVocabulary.LIFT_URI, "guid");
         if (guid != null) hre.setGuid(guid);
@@ -397,7 +501,10 @@ public final class LiftFactory implements LiftDictionaryCompoments {
         return hr;
     }
 
-    public LiftHeaderRangeElement createRangeElement(String id, LiftHeaderRange parent) {
+    public LiftHeaderRangeElement createRangeElement(
+        String id,
+        LiftHeaderRange parent
+    ) {
         LiftHeaderRangeElement hre = new LiftHeaderRangeElement(id, parent);
         parent.getRangeElements().add(hre);
         return hre;
@@ -410,15 +517,21 @@ public final class LiftFactory implements LiftDictionaryCompoments {
      */
     public void resolveFieldDefinitionKinds() {
         if (header == null) return;
-        java.util.Set<String> traitNames = allTraits.stream().map(LiftTrait::getName).collect(java.util.stream.Collectors.toSet());
-        java.util.Set<String> fieldNames = allFields.stream().map(LiftField::getName).collect(java.util.stream.Collectors.toSet());
+        java.util.Set<String> traitNames = allTraits
+            .stream()
+            .map(LiftTrait::getName)
+            .collect(java.util.stream.Collectors.toSet());
+        java.util.Set<String> fieldNames = allFields
+            .stream()
+            .map(LiftField::getName)
+            .collect(java.util.stream.Collectors.toSet());
 
         for (LiftFieldAndTraitDefinition fd : header.getFields()) {
-            if (fd.getKind() == FieldDefinitionKind.UNKNOWN) {
+            if (fd.getKind() == LiftFieldAndTraitDefinitionKind.UNKNOWN) {
                 if (traitNames.contains(fd.getName())) {
-                    fd.setKind(FieldDefinitionKind.TRAIT);
+                    fd.setKind(LiftFieldAndTraitDefinitionKind.TRAIT);
                 } else if (fieldNames.contains(fd.getName())) {
-                    fd.setKind(FieldDefinitionKind.FIELD);
+                    fd.setKind(LiftFieldAndTraitDefinitionKind.FIELD);
                 }
             }
             // Link option-range to actual LiftHeaderRange object (m/)
@@ -426,8 +539,15 @@ public final class LiftFactory implements LiftDictionaryCompoments {
         }
     }
 
-    public LiftFieldAndTraitDefinition createFieldDefinition(String name, LiftHeader parent) {
-        LiftFieldAndTraitDefinition fd = new LiftFieldAndTraitDefinition(name, parent);
+    // TODO duplicate method with create_field_definition
+    public LiftFieldAndTraitDefinition createFieldDefinition(
+        String name,
+        LiftHeader parent
+    ) {
+        LiftFieldAndTraitDefinition fd = new LiftFieldAndTraitDefinition(
+            name,
+            parent
+        );
         parent.getFields().add(fd);
         return fd;
     }
@@ -441,7 +561,10 @@ public final class LiftFactory implements LiftDictionaryCompoments {
         return n;
     }
 
-    public LiftField createField(String type, AbstractExtensibleWithField parent) {
+    public LiftField createField(
+        String type,
+        AbstractExtensibleWithField parent
+    ) {
         LiftField f = new LiftField(type);
         parent.addField(f);
         this.allFields.add(f);
@@ -457,7 +580,10 @@ public final class LiftFactory implements LiftDictionaryCompoments {
         return a;
     }
 
-    public LiftIllustration create_illustration(Attributes attributes, LiftSense parent) {
+    public LiftIllustration create_illustration(
+        Attributes attributes,
+        LiftSense parent
+    ) {
         String href = attributes.getValue(LiftVocabulary.LIFT_URI, "href");
         if (href == null) throw new IllegalArgumentException();
         LiftIllustration ill = new LiftIllustration(href);
@@ -467,8 +593,11 @@ public final class LiftFactory implements LiftDictionaryCompoments {
         return ill;
     }
 
-    public LiftDictionaryCompoments getLiftDictionaryCompoments() {
-        return (LiftDictionaryCompoments)this;
+    public LiftDictionaryComponents getLiftDictionaryComponents() {
+        if (!finalization) {
+            throw new IllegalStateException("postTreatment should be called on the LiftXMLFactory between building the dictionary.");
+        }
+        return (LiftDictionaryComponents) this;
     }
 
     @Override
@@ -547,11 +676,6 @@ public final class LiftFactory implements LiftDictionaryCompoments {
     }
 
     @Override
-    public List<LiftMedia> getAllMedias() {
-        return allMedias;
-    }
-
-    @Override
     public List<LiftIllustration> getAllIllustrations() {
         return allIllustrations;
     }
@@ -561,14 +685,21 @@ public final class LiftFactory implements LiftDictionaryCompoments {
         return this.header;
     }
 
-
     public TextSpan createTextSpan() {
         return new TextSpan();
     }
-
 
     public Form createText(String lang) {
         return new Form(lang);
     }
 
+    @Override
+    public List<LiftMedia> getAllMedias() {
+        return allMedias;
+    }
+
+    @Override
+    public List<LiftEtymology> getAllEtymologies() {
+        return allEtymologies;
+    }
 }

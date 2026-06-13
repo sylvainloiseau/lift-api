@@ -10,7 +10,7 @@ import java.util.*;
  *
  * @see <a href="https://github.com/sillsdev/lift-standard/blob/master/lift_15.pdf">LIFT spec p.11</a>
  */
-public enum FieldDefinitionTarget {
+public enum LiftFieldAndTraitDefinitionTarget {
 
     ENTRY("entry"),
     SENSE("sense"),
@@ -26,7 +26,7 @@ public enum FieldDefinitionTarget {
 
     private final String liftValue;
 
-    FieldDefinitionTarget(String liftValue) {
+    LiftFieldAndTraitDefinitionTarget(String liftValue) {
         this.liftValue = liftValue;
     }
 
@@ -34,10 +34,27 @@ public enum FieldDefinitionTarget {
         return liftValue;
     }
 
-    public static Optional<FieldDefinitionTarget> fromLiftValue(String token) {
+    public static LiftFieldAndTraitDefinitionTarget fromType(AbstractLiftRoot o) {
+        return switch(o) {
+            case LiftEntry _ -> ENTRY;
+            case LiftSense _ -> SENSE;
+            case LiftExample _ -> EXAMPLE;
+            case LiftVariant _ -> VARIANT;
+            case LiftPronunciation _ -> PRONUNCIATION;
+            case LiftNote _ -> NOTE;
+            case LiftEtymology _ -> ETYMOLOGY;
+            case LiftRelation _ -> RELATION;
+            case LiftReversal _ -> REVERSAL;
+            case LiftHeaderRange _ -> RANGE;
+            case LiftHeaderRangeElement _ -> RANGE_ELEMENT;
+            default -> throw new IllegalArgumentException("Don't recognize this type: " + o.getClass().getSimpleName());
+        };
+    }
+
+    public static Optional<LiftFieldAndTraitDefinitionTarget> fromLiftValue(String token) {
         if (token == null) return Optional.empty();
         String t = token.trim().toLowerCase();
-        for (FieldDefinitionTarget v : values()) {
+        for (LiftFieldAndTraitDefinitionTarget v : values()) {
             if (v.liftValue.equals(t)) return Optional.of(v);
         }
         return Optional.empty();
@@ -47,9 +64,9 @@ public enum FieldDefinitionTarget {
      * Parse a space-separated {@code @class} attribute value into a set of targets.
      * Unknown tokens are silently ignored.
      */
-    public static Set<FieldDefinitionTarget> parseClassAttribute(String classAttr) {
-        if (classAttr == null || classAttr.isBlank()) return EnumSet.noneOf(FieldDefinitionTarget.class);
-        Set<FieldDefinitionTarget> result = EnumSet.noneOf(FieldDefinitionTarget.class);
+    public static Set<LiftFieldAndTraitDefinitionTarget> parseClassAttribute(String classAttr) {
+        if (classAttr == null || classAttr.isBlank()) return EnumSet.noneOf(LiftFieldAndTraitDefinitionTarget.class);
+        Set<LiftFieldAndTraitDefinitionTarget> result = EnumSet.noneOf(LiftFieldAndTraitDefinitionTarget.class);
         for (String token : classAttr.trim().split("\\s+")) {
             fromLiftValue(token).ifPresent(result::add);
         }
@@ -59,10 +76,10 @@ public enum FieldDefinitionTarget {
     /**
      * Serialize a set of targets back to a space-separated string for the {@code @class} attribute.
      */
-    public static String toClassAttribute(Set<FieldDefinitionTarget> targets) {
+    public static String toClassAttribute(Set<LiftFieldAndTraitDefinitionTarget> targets) {
         if (targets == null || targets.isEmpty()) return "";
         StringJoiner sj = new StringJoiner(" ");
-        for (FieldDefinitionTarget t : targets) sj.add(t.liftValue);
+        for (LiftFieldAndTraitDefinitionTarget t : targets) sj.add(t.liftValue);
         return sj.toString();
     }
 }

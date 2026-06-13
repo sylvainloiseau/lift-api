@@ -8,23 +8,28 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javafx.beans.property.ReadOnlyStringProperty;
 import javafx.beans.property.ReadOnlyStringWrapper;
-import javafx.beans.property.StringProperty;
 import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 import lombok.Getter;
 
 /**
- * A textual representation of linguistic material in a given language.
+ * A textual representation of linguistic material in a given language and in a given writting system.
+ *
+ * lang is read only. In order to change the lang of a Form, you have to create a new one.
  * 
  * The text can have global annotation (see {@link LiftAnnotation}) and
  * can be composed of attribute-holding chunks (see {@link TextSpan}).
  */
 public final class Form implements HasAnnotation {
 
-    public final static Form EMPTY_FORM = new Form("");
+    public static final Form EMPTY_FORM = new Form("");
 
     protected final String lang;
     private String toText = null;
-    @Getter protected final List<LiftAnnotation> annotations = new ArrayList<>();
+
+    @Getter
+    protected final List<LiftAnnotation> annotations = new ArrayList<>();
+
     private final Deque<TextSpan> current = new ArrayDeque<>();
     private TextSpan root = new TextSpan();
     private int textSpanNumber = 0;
@@ -34,8 +39,11 @@ public final class Form implements HasAnnotation {
     private final StringProperty textProperty;
     private boolean syncingFromProperty = false;
     private boolean syncingFromModel = false;
-    
+
     public Form(String lang, String text) {
+        if (lang == null) throw new IllegalArgumentException("lang cannot be null");
+        if (lang.isEmpty()) throw new IllegalArgumentException("lang cannot be empty");
+        if (text == null) throw new IllegalArgumentException("text cannot be null");
         this.lang = lang;
         this.langProperty = new ReadOnlyStringWrapper(this, "lang", lang);
         this.textProperty = new SimpleStringProperty(this, "text", text);
@@ -52,7 +60,7 @@ public final class Form implements HasAnnotation {
         changeText(text);
     }
 
-    protected Form(String lang) {
+    public Form(String lang) {
         this.lang = lang;
         this.langProperty = new ReadOnlyStringWrapper(this, "lang", lang);
         this.textProperty = new SimpleStringProperty(this, "text", "");
@@ -133,7 +141,7 @@ public final class Form implements HasAnnotation {
     /**
      * Returns the list of text span (ordered in a depth-first traversal order)
      * associated with this text.
-     * 
+     *
      * @return a list of text spans
      */
     public List<TextSpan> walkTextSpanTree() {
@@ -170,7 +178,9 @@ public final class Form implements HasAnnotation {
 
     private void parseSpanContent(String input, TextSpan parent) {
         Pattern spanPattern = Pattern.compile(
-            "<span\\s+([^>]*)>(.*)</span>", Pattern.DOTALL);
+            "<span\\s+([^>]*)>(.*)</span>",
+            Pattern.DOTALL
+        );
 
         int idx = 0;
         while (idx < input.length()) {
@@ -180,11 +190,16 @@ public final class Form implements HasAnnotation {
                 String attrs = matcher.group(1);
                 String content = matcher.group(2);
 
-                String lang = null, clazz = null;
-                Matcher attrMatcher = Pattern.compile("(lang|class)\\s*=\\s*\"([^\"]*)\"").matcher(attrs);
+                String lang = null,
+                    clazz = null;
+                Matcher attrMatcher = Pattern.compile(
+                    "(lang|class)\\s*=\\s*\"([^\"]*)\""
+                ).matcher(attrs);
                 while (attrMatcher.find()) {
-                    if ("lang".equals(attrMatcher.group(1))) lang = attrMatcher.group(2);
-                    if ("class".equals(attrMatcher.group(1))) clazz = attrMatcher.group(2);
+                    if ("lang".equals(attrMatcher.group(1))) lang =
+                        attrMatcher.group(2);
+                    if ("class".equals(attrMatcher.group(1))) clazz =
+                        attrMatcher.group(2);
                 }
                 TextSpan span = new TextSpan();
                 if (lang != null) span.setLang(lang);

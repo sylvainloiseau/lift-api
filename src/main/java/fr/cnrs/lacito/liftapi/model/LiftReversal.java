@@ -25,7 +25,7 @@ public final class LiftReversal
 
     private final StringProperty typeProperty = new SimpleStringProperty(this, "type", "");
 
-    protected LiftReversal() {
+    public LiftReversal() {
     }
 
     public MultiText getForms() {
@@ -36,7 +36,7 @@ public final class LiftReversal
         return type;
     }
 
-    protected void setType(String type) {
+    public void setType(String type) {
         this.type = Optional.of(type);
         this.typeProperty.set(type);
     }
@@ -45,7 +45,7 @@ public final class LiftReversal
         return main;
     }
 
-    protected void setMain(LiftReversal main) {
+    public void setMain(LiftReversal main) {
         this.main = main;
     }
 

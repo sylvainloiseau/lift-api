@@ -15,7 +15,7 @@ public final class LiftHeaderRangeElement extends AbstractExtensibleWithField {
     @Getter MultiText label = new MultiText();
     @Getter MultiText abbrev = new MultiText();
 
-    protected LiftHeaderRangeElement(String id, LiftHeaderRange parent) {
+    public LiftHeaderRangeElement(String id, LiftHeaderRange parent) {
         this.id = id;
         this.parentRange = parent;
     }

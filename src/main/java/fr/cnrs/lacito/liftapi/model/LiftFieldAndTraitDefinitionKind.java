@@ -14,12 +14,12 @@ package fr.cnrs.lacito.liftapi.model;
  *   <li>absent or unrecognized → {@link #UNKNOWN} (resolved later by scanning dictionary data)</li>
  * </ul>
  */
-public enum FieldDefinitionKind {
+public enum LiftFieldAndTraitDefinitionKind {
     FIELD,
     TRAIT,
     UNKNOWN;
 
-    public static FieldDefinitionKind fromType(FieldDefinitionType type) {
+    public static LiftFieldAndTraitDefinitionKind fromType(LiftFieldAndTraitDefinitionType type) {
         if (type == null) return UNKNOWN;
         return type.describesField() ? FIELD : TRAIT;
     }

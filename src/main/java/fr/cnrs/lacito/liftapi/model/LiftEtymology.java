@@ -17,7 +17,7 @@ public final class LiftEtymology
     private final ReadOnlyStringWrapper typePropertyWrapper;
     private final ReadOnlyStringWrapper sourcePropertyWrapper;
     
-    protected LiftEtymology(String type, String source) {
+    public LiftEtymology(String type, String source) {
         this.type = type;
         this.source = source;
         this.typePropertyWrapper = new ReadOnlyStringWrapper(this, "type", type);
@@ -56,5 +56,9 @@ public final class LiftEtymology
 
     public ReadOnlyStringProperty sourceProperty() {
         return sourcePropertyWrapper.getReadOnlyProperty();
+    }
+
+    public static LiftEtymology create(String type, String source) {
+        return new LiftEtymology(type, source);
     }
 }

@@ -11,31 +11,47 @@ import lombok.Setter;
 
 public final class LiftExample extends AbstractNotable {
 
-    public final static String DEFAULT_TRANSLATION_TYPE = "";
+    public static final String DEFAULT_TRANSLATION_TYPE = "";
 
     protected Optional<String> source = Optional.empty();
     protected final MapProperty<String, MultiText> translationsProperty =
-            new SimpleMapProperty<>(this, "translations", FXCollections.observableHashMap());
-    @Setter protected LiftSense parent;
+        new SimpleMapProperty<>(
+            this,
+            "translations",
+            FXCollections.observableHashMap()
+        );
 
-    private final StringProperty sourceProperty = new SimpleStringProperty(this, "source", "");
-    
+    @Setter
+    protected LiftSense parent;
+
+    private final StringProperty sourceProperty = new SimpleStringProperty(
+        this,
+        "source",
+        ""
+    );
+
     protected LiftExample(String source) {
         this.source = Optional.of(source);
         this.sourceProperty.set(source);
     }
 
-    protected LiftExample() {
-    }
+    public LiftExample() {}
 
     /**
      * @param type
      * @return return a new empty translation.
      * @throws DuplicateTypeException if the translation type already exists.
      */
-    public MultiText create_translation(String type) throws DuplicateTypeException {
-        if (type == null) throw new IllegalArgumentException("Translation type cannot be null");
-        if (translationsProperty.containsKey(type)) throw new DuplicateTypeException("A translation of type " + type + "already exist.");
+    public MultiText createTranslation(String type)
+        throws DuplicateTypeException {
+        if (type == null) throw new IllegalArgumentException(
+            "Translation type cannot be null"
+        );
+        if (
+            translationsProperty.containsKey(type)
+        ) throw new DuplicateTypeException(
+            "A translation of type " + type + "already exist."
+        );
         MultiText newTranslation = new MultiText();
         translationsProperty.put(type, newTranslation);
         return newTranslation;
@@ -46,11 +62,13 @@ public final class LiftExample extends AbstractNotable {
      * @return the translation of the given type.
      * @throws IllegalArgumentException if no translation of this type exists.
      */
-    public MultiText get_translation(String type) {
+    public MultiText getTranslation(String type) {
         if (translationsProperty.containsKey(type)) {
             return translationsProperty.get(type);
         } else {
-            throw new IllegalArgumentException("Unknown translation type: " + type);
+            throw new IllegalArgumentException(
+                "Unknown translation type: " + type
+            );
         }
     }
 
@@ -81,5 +99,17 @@ public final class LiftExample extends AbstractNotable {
 
     public StringProperty sourceProperty() {
         return sourceProperty;
+    }
+
+    public static LiftExample create() {
+        return new LiftExample();
+    }
+
+    public static LiftExample create(String source) {
+        return new LiftExample(source);
+    }
+
+    public MultiText getOrCreateTranslation(String type) {
+        return translationsProperty.computeIfAbsent(type, t -> new MultiText());
     }
 }

@@ -15,7 +15,7 @@ public final class LiftHeaderRange extends AbstractExtensibleWithField {
     MultiText abbrev = new MultiText();
     List<LiftHeaderRangeElement> rangeContent = new ArrayList<>();
 
-    protected LiftHeaderRange(String id, LiftHeader parent) {
+    public LiftHeaderRange(String id, LiftHeader parent) {
         this.id = id;
         this.parent = parent;
     }

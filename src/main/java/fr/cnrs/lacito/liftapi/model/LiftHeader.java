@@ -8,7 +8,7 @@ public final class LiftHeader extends AbstractLiftRoot {
     private List<LiftFieldAndTraitDefinition> fields = new ArrayList<>();
     private List<LiftHeaderRange> ranges = new ArrayList<>();
 
-    protected LiftHeader() {
+    public LiftHeader() {
     }
 
     public MultiText getDescription() {

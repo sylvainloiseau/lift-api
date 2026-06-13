@@ -27,7 +27,7 @@ public final class LiftNote extends AbstractExtensibleWithField {
 
     private final StringProperty typeProperty = new SimpleStringProperty(this, "type", "");
 
-    protected LiftNote() {
+    public LiftNote() {
     }
 
     public MultiText getText() {
@@ -36,6 +36,10 @@ public final class LiftNote extends AbstractExtensibleWithField {
 
     public Optional<String> getType() {
         return type;
+    }
+
+    public void addText(Form f) {
+        getText().add(f);
     }
 
     public void setType(String type) {
@@ -49,5 +53,15 @@ public final class LiftNote extends AbstractExtensibleWithField {
 
     public AbstractNotable getParent() {
         return parent;
+    }
+
+    public static LiftNote create() {
+        return new LiftNote();
+    }
+
+    public static LiftNote create(String type) {
+        LiftNote note = new LiftNote();
+        note.setType(type);
+        return note;
     }
 }

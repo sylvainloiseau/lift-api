@@ -14,10 +14,10 @@ public final class LiftPronunciation
             new SimpleListProperty<>(this, "medias", FXCollections.observableArrayList());
     @Getter @Setter private HasPronunciation parent;
     
-    protected LiftPronunciation() {
+    public LiftPronunciation() {
     }
 
-    public MultiText getProunciation() {
+    public MultiText getPronunciation() {
         return getMainMultiText();
     }
 
@@ -25,12 +25,16 @@ public final class LiftPronunciation
         return mediasProperty.get();
     }
 
-    protected void addMedia(LiftMedia m) {
+    public void addMedia(LiftMedia m) {
         mediasProperty.add(m);
         m.setParent(this);
     }
 
     public ListProperty<LiftMedia> mediasProperty() {
         return mediasProperty;
+    }
+
+    public static LiftPronunciation create() {
+        return new LiftPronunciation();
     }
 }

@@ -1,14 +1,9 @@
 package fr.cnrs.lacito.liftapi;
 
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
-
 import java.io.File;
 import java.net.URL;
 import java.util.logging.Logger;
-import org.junit.Test;
-
-import fr.cnrs.lacito.liftapi.model.DuplicateIdException;
+import org.junit.jupiter.api.Test;
 
 public class LiftDictionaryWriterTest {
 

@@ -10,7 +10,7 @@ public final class LiftMedia
     protected String url;
     protected LiftPronunciation parent;
 
-    protected LiftMedia(String href) {
+    public LiftMedia(String href) {
         this.url = href;
     }
 

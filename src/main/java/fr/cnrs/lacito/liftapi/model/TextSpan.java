@@ -19,10 +19,10 @@ public final class TextSpan extends TextComponent {
     protected List<TextSpan> innerContent = new ArrayList<>();
     String terminalOrNull = null;
 
-    protected TextSpan() {
+    public TextSpan() {
     }
 
-    protected TextSpan(String s) {
+    public TextSpan(String s) {
         this.setString(s);
     }
 

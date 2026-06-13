@@ -1,10 +1,9 @@
 package fr.cnrs.lacito.liftapi;
 
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
 import java.util.logging.Logger;
-import org.junit.Test;
-
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import fr.cnrs.lacito.liftapi.model.DuplicateIdException;
 
 public class LiftDictionaryLoaderTest {
@@ -24,7 +23,6 @@ public class LiftDictionaryLoaderTest {
         Utils.loadDictionaryForTest("lift/20240828Lift.lift");
     }
 
-    
     @Test
     public void testDuplicateEntryIdThrowException () {
         String fileTested = "lift/tinyDuplicateEntryId.xml";

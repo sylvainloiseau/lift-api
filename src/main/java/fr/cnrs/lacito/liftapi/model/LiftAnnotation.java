@@ -35,7 +35,7 @@ public final class LiftAnnotation
     /**
      * Create an annotation. The name is the only mandatory component of an annotation.
      */
-    protected LiftAnnotation(String name) {
+    public LiftAnnotation(String name) {
         this.name = name;
         this.namePropertyWrapper = new ReadOnlyStringWrapper(this, "name", name);
         this.valueProperty = new SimpleStringProperty(this, "value", "");
@@ -79,19 +79,19 @@ public final class LiftAnnotation
         return parent;
     }
 
-    protected void setValue(String value) {
+    public void setValue(String value) {
         String v = value == null ? "" : value.trim();
         this.value = v.isEmpty() ? Optional.empty() : Optional.of(v);
         this.valueProperty.set(v);
     }
 
-    protected void setWho(String who) {
+    public void setWho(String who) {
         String v = who == null ? "" : who.trim();
         this.who = v.isEmpty() ? Optional.empty() : Optional.of(v);
         this.whoProperty.set(v);
     }
 
-    protected void setWhen(String when) {
+    public void setWhen(String when) {
         String v = when == null ? "" : when.trim();
         this.when = v.isEmpty() ? Optional.empty() : Optional.of(v);
         this.whenProperty.set(v);
@@ -111,5 +111,15 @@ public final class LiftAnnotation
 
     public StringProperty whenProperty() {
         return whenProperty;
+    }
+
+    public static LiftAnnotation create(String name, String value) {
+        LiftAnnotation ann = new LiftAnnotation(name);
+        ann.setValue(value);
+        return ann;
+    }
+
+    public static LiftAnnotation create(String name) {
+        return new LiftAnnotation(name);
     }
 }

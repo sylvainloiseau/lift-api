@@ -10,7 +10,7 @@ public final class LiftIllustration
     final String href;
     LiftSense parent;
 
-    protected LiftIllustration (String href) {
+    public LiftIllustration (String href) {
         this.href = href;
     }
 

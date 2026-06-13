@@ -20,8 +20,13 @@ public final class LiftRelation
     private final ReadOnlyStringWrapper typePropertyWrapper;
     private final StringProperty refIdProperty;
 
-    protected LiftRelation(String type) {
+    public LiftRelation(String type) {
         this.type = type;
+        this.typePropertyWrapper = new ReadOnlyStringWrapper(this, "type", type);
+        this.refIdProperty = new SimpleStringProperty(this, "refId", "");
+    }
+
+    public LiftRelation() {
         this.typePropertyWrapper = new ReadOnlyStringWrapper(this, "type", type);
         this.refIdProperty = new SimpleStringProperty(this, "refId", "");
     }
@@ -65,5 +70,13 @@ public final class LiftRelation
 
     public StringProperty refIdProperty() {
         return refIdProperty;
+    }
+
+    public static LiftRelation create(String type) {
+        return new LiftRelation(type);
+    }
+    
+    public static LiftRelation create() {
+        return new LiftRelation();
     }
 }

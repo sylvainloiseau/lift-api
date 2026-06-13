@@ -5,30 +5,54 @@ import java.util.Optional;
 import javafx.beans.property.ListProperty;
 import javafx.beans.property.SimpleListProperty;
 import javafx.collections.FXCollections;
-
 import lombok.Getter;
 
 public final class LiftEntry
     extends AbstractIdentifiable
-    implements HasPronunciation, HasRelations, HasSense {
+    implements HasPronunciation, HasRelations, HasSense
+{
 
-    @Getter protected Optional<String> order = Optional.empty();
-    @Getter protected Optional<String> dateDeleted = Optional.empty();
+    @Getter
+    protected Optional<String> order = Optional.empty();
 
-    @Getter final protected MultiText citations = new MultiText();
-    protected final ListProperty<LiftPronunciation> pronounciationsProperty =
-            new SimpleListProperty<>(this, "pronunciations", FXCollections.observableArrayList());
+    @Getter
+    protected Optional<String> dateDeleted = Optional.empty();
+
+    @Getter
+    protected final MultiText citations = new MultiText();
+
+    protected final ListProperty<LiftPronunciation> pronunciationsProperty =
+        new SimpleListProperty<>(
+            this,
+            "pronunciations",
+            FXCollections.observableArrayList()
+        );
     protected final ListProperty<LiftVariant> variantsProperty =
-            new SimpleListProperty<>(this, "variants", FXCollections.observableArrayList());
+        new SimpleListProperty<>(
+            this,
+            "variants",
+            FXCollections.observableArrayList()
+        );
     protected final ListProperty<LiftSense> sensesProperty =
-            new SimpleListProperty<>(this, "senses", FXCollections.observableArrayList());
+        new SimpleListProperty<>(
+            this,
+            "senses",
+            FXCollections.observableArrayList()
+        );
     protected final ListProperty<LiftRelation> relationsProperty =
-            new SimpleListProperty<>(this, "relations", FXCollections.observableArrayList());
+        new SimpleListProperty<>(
+            this,
+            "relations",
+            FXCollections.observableArrayList()
+        );
     protected final ListProperty<LiftEtymology> etymologiesProperty =
-            new SimpleListProperty<>(this, "etymologies", FXCollections.observableArrayList());
+        new SimpleListProperty<>(
+            this,
+            "etymologies",
+            FXCollections.observableArrayList()
+        );
 
-    protected LiftEntry() {
-    }
+    public LiftEntry() {}
 
     public void setDateDeleted(String date) {
         dateDeleted = Optional.of(date);
@@ -40,7 +64,7 @@ public final class LiftEntry
 
     @Override
     public List<LiftPronunciation> getPronunciations() {
-        return pronounciationsProperty.get();
+        return pronunciationsProperty.get();
     }
 
     public List<LiftVariant> getVariants() {
@@ -61,7 +85,7 @@ public final class LiftEntry
 
     @Override
     public void addPronunciation(LiftPronunciation pronunciation) {
-        this.pronounciationsProperty.add(pronunciation);
+        this.pronunciationsProperty.add(pronunciation);
         pronunciation.setParent(this);
     }
 
@@ -69,7 +93,7 @@ public final class LiftEntry
         return getMainMultiText();
     }
 
-    protected void addForm(Form form) {
+    public void addForm(Form form) {
         addToMainMultiText(form);
     }
 
@@ -89,13 +113,13 @@ public final class LiftEntry
         relation.setParent(this);
     }
 
-    protected void addEtymology(LiftEtymology etymology) {
+    public void addEtymology(LiftEtymology etymology) {
         this.etymologiesProperty.add(etymology);
         etymology.setParent(this);
     }
 
     public ListProperty<LiftPronunciation> pronunciationsProperty() {
-        return pronounciationsProperty;
+        return pronunciationsProperty;
     }
 
     public ListProperty<LiftVariant> variantsProperty() {
@@ -114,4 +138,11 @@ public final class LiftEntry
         return etymologiesProperty;
     }
 
+    public static LiftEntry create() {
+        return new LiftEntry();
+    }
+
+    public void setOrder(String order2) {
+        this.order = Optional.of(order2);
+    }
 }

@@ -3,6 +3,7 @@ package fr.cnrs.lacito.liftapi.model;
 import java.util.Optional;
 
 /**
+ * 
  * Maps the {@code @type} attribute of a {@code <field-definition>} element.
  * <p>
  * For field-definitions describing a <b>trait</b>, standard values are:
@@ -14,7 +15,7 @@ import java.util.Optional;
  *
  * @see <a href="https://github.com/sillsdev/lift-standard/blob/master/lift_15.pdf">LIFT spec p.11</a>
  */
-public enum FieldDefinitionType {
+public enum LiftFieldAndTraitDefinitionType {
 
     DATETIME("datetime"),
     INTEGER("integer"),
@@ -26,7 +27,7 @@ public enum FieldDefinitionType {
 
     private final String liftValue;
 
-    FieldDefinitionType(String liftValue) {
+    LiftFieldAndTraitDefinitionType(String liftValue) {
         this.liftValue = liftValue;
     }
 
@@ -42,9 +43,9 @@ public enum FieldDefinitionType {
         return !describesField();
     }
 
-    public static Optional<FieldDefinitionType> fromLiftValue(String value) {
+    public static Optional<LiftFieldAndTraitDefinitionType> fromLiftValue(String value) {
         if (value == null || value.isBlank()) return Optional.empty();
-        for (FieldDefinitionType t : values()) {
+        for (LiftFieldAndTraitDefinitionType t : values()) {
             if (t.liftValue.equals(value.trim().toLowerCase())) return Optional.of(t);
         }
         return Optional.empty();
