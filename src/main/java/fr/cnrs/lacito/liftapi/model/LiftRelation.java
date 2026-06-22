@@ -9,36 +9,55 @@ import lombok.Getter;
 import lombok.Setter;
 
 public final class LiftRelation
-    extends AbstractExtensibleWithField {
-        
+    extends AbstractExtensibleWithField
+    implements HasType
+{
+
     /** Relation type (e.g. lexical-relation value from header ranges). Mutable for UI editing. */
-    private String type;
+    private Optional<String> type = Optional.empty();
     protected Optional<String> refID = Optional.empty();
-    @Getter protected Optional<Integer> order = Optional.empty();
-    @Getter @Setter protected AbstractExtensibleWithoutField parent;
+
+    @Getter
+    protected HasRelations parent;
+
+    @Getter
+    protected Optional<Integer> order = Optional.empty();
 
     private final ReadOnlyStringWrapper typePropertyWrapper;
     private final StringProperty refIdProperty;
 
     public LiftRelation(String type) {
-        this.type = type;
-        this.typePropertyWrapper = new ReadOnlyStringWrapper(this, "type", type);
+        this.type = Optional.ofNullable(type);
+        this.typePropertyWrapper = new ReadOnlyStringWrapper(
+            this,
+            "type",
+            type
+        );
         this.refIdProperty = new SimpleStringProperty(this, "refId", "");
     }
 
     public LiftRelation() {
-        this.typePropertyWrapper = new ReadOnlyStringWrapper(this, "type", type);
+        this.typePropertyWrapper = new ReadOnlyStringWrapper(
+            this,
+            "type",
+            type.orElse("")
+        );
         this.refIdProperty = new SimpleStringProperty(this, "refId", "");
     }
 
-    public String getType() {
+    protected void setParent(HasRelations parent) {
+        this.parent = parent;
+    }
+
+    @Override
+    public Optional<String> getType() {
         return type;
     }
 
     /** Updates the relation type and the bound JavaFX property. */
     public void setType(String newType) {
         String v = newType != null ? newType.trim() : "";
-        this.type = v;
+        this.type = Optional.of(v);
         typePropertyWrapper.set(v);
     }
 
@@ -48,11 +67,6 @@ public final class LiftRelation
 
     public MultiText getUsage() {
         return getMainMultiText();
-    }
-
-    public void setRefID(String refID) {
-        this.refID = Optional.of(refID);
-        this.refIdProperty.set(refID);
     }
 
     public void setOrder(int order) {
@@ -75,7 +89,7 @@ public final class LiftRelation
     public static LiftRelation create(String type) {
         return new LiftRelation(type);
     }
-    
+
     public static LiftRelation create() {
         return new LiftRelation();
     }

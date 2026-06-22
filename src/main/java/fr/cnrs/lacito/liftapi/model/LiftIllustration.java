@@ -1,20 +1,25 @@
 package fr.cnrs.lacito.liftapi.model;
 
+import lombok.Getter;
+
 /**
  * A still image associated with a {@link LiftSense LiftSense}.
  */
-public final class LiftIllustration 
+public final class LiftIllustration
     extends AbstractLiftRoot
-    implements ExternalDocument {
+    implements ExternalDocument
+{
 
     final String href;
+
+    @Getter
     LiftSense parent;
 
-    public LiftIllustration (String href) {
+    public LiftIllustration(String href) {
         this.href = href;
     }
 
-    public void setParent(LiftSense parent) {
+    protected void setParent(LiftSense parent) {
         this.parent = parent;
     }
 
@@ -27,5 +32,4 @@ public final class LiftIllustration
     public String getHref() {
         return this.href;
     }
-
 }

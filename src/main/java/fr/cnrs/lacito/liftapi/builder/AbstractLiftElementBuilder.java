@@ -14,7 +14,6 @@ import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
 import fr.cnrs.lacito.liftapi.model.LiftField;
 import fr.cnrs.lacito.liftapi.model.LiftNote;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
-
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -242,8 +241,8 @@ public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot> {
     public abstract T build();
 
     protected void register() {
-        UUID uuid = registry.getNewUUID();
-        this.element.setUUID(uuid);
+        //UUID uuid = registry.getNewUUID();
+        //this.element.setUUID(uuid);
         registry.register(this.element);
     }
 }

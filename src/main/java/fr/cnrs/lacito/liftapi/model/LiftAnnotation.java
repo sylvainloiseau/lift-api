@@ -8,24 +8,23 @@ import javafx.beans.property.StringProperty;
 import lombok.Setter;
 
 /**
- * An annotation. 
- * 
+ * An annotation.
+ *
  * Annotations can appear on most lift objects, including
  * {@link LiftTrait}, {@link LiftField} or in the {@link Form}s of a {@link MultiText} object.
- * 
+ *
  * Since an annotation can itself contains a MultiText object,
  * there is an possibility of unlimited recursive hierarchy of {@link Form} and {@link LiftAnnotation}.
- * 
+ *
  * {@see HasAnnotation}.
  */
-public final class LiftAnnotation
-    extends AbstractLiftRoot {
+public final class LiftAnnotation extends AbstractLiftRoot {
 
     protected final String name;
     protected Optional<String> value = Optional.empty();
     protected Optional<String> who = Optional.empty();
     protected Optional<String> when = Optional.empty();
-    @Setter protected HasAnnotation parent;
+    protected HasAnnotation parent;
 
     private final ReadOnlyStringWrapper namePropertyWrapper;
     private final StringProperty valueProperty;
@@ -37,7 +36,11 @@ public final class LiftAnnotation
      */
     public LiftAnnotation(String name) {
         this.name = name;
-        this.namePropertyWrapper = new ReadOnlyStringWrapper(this, "name", name);
+        this.namePropertyWrapper = new ReadOnlyStringWrapper(
+            this,
+            "name",
+            name
+        );
         this.valueProperty = new SimpleStringProperty(this, "value", "");
         this.whoProperty = new SimpleStringProperty(this, "who", "");
         this.whenProperty = new SimpleStringProperty(this, "when", "");
@@ -53,6 +56,10 @@ public final class LiftAnnotation
             String v = newV == null ? "" : newV.trim();
             this.when = v.isEmpty() ? Optional.empty() : Optional.of(v);
         });
+    }
+
+    protected void setParent(HasAnnotation parent) {
+        this.parent = parent;
     }
 
     public MultiText getText() {

@@ -20,8 +20,7 @@ public class BuilderTest {
 
     @Test
     public void testBuilderEntry() {
-        DictionaryBuilder builder =
-            dictionary.getComponentBuilder();
+        DictionaryBuilder builder = dictionary.getComponentBuilder();
         LiftEntry entry = builder
             .entry()
             .withForm("en", "dictionary")

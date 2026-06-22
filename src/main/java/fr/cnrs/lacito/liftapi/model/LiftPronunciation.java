@@ -7,18 +7,26 @@ import javafx.collections.FXCollections;
 import lombok.Getter;
 import lombok.Setter;
 
-public final class LiftPronunciation
-    extends AbstractExtensibleWithField {
+public final class LiftPronunciation extends AbstractExtensibleWithField {
 
     protected final ListProperty<LiftMedia> mediasProperty =
-            new SimpleListProperty<>(this, "medias", FXCollections.observableArrayList());
-    @Getter @Setter private HasPronunciation parent;
-    
-    public LiftPronunciation() {
-    }
+        new SimpleListProperty<>(
+            this,
+            "medias",
+            FXCollections.observableArrayList()
+        );
+
+    @Getter
+    private HasPronunciation parent;
+
+    public LiftPronunciation() {}
 
     public MultiText getPronunciation() {
         return getMainMultiText();
+    }
+
+    protected void setParent(HasPronunciation parent) {
+        this.parent = parent;
     }
 
     public List<LiftMedia> getMedias() {

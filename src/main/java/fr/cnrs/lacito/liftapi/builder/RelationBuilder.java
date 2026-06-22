@@ -7,7 +7,7 @@ import java.util.function.Consumer;
 
 /**
  * Builder for creating LiftRelation instances with a fluent API.
- * 
+ *
  * Usage:
  * <pre>
  *   LiftRelation relation = Builders.relation("synonymy")
@@ -20,8 +20,8 @@ public class RelationBuilder extends AbstractLiftElementBuilder<LiftRelation> {
 
     /**
      * Create a relation builder (requires type to be set later).
-     * @param type 
-     * @param dictionary 
+     * @param type
+     * @param dictionary
      */
     protected RelationBuilder(LiftDictionaryRegistry registry) {
         this.registry = registry;
@@ -30,7 +30,7 @@ public class RelationBuilder extends AbstractLiftElementBuilder<LiftRelation> {
 
     /**
      * Create a relation builder (requires type to be set later).
-     * @param type 
+     * @param type
      */
     protected RelationBuilder(LiftDictionaryRegistry registry, String type) {
         this.registry = registry;
@@ -73,7 +73,7 @@ public class RelationBuilder extends AbstractLiftElementBuilder<LiftRelation> {
      */
     public RelationBuilder withRefId(String refId) {
         if (refId != null) {
-            element.setRefID(refId);
+            element.setRefId(refId);
         }
         return this;
     }
@@ -93,7 +93,9 @@ public class RelationBuilder extends AbstractLiftElementBuilder<LiftRelation> {
      */
     public RelationBuilder addUsage(String language, String text) {
         if (language == null || text == null) {
-            throw new IllegalArgumentException("Language and text cannot be null");
+            throw new IllegalArgumentException(
+                "Language and text cannot be null"
+            );
         }
         element.getUsage().add(new Form(language, text));
         return this;

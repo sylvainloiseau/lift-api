@@ -1,8 +1,13 @@
 package fr.cnrs.lacito.liftapi.model;
 
+import java.util.List;
 import java.util.Optional;
+import javafx.beans.property.ListProperty;
+import javafx.beans.property.SimpleListProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
+import javafx.collections.FXCollections;
+import lombok.Getter;
 
 /**
  * A reversal entry associated with a sense.
@@ -18,14 +23,37 @@ import javafx.beans.property.StringProperty;
  * @see LiftSense
  */
 public final class LiftReversal
-    extends AbstractLiftRoot {
+    extends AbstractLiftRoot
+    implements HasType, HasReversal
+{
 
     protected Optional<String> type = Optional.empty();
     protected LiftReversal main;
+    protected final ListProperty<LiftReversal> reversalsProperty =
+        new SimpleListProperty<>(
+            this,
+            "reversals",
+            FXCollections.observableArrayList()
+        );
 
-    private final StringProperty typeProperty = new SimpleStringProperty(this, "type", "");
+    @Getter
+    protected HasReversal parent;
 
-    public LiftReversal() {
+    private final StringProperty typeProperty = new SimpleStringProperty(
+        this,
+        "type",
+        ""
+    );
+
+    public LiftReversal() {}
+
+    public void addReversal(LiftReversal reversal) {
+        reversalsProperty.add(reversal);
+        reversal.setParent(this);
+    }
+
+    public List<LiftReversal> getReversals() {
+        return reversalsProperty.get();
     }
 
     public MultiText getForms() {
@@ -51,5 +79,9 @@ public final class LiftReversal
 
     public StringProperty typeProperty() {
         return typeProperty;
+    }
+
+    protected void setParent(HasReversal parent) {
+        this.parent = parent;
     }
 }

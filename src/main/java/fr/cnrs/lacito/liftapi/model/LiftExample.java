@@ -21,7 +21,6 @@ public final class LiftExample extends AbstractNotable {
             FXCollections.observableHashMap()
         );
 
-    @Setter
     protected LiftSense parent;
 
     private final StringProperty sourceProperty = new SimpleStringProperty(
@@ -55,6 +54,10 @@ public final class LiftExample extends AbstractNotable {
         MultiText newTranslation = new MultiText();
         translationsProperty.put(type, newTranslation);
         return newTranslation;
+    }
+
+    protected void setParent(LiftSense parent) {
+        this.parent = parent;
     }
 
     /**

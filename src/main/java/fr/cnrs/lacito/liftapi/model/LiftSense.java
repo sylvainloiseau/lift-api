@@ -10,28 +10,57 @@ import lombok.Setter;
 
 public final class LiftSense
     extends AbstractIdentifiable
-    implements HasGlosses, HasRelations, HasSense {
+    implements HasGlosses, HasRelations, HasSense, HasReversal
+{
 
-    @Getter protected Optional<Integer> order = Optional.empty();
-    @Getter protected Optional<GrammaticalInfo> grammaticalInfo = Optional.empty();
-    @Getter protected final MultiText definition = new MultiText();
+    @Getter
+    protected Optional<Integer> order = Optional.empty();
+
+    @Getter
+    protected Optional<GrammaticalInfo> grammaticalInfo = Optional.empty();
+
+    @Getter
+    protected final MultiText definition = new MultiText();
+
     protected final ListProperty<LiftRelation> relationsProperty =
-            new SimpleListProperty<>(this, "relations", FXCollections.observableArrayList());
+        new SimpleListProperty<>(
+            this,
+            "relations",
+            FXCollections.observableArrayList()
+        );
     protected final ListProperty<LiftExample> examplesProperty =
-            new SimpleListProperty<>(this, "examples", FXCollections.observableArrayList());
+        new SimpleListProperty<>(
+            this,
+            "examples",
+            FXCollections.observableArrayList()
+        );
     protected final ListProperty<LiftIllustration> illustrationsProperty =
-            new SimpleListProperty<>(this, "illustrations", FXCollections.observableArrayList());
+        new SimpleListProperty<>(
+            this,
+            "illustrations",
+            FXCollections.observableArrayList()
+        );
     protected final ListProperty<LiftSense> subSensesProperty =
-            new SimpleListProperty<>(this, "subSenses", FXCollections.observableArrayList());
+        new SimpleListProperty<>(
+            this,
+            "subSenses",
+            FXCollections.observableArrayList()
+        );
     protected final ListProperty<LiftReversal> reversalsProperty =
-            new SimpleListProperty<>(this, "reversals", FXCollections.observableArrayList());
-    
-    
-    @Getter @Setter private HasSense parent;
-    @Getter @Setter private LiftEntry parentEntry;
-    
-    public LiftSense() {
-    }
+        new SimpleListProperty<>(
+            this,
+            "reversals",
+            FXCollections.observableArrayList()
+        );
+
+    @Getter
+    private HasSense parent;
+
+    @Getter
+    @Setter
+    private LiftEntry parentEntry;
+
+    public LiftSense() {}
 
     @Override
     public void addGloss(Form gloss) {
@@ -49,6 +78,10 @@ public final class LiftSense
 
     public void setGrammaticalInfo(String value) {
         this.setGrammaticalInfo(new GrammaticalInfo(value));
+    }
+
+    protected void setParent(HasSense parent) {
+        this.parent = parent;
     }
 
     @Override
@@ -75,6 +108,7 @@ public final class LiftSense
 
     public void addReversal(LiftReversal reversal) {
         reversalsProperty.add(reversal);
+        reversal.setParent(this);
     }
 
     public void setOrder(int order) {
@@ -93,9 +127,13 @@ public final class LiftSense
         return illustrationsProperty.get();
     }
 
-    public List<LiftSense> getSubSenses() {
+    public List<LiftSense> getSenses() {
         return subSensesProperty.get();
     }
+
+    //public List<LiftSense> getSubSenses() {
+    //    return subSensesProperty.get();
+    //}
 
     public ListProperty<LiftRelation> relationsProperty() {
         return relationsProperty;

@@ -47,7 +47,7 @@ public final class LiftSaxHandler extends DefaultHandler {
     private boolean inText = false; // inside a text element.
     private boolean inGrammaticalInfo = false; // (for trait)
 
-    private final LiftXMLFactory liftXMLFactory;
+    private final LiftXMLFactoryNew liftXMLFactory;
 
     private Deque<AbstractLiftRoot> elementStack = new ArrayDeque<>();
     private Deque<MultiText> multiTextStack = new ArrayDeque<>();
@@ -55,11 +55,11 @@ public final class LiftSaxHandler extends DefaultHandler {
     private Form currentFormContent; // contains @lang, text, and annotation
     private StringBuffer sb;
 
-    public LiftSaxHandler(LiftXMLFactory lf) {
+    public LiftSaxHandler(LiftXMLFactoryNew lf) {
         this.liftXMLFactory = lf;
     }
 
-    public LiftXMLFactory getFactory() {
+    public LiftXMLFactoryNew getFactory() {
         return liftXMLFactory;
     }
 
@@ -109,8 +109,14 @@ public final class LiftSaxHandler extends DefaultHandler {
             case LiftVocabulary.SUBSENSE_LOCAL_NAME:
             case LiftVocabulary.SENSE_LOCAL_NAME:
                 LiftSense ls = switch (elementStack.peek()) {
-                    case LiftEntry e -> liftXMLFactory.createSense(attributes, e);
-                    case LiftSense s -> liftXMLFactory.createSense(attributes, s);
+                    case LiftEntry e -> liftXMLFactory.createSense(
+                        attributes,
+                        e
+                    );
+                    case LiftSense s -> liftXMLFactory.createSense(
+                        attributes,
+                        s
+                    );
                     default -> throw new IllegalStateException(
                         "Expecting a sense holding object (Entry or Sense), found: " +
                             elementStack.peek().toString()
@@ -153,12 +159,14 @@ public final class LiftSaxHandler extends DefaultHandler {
                         "Attribute 'tag' expected on <field> in header (LIFT 0.13)"
                     );
                     elementStack.push(
-                        liftXMLFactory.createFieldDefinition(tag, h)
+                        liftXMLFactory.create_field_definition(attributes, h)
                     );
                 } else if (
                     elementStack.peek() instanceof AbstractExtensibleWithField a
                 ) {
-                    elementStack.push(liftXMLFactory.createField(attributes, a));
+                    elementStack.push(
+                        liftXMLFactory.createField(attributes, a)
+                    );
                 } else {
                     throw new IllegalStateException(
                         "Expecting a field-holding object, found: " +
@@ -651,6 +659,9 @@ public final class LiftSaxHandler extends DefaultHandler {
         // second switch
         switch (localName) {
             case LiftVocabulary.ENTRY_LOCAL_NAME:
+                LiftEntry e = (LiftEntry) elementStack.pop();
+                liftXMLFactory.addEntryToDictionary(e);
+                break;
             case LiftVocabulary.SUBSENSE_LOCAL_NAME:
             case LiftVocabulary.SENSE_LOCAL_NAME:
             case LiftVocabulary.ILLUSTRATION_LOCAL_NAME:

@@ -7,7 +7,7 @@ import lombok.Setter;
 
 /**
  * A note contains a Multitext and has a type. Eg :
- * 
+ *
  * <pre>
  * &lt;sense id="582795c9-9350-4e3b-af34-b72e9b5c89aa">
  * &lt;!-- ... -->
@@ -17,23 +17,35 @@ import lombok.Setter;
  * &lt;!-- ... -->
  * &lt;/sense>
  * </pre>
- * 
+ *
  * @see HasNote
  */
-public final class LiftNote extends AbstractExtensibleWithField {
+public final class LiftNote
+    extends AbstractExtensibleWithField
+    implements HasType
+{
 
     protected Optional<String> type = Optional.empty();
-    @Setter protected AbstractNotable parent;
 
-    private final StringProperty typeProperty = new SimpleStringProperty(this, "type", "");
+    protected AbstractNotable parent;
 
-    public LiftNote() {
-    }
+    private final StringProperty typeProperty = new SimpleStringProperty(
+        this,
+        "type",
+        ""
+    );
+
+    public LiftNote() {}
 
     public MultiText getText() {
         return getMainMultiText();
     }
 
+    protected void setParent(AbstractNotable parent) {
+        this.parent = parent;
+    }
+
+    @Override
     public Optional<String> getType() {
         return type;
     }

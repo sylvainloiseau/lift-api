@@ -2,33 +2,20 @@ package fr.cnrs.lacito.liftapi;
 
 import fr.cnrs.lacito.liftapi.builder.DictionaryBuilder;
 import fr.cnrs.lacito.liftapi.model.Form;
-import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
-import fr.cnrs.lacito.liftapi.model.LiftEtymology;
 import fr.cnrs.lacito.liftapi.model.LiftExample;
-import fr.cnrs.lacito.liftapi.model.LiftField;
 import fr.cnrs.lacito.liftapi.model.LiftHeader;
-import fr.cnrs.lacito.liftapi.model.LiftIllustration;
-import fr.cnrs.lacito.liftapi.model.LiftMedia;
-import fr.cnrs.lacito.liftapi.model.LiftNote;
-import fr.cnrs.lacito.liftapi.model.LiftPronunciation;
-import fr.cnrs.lacito.liftapi.model.LiftRelation;
-import fr.cnrs.lacito.liftapi.model.LiftReversal;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
-import fr.cnrs.lacito.liftapi.model.LiftTrait;
-import fr.cnrs.lacito.liftapi.model.LiftVariant;
 import fr.cnrs.lacito.liftapi.model.MultiText;
 import fr.cnrs.lacito.liftapi.model.TextSpan;
 import fr.cnrs.lacito.liftapi.xml.LiftDictionaryXmlReader;
 import fr.cnrs.lacito.liftapi.xml.LiftWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import javax.xml.stream.XMLStreamException;
@@ -36,16 +23,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * This class represents a LIFT dictionary. It is the main entry point for the API.
- * 
- * It contains the header and the components of the dictionary, as well as some metadata about the dictionary (version, producer, etc.).
- * 
- * It also contains some methods to manipulate the dictionary, such as adding ids to entries, saving the dictionary, etc.
  *
- * It is designed to be immutable, but some setters are still present for convenience. They should be removed in the future
- * 
- * In order to create a dictionary, see the {@LiftDictionaryBuilder} class.
- * 
  */
 public final class LiftDictionary {
 
@@ -56,10 +34,10 @@ public final class LiftDictionary {
     private final LiftDictionaryLanguagesManager languageManager;
 
     @Getter
-    protected LiftDictionaryComponents liftDictionaryComponents;
+    protected final LiftDictionaryComponents liftDictionaryComponents;
 
     @Getter
-    public DictionaryBuilder componentBuilder;
+    private final DictionaryBuilder componentBuilder;
 
     @Getter
     @Setter // setter should be removed
@@ -71,19 +49,38 @@ public final class LiftDictionary {
 
     private File source;
 
-    protected LiftHeader header;
+    protected final LiftHeader header;
 
     private LiftDictionaryRegistry registry;
 
     public static final LiftDictionary loadDictionaryFromFile(File f)
         throws LiftDocumentLoadingException {
+        //long size = f.length();
+        //long dictionarySizeUnits = (int) (size / 1024 / 1024);
         // the zero-argument constructor should be called
-        LiftDictionary d = LiftDictionaryXmlReader.loadWithSax(f, false);
-        // call finalizer (or whatever) on LiftXMLFactory
-        // call discoverFields() on ValueManager, LangManager
-        // update Header accordingly
+        LiftDictionaryRegistry registry = new LiftDictionaryRegistry();
+        registry.enterPopulatingMode();
+        LiftDictionaryXmlReader r = new LiftDictionaryXmlReader(
+            f,
+            registry,
+            false
+        );
+        r.parse();
+        LiftHeader header = r.getHeader();
+        registry.postPopulate(header);
+
+        LiftDictionary d = new LiftDictionary(
+            registry,
+            header,
+            new DictionaryBuilder(registry)
+        );
         d.source = f;
 
+        LOGGER.info(
+            "Dictionary created with " +
+                d.getLiftDictionaryRegistry().nEntries() +
+                " entries."
+        );
         return d;
     }
 
@@ -96,6 +93,9 @@ public final class LiftDictionary {
      * @throws WrittingLiftDocumentException
      */
     public void save() throws WrittingLiftDocumentException {
+        if (this.source == null) {
+            throw new WrittingLiftDocumentException("No source file known");
+        }
         save(this.source);
     }
 
@@ -123,28 +123,36 @@ public final class LiftDictionary {
         }
     }
 
-    public LiftDictionary(LiftDictionaryComponents ldc) {
-        this();
-        LOGGER.info(
-            "Dictionary created with " +
-                ldc.getAllEntries().size() +
-                " entries."
-        );
-        this.liftDictionaryComponents = ldc;
-    }
-
     protected LiftDictionary() {
         registry = new LiftDictionaryRegistry();
         languageManager = new LiftDictionaryLanguagesManager(registry);
         componentBuilder = new DictionaryBuilder(registry);
+        header = new LiftHeader();
+        liftDictionaryComponents = null;
+    }
+
+    protected LiftDictionary(
+        LiftDictionaryRegistry registry,
+        LiftHeader header,
+        DictionaryBuilder componentBuilder
+    ) {
+        this.registry = registry;
+        languageManager = new LiftDictionaryLanguagesManager(registry);
+        this.componentBuilder = componentBuilder;
+        this.header = header;
+        liftDictionaryComponents = null;
+    }
+
+    public LiftHeader getHeader() {
+        return this.header;
+    }
+
+    public LiftDictionaryRegistry getLiftDictionaryRegistry() {
+        return registry;
     }
 
     public LiftDictionaryLanguagesManager getLanguageManager() {
         return languageManager;
-    }
-
-    public DictionaryBuilder getComponentBuilder() {
-        return componentBuilder;
     }
 
     public void addIds() {
@@ -155,8 +163,9 @@ public final class LiftDictionary {
         // TODO
     }
 
+    @Deprecated
     public int entryCount() {
-        return this.liftDictionaryComponents.getAllEntries().size();
+        return this.registry.entriesById.size();
     }
 
     public Set<String> getObjectLanguagesInLexicalUnit() {

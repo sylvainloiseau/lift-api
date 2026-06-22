@@ -1,5 +1,25 @@
 package fr.cnrs.lacito.liftapi.xml;
 
+import fr.cnrs.lacito.liftapi.LiftDictionary;
+import fr.cnrs.lacito.liftapi.LiftDictionaryComponents;
+import fr.cnrs.lacito.liftapi.model.GrammaticalInfo;
+import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
+import fr.cnrs.lacito.liftapi.model.LiftEntry;
+import fr.cnrs.lacito.liftapi.model.LiftEtymology;
+import fr.cnrs.lacito.liftapi.model.LiftExample;
+import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
+import fr.cnrs.lacito.liftapi.model.LiftHeader;
+import fr.cnrs.lacito.liftapi.model.LiftHeaderRange;
+import fr.cnrs.lacito.liftapi.model.LiftHeaderRangeElement;
+import fr.cnrs.lacito.liftapi.model.LiftIllustration;
+import fr.cnrs.lacito.liftapi.model.LiftMedia;
+import fr.cnrs.lacito.liftapi.model.LiftPronunciation;
+import fr.cnrs.lacito.liftapi.model.LiftRelation;
+import fr.cnrs.lacito.liftapi.model.LiftReversal;
+import fr.cnrs.lacito.liftapi.model.LiftSense;
+import fr.cnrs.lacito.liftapi.model.LiftTrait;
+import fr.cnrs.lacito.liftapi.model.LiftVariant;
+import fr.cnrs.lacito.liftapi.model.MultiText;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -17,33 +37,15 @@ import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
-import fr.cnrs.lacito.liftapi.LiftDictionary;
-import fr.cnrs.lacito.liftapi.LiftDictionaryComponents;
-import fr.cnrs.lacito.liftapi.model.GrammaticalInfo;
-import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
-import fr.cnrs.lacito.liftapi.model.LiftEtymology;
-import fr.cnrs.lacito.liftapi.model.LiftEntry;
-import fr.cnrs.lacito.liftapi.model.LiftExample;
-import fr.cnrs.lacito.liftapi.model.LiftHeader;
-import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
-import fr.cnrs.lacito.liftapi.model.LiftHeaderRange;
-import fr.cnrs.lacito.liftapi.model.LiftHeaderRangeElement;
-import fr.cnrs.lacito.liftapi.model.LiftIllustration;
-import fr.cnrs.lacito.liftapi.model.LiftMedia;
-import fr.cnrs.lacito.liftapi.model.LiftPronunciation;
-import fr.cnrs.lacito.liftapi.model.LiftRelation;
-import fr.cnrs.lacito.liftapi.model.LiftReversal;
-import fr.cnrs.lacito.liftapi.model.LiftSense;
-import fr.cnrs.lacito.liftapi.model.LiftTrait;
-import fr.cnrs.lacito.liftapi.model.LiftVariant;
-import fr.cnrs.lacito.liftapi.model.MultiText;
-
 /**
  * Manages XML serialization session with proper resource lifecycle.
  * Handles stream creation, closing, and high-level serialization operations.
  */
 public class LiftWriterSession implements AutoCloseable {
-    private static final Logger LOGGER = Logger.getLogger(LiftWriterSession.class.getName());
+
+    private static final Logger LOGGER = Logger.getLogger(
+        LiftWriterSession.class.getName()
+    );
     private static final String NEW_LINE = "\n";
 
     private final File outputFile;
@@ -69,8 +71,14 @@ public class LiftWriterSession implements AutoCloseable {
 
             out.writeStartDocument();
             out.writeStartElement(LiftVocabulary.LIFT_LOCAL_NAME);
-            out.writeAttribute(LiftVocabulary.VERSION_ATTRIBUTE, d.getLiftVersion());
-            out.writeAttribute(LiftVocabulary.PRODUCER_ATTRIBUTE, d.getLiftProducer());
+            out.writeAttribute(
+                LiftVocabulary.VERSION_ATTRIBUTE,
+                d.getLiftVersion()
+            );
+            out.writeAttribute(
+                LiftVocabulary.PRODUCER_ATTRIBUTE,
+                d.getLiftProducer()
+            );
 
             LiftHeader header = c.getHeader();
             if (header != null) {
@@ -94,8 +102,16 @@ public class LiftWriterSession implements AutoCloseable {
             out.writeEndElement(); // </lift>
             out.writeEndDocument();
             out.flush();
-        } catch (UnsupportedEncodingException | XMLStreamException | FactoryConfigurationError e) {
-            LOGGER.log(java.util.logging.Level.SEVERE, "Unable to initialize XML writer", e);
+        } catch (
+            UnsupportedEncodingException
+            | XMLStreamException
+            | FactoryConfigurationError e
+        ) {
+            LOGGER.log(
+                java.util.logging.Level.SEVERE,
+                "Unable to initialize XML writer",
+                e
+            );
             throw e;
         }
     }
@@ -109,7 +125,11 @@ public class LiftWriterSession implements AutoCloseable {
             try {
                 out.close();
             } catch (XMLStreamException e) {
-                LOGGER.log(java.util.logging.Level.WARNING, "Error closing XML writer", e);
+                LOGGER.log(
+                    java.util.logging.Level.WARNING,
+                    "Error closing XML writer",
+                    e
+                );
             }
         }
         if (outputStream != null) {
@@ -117,9 +137,11 @@ public class LiftWriterSession implements AutoCloseable {
         }
     }
 
-    private void initializeWriter() throws XMLStreamException, UnsupportedEncodingException, FactoryConfigurationError {
+    private void initializeWriter()
+        throws XMLStreamException, UnsupportedEncodingException, FactoryConfigurationError {
         out = XMLOutputFactory.newInstance().createXMLStreamWriter(
-                new OutputStreamWriter(outputStream, "utf-8"));
+            new OutputStreamWriter(outputStream, "utf-8")
+        );
     }
 
     private void writeHeader(LiftHeader header) throws Exception {
@@ -143,7 +165,9 @@ public class LiftWriterSession implements AutoCloseable {
 
         List<LiftFieldAndTraitDefinition> fields = header.getFields();
         if (fields != null && !fields.isEmpty()) {
-            out.writeStartElement(LiftVocabulary.HEADER_FIELDS_DEFINITION_LOCAL_NAME);
+            out.writeStartElement(
+                LiftVocabulary.HEADER_FIELDS_DEFINITION_LOCAL_NAME
+            );
             for (LiftFieldAndTraitDefinition f : fields) {
                 writeHeaderFieldDescription(f);
             }
@@ -157,21 +181,35 @@ public class LiftWriterSession implements AutoCloseable {
         out.writeStartElement(LiftVocabulary.HEADER_RANGE_LOCAL_NAME);
         out.writeAttribute(LiftVocabulary.ID_ATTRIBUTE, range.getId());
         if (range.getGuid().isPresent()) {
-            out.writeAttribute(LiftVocabulary.GUID_ATTRIBUTE, range.getGuid().get());
+            out.writeAttribute(
+                LiftVocabulary.GUID_ATTRIBUTE,
+                range.getGuid().get()
+            );
         }
         if (range.getHref().isPresent()) {
-            out.writeAttribute(LiftVocabulary.HREF_ATTRIBUTE, range.getHref().get());
+            out.writeAttribute(
+                LiftVocabulary.HREF_ATTRIBUTE,
+                range.getHref().get()
+            );
         }
         if (!range.getHref().isPresent()) {
-            AbstractPropertyWriters.writeAbstractExtensibleWithoutField(out, range);
-            AbstractPropertyWriters.writeAbstractExtensibleWithField(out, range);
+            AbstractPropertyWriters.writeAbstractExtensibleWithoutField(
+                out,
+                range
+            );
+            AbstractPropertyWriters.writeAbstractExtensibleWithField(
+                out,
+                range
+            );
             out.writeStartElement(LiftVocabulary.HEADER_DESCRIPTION_LOCAL_NAME);
             MultiTextWriters.writeMultiText(out, range.getDescription());
             out.writeEndElement();
             out.writeStartElement(LiftVocabulary.LABEL_LOCAL_NAME);
             MultiTextWriters.writeMultiText(out, range.getLabel());
             out.writeEndElement();
-            out.writeStartElement(LiftVocabulary.HEADER_RANGE_ABBREV_LOCAL_NAME);
+            out.writeStartElement(
+                LiftVocabulary.HEADER_RANGE_ABBREV_LOCAL_NAME
+            );
             MultiTextWriters.writeMultiText(out, range.getAbbrev());
             out.writeEndElement();
             for (LiftHeaderRangeElement e : range.getRangeElements()) {
@@ -181,14 +219,18 @@ public class LiftWriterSession implements AutoCloseable {
         out.writeEndElement();
     }
 
-    private void writeHeaderRangeElement(LiftHeaderRangeElement el) throws Exception {
+    private void writeHeaderRangeElement(LiftHeaderRangeElement el)
+        throws Exception {
         out.writeStartElement(LiftVocabulary.HEADER_RANGE_ELEMENT_LOCAL_NAME);
         out.writeAttribute(LiftVocabulary.ID_ATTRIBUTE, el.getId());
         if (el.getParentId().isPresent()) {
             out.writeAttribute("parent", el.getParentId().get());
         }
         if (el.getGuid().isPresent()) {
-            out.writeAttribute(LiftVocabulary.GUID_ATTRIBUTE, el.getGuid().get());
+            out.writeAttribute(
+                LiftVocabulary.GUID_ATTRIBUTE,
+                el.getGuid().get()
+            );
         }
         AbstractPropertyWriters.writeAbstractExtensibleWithoutField(out, el);
         AbstractPropertyWriters.writeAbstractExtensibleWithField(out, el);
@@ -208,7 +250,8 @@ public class LiftWriterSession implements AutoCloseable {
         out.writeEndElement();
     }
 
-    private void writeRangesToExternalFiles(LiftHeader header) throws Exception {
+    private void writeRangesToExternalFiles(LiftHeader header)
+        throws Exception {
         if (outputFile == null) {
             return;
         }
@@ -227,7 +270,9 @@ public class LiftWriterSession implements AutoCloseable {
                 continue;
             }
             File targetFile = resolveHrefToFile(href, baseDir);
-            byHref.computeIfAbsent(targetFile, k -> new java.util.ArrayList<>()).add(r);
+            byHref
+                .computeIfAbsent(targetFile, k -> new java.util.ArrayList<>())
+                .add(r);
         }
 
         for (Map.Entry<File, List<LiftHeaderRange>> e : byHref.entrySet()) {
@@ -254,10 +299,14 @@ public class LiftWriterSession implements AutoCloseable {
         return new File(baseDir, href);
     }
 
-    private void writeLiftRangesFile(File file, List<LiftHeaderRange> ranges) throws Exception {
-        try (FileOutputStream fos = new FileOutputStream(file);
-             OutputStreamWriter osw = new OutputStreamWriter(fos, "utf-8")) {
-            XMLStreamWriter rangesOut = XMLOutputFactory.newInstance().createXMLStreamWriter(osw);
+    private void writeLiftRangesFile(File file, List<LiftHeaderRange> ranges)
+        throws Exception {
+        try (
+            FileOutputStream fos = new FileOutputStream(file);
+            OutputStreamWriter osw = new OutputStreamWriter(fos, "utf-8")
+        ) {
+            XMLStreamWriter rangesOut =
+                XMLOutputFactory.newInstance().createXMLStreamWriter(osw);
             rangesOut.writeStartDocument("utf-8", "1.0");
             rangesOut.writeCharacters(NEW_LINE);
             rangesOut.writeStartElement(LiftVocabulary.LIFT_RANGES_ROOT);
@@ -271,11 +320,17 @@ public class LiftWriterSession implements AutoCloseable {
         }
     }
 
-    private void writeHeaderRangeToWriter(XMLStreamWriter w, LiftHeaderRange range) throws Exception {
+    private void writeHeaderRangeToWriter(
+        XMLStreamWriter w,
+        LiftHeaderRange range
+    ) throws Exception {
         w.writeStartElement(LiftVocabulary.HEADER_RANGE_LOCAL_NAME);
         w.writeAttribute(LiftVocabulary.ID_ATTRIBUTE, range.getId());
         if (range.getGuid().isPresent()) {
-            w.writeAttribute(LiftVocabulary.GUID_ATTRIBUTE, range.getGuid().get());
+            w.writeAttribute(
+                LiftVocabulary.GUID_ATTRIBUTE,
+                range.getGuid().get()
+            );
         }
         AbstractPropertyWriters.writeAbstractExtensibleWithoutField(w, range);
         AbstractPropertyWriters.writeAbstractExtensibleWithField(w, range);
@@ -295,7 +350,10 @@ public class LiftWriterSession implements AutoCloseable {
         w.writeCharacters(NEW_LINE);
     }
 
-    private void writeHeaderRangeElementToWriter(XMLStreamWriter w, LiftHeaderRangeElement el) throws Exception {
+    private void writeHeaderRangeElementToWriter(
+        XMLStreamWriter w,
+        LiftHeaderRangeElement el
+    ) throws Exception {
         w.writeStartElement(LiftVocabulary.HEADER_RANGE_ELEMENT_LOCAL_NAME);
         w.writeAttribute(LiftVocabulary.ID_ATTRIBUTE, el.getId());
         if (el.getParentId().isPresent()) {
@@ -319,8 +377,11 @@ public class LiftWriterSession implements AutoCloseable {
         w.writeCharacters(NEW_LINE);
     }
 
-    private void writeHeaderFieldDescription(LiftFieldAndTraitDefinition f) throws Exception {
-        out.writeStartElement(LiftVocabulary.HEADER_FIELD_DEFINITION_LOCAL_NAME);
+    private void writeHeaderFieldDescription(LiftFieldAndTraitDefinition f)
+        throws Exception {
+        out.writeStartElement(
+            LiftVocabulary.HEADER_FIELD_DEFINITION_LOCAL_NAME
+        );
         out.writeAttribute(LiftVocabulary.GUID_ATTRIBUTE, f.getName());
         if (f.getFClass().isPresent()) {
             out.writeAttribute("class", f.getFClass().get());
@@ -349,10 +410,16 @@ public class LiftWriterSession implements AutoCloseable {
     private void writeEntry(LiftEntry entry) throws Exception {
         out.writeStartElement(LiftVocabulary.ENTRY_LOCAL_NAME);
         if (entry.getDateDeleted().isPresent()) {
-            out.writeAttribute(LiftVocabulary.DATE_DELETED_ATTRIBUTE, entry.getDateDeleted().get());
+            out.writeAttribute(
+                LiftVocabulary.DATE_DELETED_ATTRIBUTE,
+                entry.getDateDeleted().get()
+            );
         }
         if (entry.getOrder().isPresent()) {
-            out.writeAttribute(LiftVocabulary.ORDER_ATTRIBUTE, entry.getOrder().get());
+            out.writeAttribute(
+                LiftVocabulary.ORDER_ATTRIBUTE,
+                entry.getOrder().get()
+            );
         }
         AbstractPropertyWriters.writeAbstractIdentifiable(out, entry);
         AbstractPropertyWriters.writeAbstractExtensibleWithoutField(out, entry);
@@ -409,12 +476,21 @@ public class LiftWriterSession implements AutoCloseable {
 
     private void writeRelation(LiftRelation r) throws Exception {
         out.writeStartElement(LiftVocabulary.RELATION_LOCAL_NAME);
-        out.writeAttribute(LiftVocabulary.TYPE_ATTRIBUTE, r.getType());
+        out.writeAttribute(
+            LiftVocabulary.TYPE_ATTRIBUTE,
+            r.getType().orElse("")
+        );
         if (r.getRefID().isPresent()) {
-            out.writeAttribute(LiftVocabulary.REF_ATTRIBUTE, r.getRefID().get());
+            out.writeAttribute(
+                LiftVocabulary.REF_ATTRIBUTE,
+                r.getRefID().get()
+            );
         }
         if (r.getOrder().isPresent()) {
-            out.writeAttribute(LiftVocabulary.ORDER_ATTRIBUTE, r.getOrder().get().toString());
+            out.writeAttribute(
+                LiftVocabulary.ORDER_ATTRIBUTE,
+                r.getOrder().get().toString()
+            );
         }
         AbstractPropertyWriters.writeAbstractExtensibleWithoutField(out, r);
         AbstractPropertyWriters.writeAbstractExtensibleWithField(out, r);
@@ -429,7 +505,10 @@ public class LiftWriterSession implements AutoCloseable {
     private void writeReversal(LiftReversal rev) throws Exception {
         out.writeStartElement(LiftVocabulary.REVERSAL_LOCAL_NAME);
         if (rev.getType().isPresent()) {
-            out.writeAttribute(LiftVocabulary.TYPE_ATTRIBUTE, rev.getType().get());
+            out.writeAttribute(
+                LiftVocabulary.TYPE_ATTRIBUTE,
+                rev.getType().get()
+            );
         }
         MultiTextWriters.writeMultiText(out, rev.getForms());
         if (rev.getMain() != null) {
@@ -445,8 +524,11 @@ public class LiftWriterSession implements AutoCloseable {
 
     private void writeEtymology(LiftEtymology e) throws Exception {
         out.writeStartElement(LiftVocabulary.ETYMOLOGY_LOCAL_NAME);
-        if (e.getType() != null) {
-            out.writeAttribute(LiftVocabulary.TYPE_ATTRIBUTE, e.getType());
+        if (e.getType().isPresent()) {
+            out.writeAttribute(
+                LiftVocabulary.TYPE_ATTRIBUTE,
+                e.getType().get()
+            );
         }
         if (e.getSource() != null) {
             out.writeAttribute(LiftVocabulary.SOURCE_ATTRIBUTE, e.getSource());
@@ -455,7 +537,11 @@ public class LiftWriterSession implements AutoCloseable {
         AbstractPropertyWriters.writeAbstractExtensibleWithField(out, e);
 
         MultiTextWriters.writeMultiText(out, e.getForms());
-        MultiTextWriters.writeMultiText(out, LiftVocabulary.GLOSS_LOCAL_NAME, e.getGlosses());
+        MultiTextWriters.writeMultiText(
+            out,
+            LiftVocabulary.GLOSS_LOCAL_NAME,
+            e.getGlosses()
+        );
 
         out.writeEndElement();
     }
@@ -463,14 +549,21 @@ public class LiftWriterSession implements AutoCloseable {
     private void writeSense(LiftSense sense) throws Exception {
         out.writeStartElement(LiftVocabulary.SENSE_LOCAL_NAME);
         if (sense.getOrder().isPresent()) {
-            out.writeAttribute(LiftVocabulary.ORDER_ATTRIBUTE, sense.getOrder().get().toString());
+            out.writeAttribute(
+                LiftVocabulary.ORDER_ATTRIBUTE,
+                sense.getOrder().get().toString()
+            );
         }
         AbstractPropertyWriters.writeAbstractIdentifiable(out, sense);
         AbstractPropertyWriters.writeAbstractExtensibleWithoutField(out, sense);
         AbstractPropertyWriters.writeAbstractNotable(out, sense);
         AbstractPropertyWriters.writeAbstractExtensibleWithField(out, sense);
 
-        MultiTextWriters.writeMultiText(out, LiftVocabulary.GLOSS_LOCAL_NAME, sense.getGloss());
+        MultiTextWriters.writeMultiText(
+            out,
+            LiftVocabulary.GLOSS_LOCAL_NAME,
+            sense.getGloss()
+        );
 
         if (!sense.getDefinition().isEmpty()) {
             out.writeStartElement(LiftVocabulary.DEFINITION_LOCAL_NAME);
@@ -486,7 +579,7 @@ public class LiftWriterSession implements AutoCloseable {
         sense.getExamples().forEach(unchecked(this::writeExample));
         sense.getIllustrations().forEach(unchecked(this::writeIllustration));
         sense.getReversals().forEach(unchecked(this::writeReversal));
-        sense.getSubSenses().forEach(unchecked(this::writeSense));
+        sense.getSenses().forEach(unchecked(this::writeSense));
 
         out.writeEndElement();
     }
@@ -512,12 +605,14 @@ public class LiftWriterSession implements AutoCloseable {
 
         MultiTextWriters.writeMultiText(out, ex.getExample());
 
-        ex.getTranslations().forEach(biunchecked((type, mt) -> {
-            out.writeStartElement(LiftVocabulary.TRANSLATION_LOCAL_NAME);
-            out.writeAttribute(LiftVocabulary.TYPE_ATTRIBUTE, type);
-            MultiTextWriters.writeMultiText(out, mt);
-            out.writeEndElement();
-        }));
+        ex.getTranslations().forEach(
+            biunchecked((type, mt) -> {
+                out.writeStartElement(LiftVocabulary.TRANSLATION_LOCAL_NAME);
+                out.writeAttribute(LiftVocabulary.TYPE_ATTRIBUTE, type);
+                MultiTextWriters.writeMultiText(out, mt);
+                out.writeEndElement();
+            })
+        );
         out.writeEndElement();
     }
 
@@ -544,20 +639,28 @@ public class LiftWriterSession implements AutoCloseable {
             out.writeAttribute(LiftVocabulary.NAME_ATTRIBUTE, a.getName());
         }
         if (a.getValue().isPresent()) {
-            out.writeAttribute(LiftVocabulary.VALUE_ATTRIBUTE, a.getValue().get());
+            out.writeAttribute(
+                LiftVocabulary.VALUE_ATTRIBUTE,
+                a.getValue().get()
+            );
         }
         if (a.getWho().isPresent()) {
             out.writeAttribute(LiftVocabulary.WHO_ATTRIBUTE, a.getWho().get());
         }
         if (a.getWhen().isPresent()) {
-            out.writeAttribute(LiftVocabulary.WHEN_ATTRIBUTE, a.getWhen().get());
+            out.writeAttribute(
+                LiftVocabulary.WHEN_ATTRIBUTE,
+                a.getWhen().get()
+            );
         }
         MultiTextWriters.writeMultiText(out, a.getText());
         out.writeEndElement();
     }
 
     // Helper for unchecked exceptions in lambdas
-    private static <T> java.util.function.Consumer<T> unchecked(ThrowingConsumer<T> f) {
+    private static <T> java.util.function.Consumer<T> unchecked(
+        ThrowingConsumer<T> f
+    ) {
         return t -> {
             try {
                 f.accept(t);
@@ -567,7 +670,9 @@ public class LiftWriterSession implements AutoCloseable {
         };
     }
 
-    private static <T, U> java.util.function.BiConsumer<T, U> biunchecked(ThrowingBiConsumer<T, U> f) {
+    private static <T, U> java.util.function.BiConsumer<T, U> biunchecked(
+        ThrowingBiConsumer<T, U> f
+    ) {
         return (t, u) -> {
             try {
                 f.accept(t, u);

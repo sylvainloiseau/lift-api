@@ -5,9 +5,9 @@ import fr.cnrs.lacito.liftapi.model.LiftHeader;
 
 /**
  * This class is a builder for the {@LiftDictionary} class.
- * 
+ *
  * It allows to create a dictionary by setting its properties one by one.
- * 
+ *
  * Usage:
  * <pre>
  *   LiftDictionary dictionary = Builders.dictionary()
@@ -31,7 +31,6 @@ public class LiftDictionaryBuilder {
      */
     protected LiftDictionaryBuilder() {
         this.dictionary = new LiftDictionary();
-        this.dictionary.header = new LiftHeader();
     }
 
     public LiftDictionaryBuilder withLiftVersion(String version) {

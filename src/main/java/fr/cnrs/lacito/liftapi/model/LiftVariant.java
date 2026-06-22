@@ -10,20 +10,36 @@ import lombok.Setter;
 
 public final class LiftVariant
     extends AbstractExtensibleWithField
-    implements HasPronunciation, HasRelations {
+    implements HasPronunciation, HasRelations
+{
 
-    @Getter protected Optional<String> refId = Optional.empty();
+    @Getter
+    protected Optional<String> refId = Optional.empty();
+
     protected final ListProperty<LiftPronunciation> pronunciationsProperty =
-            new SimpleListProperty<>(this, "pronunciations", FXCollections.observableArrayList());
+        new SimpleListProperty<>(
+            this,
+            "pronunciations",
+            FXCollections.observableArrayList()
+        );
     protected final ListProperty<LiftRelation> relationsProperty =
-            new SimpleListProperty<>(this, "relations", FXCollections.observableArrayList());
-    @Setter @Getter protected LiftEntry parent;
+        new SimpleListProperty<>(
+            this,
+            "relations",
+            FXCollections.observableArrayList()
+        );
 
-    public LiftVariant() {
-    }
+    @Getter
+    protected LiftEntry parent;
+
+    public LiftVariant() {}
 
     public void setRefId(String refId) {
         this.refId = Optional.of(refId);
+    }
+
+    protected void setParent(LiftEntry parent) {
+        this.parent = parent;
     }
 
     @Override

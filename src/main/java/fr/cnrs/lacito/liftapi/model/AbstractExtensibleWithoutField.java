@@ -9,14 +9,23 @@ import javafx.collections.FXCollections;
 public abstract sealed class AbstractExtensibleWithoutField
     extends AbstractLiftRoot
     implements ExtensibleWithoutField, HasAnnotation, HasTrait
-    permits AbstractExtensibleWithField, LiftField {
+    permits AbstractExtensibleWithField, LiftField
+{
 
     protected Optional<String> dateCreated = Optional.empty();
     protected Optional<String> dateModified = Optional.empty();
     protected final ListProperty<LiftAnnotation> annotationsProperty =
-            new SimpleListProperty<>(this, "annotations", FXCollections.observableArrayList());
+        new SimpleListProperty<>(
+            this,
+            "annotations",
+            FXCollections.observableArrayList()
+        );
     protected final ListProperty<LiftTrait> traitsProperty =
-            new SimpleListProperty<>(this, "traits", FXCollections.observableArrayList());
+        new SimpleListProperty<>(
+            this,
+            "traits",
+            FXCollections.observableArrayList()
+        );
 
     public void addTrait(LiftTrait t) {
         traitsProperty.add(t);

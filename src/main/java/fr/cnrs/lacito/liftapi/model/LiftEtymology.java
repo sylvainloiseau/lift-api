@@ -1,5 +1,6 @@
 package fr.cnrs.lacito.liftapi.model;
 
+import java.util.Optional;
 import javafx.beans.property.ReadOnlyStringProperty;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import lombok.Getter;
@@ -7,25 +8,43 @@ import lombok.Setter;
 
 public final class LiftEtymology
     extends AbstractExtensibleWithField
-    implements HasGlosses {
+    implements HasGlosses, HasType
+{
 
-    protected final String type;
+    protected Optional<String> type = Optional.empty();
     protected final String source;
-    @Getter protected final MultiText glosses = new MultiText();
-    @Getter @Setter protected LiftEntry parent;
+
+    @Getter
+    protected final MultiText glosses = new MultiText();
+
+    @Getter
+    protected LiftEntry parent;
 
     private final ReadOnlyStringWrapper typePropertyWrapper;
     private final ReadOnlyStringWrapper sourcePropertyWrapper;
-    
+
     public LiftEtymology(String type, String source) {
-        this.type = type;
+        this.type = Optional.of(type);
         this.source = source;
-        this.typePropertyWrapper = new ReadOnlyStringWrapper(this, "type", type);
-        this.sourcePropertyWrapper = new ReadOnlyStringWrapper(this, "source", source);
+        this.typePropertyWrapper = new ReadOnlyStringWrapper(
+            this,
+            "type",
+            type
+        );
+        this.sourcePropertyWrapper = new ReadOnlyStringWrapper(
+            this,
+            "source",
+            source
+        );
     }
 
-    public String getType() {
+    @Override
+    public Optional<String> getType() {
         return type;
+    }
+
+    protected void setParent(LiftEntry parent) {
+        this.parent = parent;
     }
 
     public String getSource() {

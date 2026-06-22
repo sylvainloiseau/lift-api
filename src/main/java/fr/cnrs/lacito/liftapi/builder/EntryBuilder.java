@@ -175,7 +175,7 @@ public class EntryBuilder extends AbstractLiftElementBuilder<LiftEntry> {
             );
         }
         LiftRelation relation = LiftRelation.create(type);
-        relation.setRefID(targetId);
+        relation.setRefId(targetId);
         element.addRelation(relation);
         return this;
     }

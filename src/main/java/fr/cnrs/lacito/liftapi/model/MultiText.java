@@ -76,6 +76,10 @@ public sealed class MultiText
         return annotations;
     }
 
+    public boolean containsLang(String lang) {
+        return lang2FormMap.containsKey(lang);
+    }
+
     public void removeForm(String lang) {
         if (isEmpty()) {
             throw new IllegalArgumentException("This multitext is empty.");

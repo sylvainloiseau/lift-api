@@ -16,7 +16,7 @@ import lombok.Getter;
  * A textual representation of linguistic material in a given language and in a given writting system.
  *
  * lang is read only. In order to change the lang of a Form, you have to create a new one.
- * 
+ *
  * The text can have global annotation (see {@link LiftAnnotation}) and
  * can be composed of attribute-holding chunks (see {@link TextSpan}).
  */
@@ -26,6 +26,7 @@ public final class Form implements HasAnnotation {
 
     protected final String lang;
     private String toText = null;
+    private String toPlainText = null;
 
     @Getter
     protected final List<LiftAnnotation> annotations = new ArrayList<>();
@@ -41,9 +42,15 @@ public final class Form implements HasAnnotation {
     private boolean syncingFromModel = false;
 
     public Form(String lang, String text) {
-        if (lang == null) throw new IllegalArgumentException("lang cannot be null");
-        if (lang.isEmpty()) throw new IllegalArgumentException("lang cannot be empty");
-        if (text == null) throw new IllegalArgumentException("text cannot be null");
+        if (lang == null) throw new IllegalArgumentException(
+            "lang cannot be null"
+        );
+        if (lang.isEmpty()) throw new IllegalArgumentException(
+            "lang cannot be empty"
+        );
+        if (text == null) throw new IllegalArgumentException(
+            "text cannot be null"
+        );
         this.lang = lang;
         this.langProperty = new ReadOnlyStringWrapper(this, "lang", lang);
         this.textProperty = new SimpleStringProperty(this, "text", text);
@@ -127,15 +134,22 @@ public final class Form implements HasAnnotation {
      * Use this for UI display; use {@link #toString()} for serialization.
      */
     public String toPlainText() {
-        StringBuffer strb = new StringBuffer();
-        current.peek().toPlainText(strb);
-        return strb.toString();
+        if (toPlainText == null) {
+            StringBuffer strb = new StringBuffer();
+            current.peek().toPlainText(strb);
+            toPlainText = strb.toString();
+        }
+        return toPlainText;
     }
 
     @Override
     public void addAnnotation(LiftAnnotation a) {
         annotations.add(a);
         a.setParent(this);
+    }
+
+    public List<LiftAnnotation> getAnnotations() {
+        return annotations;
     }
 
     /**
@@ -159,6 +173,7 @@ public final class Form implements HasAnnotation {
         current.push(root);
         textSpanNumber = 1;
         toText = null;
+        toPlainText = null;
 
         parseSpanContent(input, current.peek());
 

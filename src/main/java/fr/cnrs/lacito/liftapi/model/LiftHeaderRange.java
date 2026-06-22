@@ -3,16 +3,24 @@ package fr.cnrs.lacito.liftapi.model;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import lombok.Getter;
 
 public final class LiftHeaderRange extends AbstractExtensibleWithField {
+
+    @Getter
     final String id;
+
     final LiftHeader parent;
 
     Optional<String> href = Optional.empty();
     Optional<String> guid = Optional.empty();
-    
+
+    @Getter
     MultiText label = new MultiText();
+
+    @Getter
     MultiText abbrev = new MultiText();
+
     List<LiftHeaderRangeElement> rangeContent = new ArrayList<>();
 
     public LiftHeaderRange(String id, LiftHeader parent) {
@@ -32,19 +40,8 @@ public final class LiftHeaderRange extends AbstractExtensibleWithField {
         this.guid = Optional.of(guid);
     }
 
-    public MultiText getLabel() {
-        return label;
-    }
-
-    public MultiText getAbbrev() {
-        return abbrev;
-    }
     public List<LiftHeaderRangeElement> getRangeElements() {
-        return rangeContent;        
-    }
-
-    public String getId() {
-        return this.id;
+        return rangeContent;
     }
 
     public Optional<String> getGuid() {
@@ -54,5 +51,4 @@ public final class LiftHeaderRange extends AbstractExtensibleWithField {
     public Optional<String> getHref() {
         return this.href;
     }
-
 }

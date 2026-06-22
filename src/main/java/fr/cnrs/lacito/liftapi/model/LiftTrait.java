@@ -4,27 +4,31 @@ import java.util.ArrayList;
 import java.util.List;
 import javafx.beans.property.ReadOnlyStringProperty;
 import javafx.beans.property.ReadOnlyStringWrapper;
-import javafx.beans.property.StringProperty;
 import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 import lombok.Getter;
 
 /**
  * A trait is a key-value pair. The key doesn't have to be unique on the object that receive the field.
- * 
- * 
+ *
+ *
  * A trait is simply a reference to a single range-element in a range. It can be used to give the
 dialect for a variant or the status of an entry. The semantics of a trait in a particular context
 are given by the parent object and also by the range and range-element being referred to.
 Where no range is linked the name is informal or resolved by its use in a field-definition. (Lift specification, p. 13)
- * 
+ *
  */
-public final class LiftTrait
-    extends AbstractLiftRoot
-    implements HasAnnotation {
+public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
 
-    @Getter final String name;
-    @Getter private String value;
-    @Getter protected final List<LiftAnnotation> annotations = new ArrayList<>();
+    @Getter
+    final String name;
+
+    @Getter
+    private String value;
+
+    @Getter
+    protected final List<LiftAnnotation> annotations = new ArrayList<>();
+
     protected HasTrait parent;
 
     private final ReadOnlyStringWrapper nameProperty;
@@ -39,7 +43,9 @@ public final class LiftTrait
 
     @Override
     protected void addToMainMultiText(Form t) {
-        throw new UnsupportedOperationException("Trait does not support adding to main MultiText");
+        throw new UnsupportedOperationException(
+            "Trait does not support adding to main MultiText"
+        );
     }
 
     public LiftTrait(String name, String value) {
@@ -90,6 +96,10 @@ public final class LiftTrait
         a.setParent(this);
     }
 
+    public List<LiftAnnotation> getAnnotations() {
+        return annotations;
+    }
+
     public HasTrait getParent() {
         return parent;
     }
@@ -97,5 +107,4 @@ public final class LiftTrait
     public static LiftTrait create(String name, String value) {
         return new LiftTrait(name, value);
     }
-
 }

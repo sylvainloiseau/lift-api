@@ -9,20 +9,23 @@ import lombok.Setter;
 isn't explicitly described in the LIFT standard. Fields are described as part of the header
 information so that applications can give some descriptive meaning to the information they add
 to a file. (Lift specification, p. 13)
- * 
+ *
  * {@see HasField}.
  */
-public final class LiftField
-    extends AbstractExtensibleWithoutField {
+public final class LiftField extends AbstractExtensibleWithoutField {
 
     protected final String name;
-    @Setter protected AbstractExtensibleWithField parent;
+    protected AbstractExtensibleWithField parent;
 
     private final ReadOnlyStringWrapper namePropertyWrapper;
 
     public LiftField(String name) {
         this.name = name;
-        this.namePropertyWrapper = new ReadOnlyStringWrapper(this, "name", name);
+        this.namePropertyWrapper = new ReadOnlyStringWrapper(
+            this,
+            "name",
+            name
+        );
     }
 
     public String getName() {
@@ -31,6 +34,10 @@ public final class LiftField
 
     public AbstractExtensibleWithField getParent() {
         return parent;
+    }
+
+    protected void setParent(AbstractExtensibleWithField parent) {
+        this.parent = parent;
     }
 
     public MultiText getText() {

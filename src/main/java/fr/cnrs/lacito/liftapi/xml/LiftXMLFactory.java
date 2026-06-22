@@ -1,6 +1,7 @@
 package fr.cnrs.lacito.liftapi.xml;
 
 import fr.cnrs.lacito.liftapi.LiftDictionaryComponents;
+import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.model.*;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,7 +22,7 @@ public final class LiftXMLFactory implements LiftDictionaryComponents {
     @Setter
     private String liftProducer;
 
-    protected LiftHeader header;
+    protected LiftHeader header = new LiftHeader();
 
     protected List<LiftEntry> allEntries = new ArrayList<>(500);
     protected Map<String, LiftEntry> entryById = new HashMap<>(500);
@@ -56,11 +57,12 @@ public final class LiftXMLFactory implements LiftDictionaryComponents {
 
     private final List<LiftEtymology> allEtymologies = new ArrayList<>(200);
 
-    private boolean finalization = false;
-
     // TODO to be completed for all types
 
-    public LiftXMLFactory() {}
+    public LiftXMLFactory(LiftDictionaryRegistry registry) {}
+
+    /** Do nothing. For compatibility with {@link LiftXMLFactoryNew}. */
+    public void addEntryToDictionary(LiftEntry entry) {}
 
     public List<MultiText> getAllObjectMultiText() {
         return allObjectLanguagesMultiText;
@@ -88,30 +90,6 @@ public final class LiftXMLFactory implements LiftDictionaryComponents {
         this.allObjectLanguagesMultiText.add(entry.getForms());
         this.allMetaLanguagesMultiText.add(entry.getCitations());
         return entry;
-    }
-
-    public void postTreatment() {
-        resolveFieldDefinitionKinds();
-
-        // TODO offer to complete ID, and copy UUID field on ID field when not present.
-        // for (LiftEntry e : entryWithoutId) {
-        //     String id = generate_id();
-        //     e.setId(id);
-        //     entryById.put(id, e);
-        // }
-        // for (LiftSense s : senseWithoutId) {
-        //     String id = generate_id();
-        //     s.setId(id);
-        //     senseById.put(id, s);
-        // }
-        for (String id : refId) {
-            if (!entryById.containsKey(id)) {
-                throw new IllegalArgumentException(
-                    "Reference id " + id + " not found in entries"
-                );
-            }
-        }
-        finalization = true;
     }
 
     private String generate_id() {
@@ -427,6 +405,19 @@ public final class LiftXMLFactory implements LiftDictionaryComponents {
         return hr;
     }
 
+    // TODO duplicate method with create_field_definition
+    public LiftFieldAndTraitDefinition createFieldDefinition(
+        String name,
+        LiftHeader parent
+    ) {
+        LiftFieldAndTraitDefinition fd = new LiftFieldAndTraitDefinition(
+            name,
+            parent
+        );
+        parent.getFields().add(fd);
+        return fd;
+    }
+
     public LiftFieldAndTraitDefinition create_field_definition(
         Attributes attributes,
         LiftHeader parent
@@ -510,48 +501,6 @@ public final class LiftXMLFactory implements LiftDictionaryComponents {
         return hre;
     }
 
-    /**
-     * Post-process field-definitions with UNKNOWN kind by checking whether
-     * the name matches a trait name or a field name actually used in the dictionary.
-     * A name that appears as a trait name is classified as TRAIT; as a field name, FIELD.
-     */
-    public void resolveFieldDefinitionKinds() {
-        if (header == null) return;
-        java.util.Set<String> traitNames = allTraits
-            .stream()
-            .map(LiftTrait::getName)
-            .collect(java.util.stream.Collectors.toSet());
-        java.util.Set<String> fieldNames = allFields
-            .stream()
-            .map(LiftField::getName)
-            .collect(java.util.stream.Collectors.toSet());
-
-        for (LiftFieldAndTraitDefinition fd : header.getFields()) {
-            if (fd.getKind() == LiftFieldAndTraitDefinitionKind.UNKNOWN) {
-                if (traitNames.contains(fd.getName())) {
-                    fd.setKind(LiftFieldAndTraitDefinitionKind.TRAIT);
-                } else if (fieldNames.contains(fd.getName())) {
-                    fd.setKind(LiftFieldAndTraitDefinitionKind.FIELD);
-                }
-            }
-            // Link option-range to actual LiftHeaderRange object (m/)
-            fd.resolveRange(header);
-        }
-    }
-
-    // TODO duplicate method with create_field_definition
-    public LiftFieldAndTraitDefinition createFieldDefinition(
-        String name,
-        LiftHeader parent
-    ) {
-        LiftFieldAndTraitDefinition fd = new LiftFieldAndTraitDefinition(
-            name,
-            parent
-        );
-        parent.getFields().add(fd);
-        return fd;
-    }
-
     public LiftNote createNote(String type, AbstractNotable parent) {
         LiftNote n = new LiftNote();
         if (type != null) n.setType(type);
@@ -594,9 +543,6 @@ public final class LiftXMLFactory implements LiftDictionaryComponents {
     }
 
     public LiftDictionaryComponents getLiftDictionaryComponents() {
-        if (!finalization) {
-            throw new IllegalStateException("postTreatment should be called on the LiftXMLFactory between building the dictionary.");
-        }
         return (LiftDictionaryComponents) this;
     }
 

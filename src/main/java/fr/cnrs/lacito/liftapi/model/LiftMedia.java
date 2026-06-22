@@ -1,13 +1,18 @@
 package fr.cnrs.lacito.liftapi.model;
 
+import lombok.Getter;
+
 /**
  * A media file associated to a {@link LiftPronunciation} object.
  */
 public final class LiftMedia
     extends AbstractLiftRoot
-    implements ExternalDocument {
+    implements ExternalDocument
+{
 
     protected String url;
+
+    @Getter
     protected LiftPronunciation parent;
 
     public LiftMedia(String href) {
@@ -27,5 +32,4 @@ public final class LiftMedia
     public MultiText getLabel() {
         return getMainMultiText();
     }
-
 }

@@ -1,10 +1,9 @@
 package fr.cnrs.lacito.liftapi.builder;
 
-import java.util.UUID;
-
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.MultiTextMetaLanguage;
+import java.util.UUID;
 import javafx.collections.MapChangeListener;
 
 public final class MultitextMetaLanguageBuilder extends MultiTextBuilder {
@@ -26,11 +25,10 @@ public final class MultitextMetaLanguageBuilder extends MultiTextBuilder {
     }
 
     public MultiTextMetaLanguage build() {
-        UUID uuid = registry.getNewUUID();
-        this.element.setUUID(uuid);
+        //UUID uuid = registry.getNewUUID();
+        //this.element.setUUID(uuid);
         MultiTextMetaLanguage e = (MultiTextMetaLanguage) element;
-        registry.register(e);
+        registry.registerMetaLanguage(e);
         return e;
     }
-
 }
