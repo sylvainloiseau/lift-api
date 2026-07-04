@@ -64,14 +64,14 @@ public class AbstractPropertyWriters {
         if (a.getName() != null) {
             w.writeAttribute(LiftVocabulary.NAME_ATTRIBUTE, a.getName());
         }
-        if (a.getValue().isPresent()) {
-            w.writeAttribute(LiftVocabulary.VALUE_ATTRIBUTE, a.getValue().get());
+        if (!a.getValue().isEmpty()) {
+            w.writeAttribute(LiftVocabulary.VALUE_ATTRIBUTE, a.getValue());
         }
-        if (a.getWho().isPresent()) {
-            w.writeAttribute(LiftVocabulary.WHO_ATTRIBUTE, a.getWho().get());
+        if (!a.getWho().isEmpty()) {
+            w.writeAttribute(LiftVocabulary.WHO_ATTRIBUTE, a.getWho());
         }
-        if (a.getWhen().isPresent()) {
-            w.writeAttribute(LiftVocabulary.WHEN_ATTRIBUTE, a.getWhen().get());
+        if (!a.getWhen().isEmpty()) {
+            w.writeAttribute(LiftVocabulary.WHEN_ATTRIBUTE, a.getWhen());
         }
         MultiTextWriters.writeMultiText(w, a.getText());
         w.writeEndElement();
@@ -97,8 +97,8 @@ public class AbstractPropertyWriters {
 
     private static void writeNoteElement(XMLStreamWriter w, fr.cnrs.lacito.liftapi.model.LiftNote n) throws Exception {
         w.writeStartElement(LiftVocabulary.NOTE_LOCAL_NAME);
-        if (n.getType().isPresent()) {
-            w.writeAttribute(LiftVocabulary.TYPE_ATTRIBUTE, n.getType().get());
+        if (n.getType() != null) {
+            w.writeAttribute(LiftVocabulary.TYPE_ATTRIBUTE, n.getType().getId());
         }
         writeAbstractExtensibleWithoutField(w, n);
         writeAbstractExtensibleWithField(w, n);

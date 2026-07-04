@@ -58,9 +58,9 @@ public class MultiTextTest {
         assertEquals(1, annotations.size());
         LiftAnnotation a = annotations.getFirst();
         assertEquals("source", a.getName());
-        assertEquals("elicitation", a.getValue().orElse(""));
-        assertEquals("alice", a.getWho().orElse(""));
-        assertEquals("2026-02-22", a.getWhen().orElse(""));
+        assertEquals("elicitation", a.getValue());
+        assertEquals("alice", a.getWho());
+        assertEquals("2026-02-22", a.getWhen());
         assertEquals("lexical-unit note", a.getText().getForm("en").map(Form::toPlainText).orElse(""));
     }
 

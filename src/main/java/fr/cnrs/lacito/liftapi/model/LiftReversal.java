@@ -1,9 +1,10 @@
 package fr.cnrs.lacito.liftapi.model;
 
 import java.util.List;
-import java.util.Optional;
 import javafx.beans.property.ListProperty;
+import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleListProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
@@ -27,7 +28,6 @@ public final class LiftReversal
     implements HasType, HasReversal
 {
 
-    protected Optional<String> type = Optional.empty();
     protected LiftReversal main;
     protected final ListProperty<LiftReversal> reversalsProperty =
         new SimpleListProperty<>(
@@ -39,13 +39,15 @@ public final class LiftReversal
     @Getter
     protected HasReversal parent;
 
-    private final StringProperty typeProperty = new SimpleStringProperty(
+    private final ObjectProperty<LiftHeaderRangeElement> typeProperty = new SimpleObjectProperty<>(
         this,
         "type",
-        ""
+        null
     );
 
-    public LiftReversal() {}
+    public LiftReversal(LiftHeaderRangeElement type) {
+        this.typeProperty.set(type);
+    }
 
     public void addReversal(LiftReversal reversal) {
         reversalsProperty.add(reversal);
@@ -60,12 +62,12 @@ public final class LiftReversal
         return getMainMultiText();
     }
 
-    public Optional<String> getType() {
-        return type;
+    public LiftHeaderRangeElement getType() {
+        return typeProperty.get();
     }
 
-    public void setType(String type) {
-        this.type = Optional.of(type);
+    public void setType(LiftHeaderRangeElement type) {
+        if (type == null) throw new IllegalArgumentException("type cannot be null");
         this.typeProperty.set(type);
     }
 
@@ -77,7 +79,7 @@ public final class LiftReversal
         this.main = main;
     }
 
-    public StringProperty typeProperty() {
+    public ObjectProperty<LiftHeaderRangeElement> typeProperty() {
         return typeProperty;
     }
 

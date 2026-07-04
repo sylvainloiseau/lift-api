@@ -75,8 +75,8 @@ public class PronunciationBuilder extends AbstractLiftElementBuilder<LiftPronunc
      * Add a note via nested builder configuration.
      */
     @Override
-    public PronunciationBuilder addNote(Consumer<NoteBuilder> config) {
-        super.addNote(config);
+    public PronunciationBuilder addNote(Consumer<NoteBuilder> config, String type) {
+        super.addNote(config, type);
         return this;
     }
 

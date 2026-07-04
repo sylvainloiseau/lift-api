@@ -28,6 +28,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -163,7 +164,8 @@ public class LiftWriterSession implements AutoCloseable {
             out.writeEndElement();
         }
 
-        List<LiftFieldAndTraitDefinition> fields = header.getFields();
+        Collection<LiftFieldAndTraitDefinition> fields =
+            header.getFieldsAndTraitsDefinitions();
         if (fields != null && !fields.isEmpty()) {
             out.writeStartElement(
                 LiftVocabulary.HEADER_FIELDS_DEFINITION_LOCAL_NAME
@@ -212,7 +214,7 @@ public class LiftWriterSession implements AutoCloseable {
             );
             MultiTextWriters.writeMultiText(out, range.getAbbrev());
             out.writeEndElement();
-            for (LiftHeaderRangeElement e : range.getRangeElements()) {
+            for (LiftHeaderRangeElement e : range.getRangeElements().values()) {
                 writeHeaderRangeElement(e);
             }
         }
@@ -278,6 +280,7 @@ public class LiftWriterSession implements AutoCloseable {
         for (Map.Entry<File, List<LiftHeaderRange>> e : byHref.entrySet()) {
             writeLiftRangesFile(e.getKey(), e.getValue());
         }
+        // TODO write Range that are not external
     }
 
     private File resolveHrefToFile(String href, File baseDir) {
@@ -343,7 +346,7 @@ public class LiftWriterSession implements AutoCloseable {
         w.writeStartElement(LiftVocabulary.HEADER_RANGE_ABBREV_LOCAL_NAME);
         MultiTextWriters.writeMultiText(w, range.getAbbrev());
         w.writeEndElement();
-        for (LiftHeaderRangeElement el : range.getRangeElements()) {
+        for (LiftHeaderRangeElement el : range.getRangeElements().values()) {
             writeHeaderRangeElementToWriter(w, el);
         }
         w.writeEndElement();
@@ -478,7 +481,7 @@ public class LiftWriterSession implements AutoCloseable {
         out.writeStartElement(LiftVocabulary.RELATION_LOCAL_NAME);
         out.writeAttribute(
             LiftVocabulary.TYPE_ATTRIBUTE,
-            r.getType().orElse("")
+            r.getType().getId()
         );
         if (r.getRefID().isPresent()) {
             out.writeAttribute(
@@ -504,10 +507,10 @@ public class LiftWriterSession implements AutoCloseable {
 
     private void writeReversal(LiftReversal rev) throws Exception {
         out.writeStartElement(LiftVocabulary.REVERSAL_LOCAL_NAME);
-        if (rev.getType().isPresent()) {
+        if (rev.getType() != null) {
             out.writeAttribute(
                 LiftVocabulary.TYPE_ATTRIBUTE,
-                rev.getType().get()
+                rev.getType().getId()
             );
         }
         MultiTextWriters.writeMultiText(out, rev.getForms());
@@ -524,10 +527,10 @@ public class LiftWriterSession implements AutoCloseable {
 
     private void writeEtymology(LiftEtymology e) throws Exception {
         out.writeStartElement(LiftVocabulary.ETYMOLOGY_LOCAL_NAME);
-        if (e.getType().isPresent()) {
+        if (e.getType() != null) {
             out.writeAttribute(
                 LiftVocabulary.TYPE_ATTRIBUTE,
-                e.getType().get()
+                e.getType().getId()
             );
         }
         if (e.getSource() != null) {
@@ -638,19 +641,19 @@ public class LiftWriterSession implements AutoCloseable {
         if (a.getName() != null) {
             out.writeAttribute(LiftVocabulary.NAME_ATTRIBUTE, a.getName());
         }
-        if (a.getValue().isPresent()) {
+        if (!a.getValue().isEmpty()) {
             out.writeAttribute(
                 LiftVocabulary.VALUE_ATTRIBUTE,
-                a.getValue().get()
+                a.getValue()
             );
         }
-        if (a.getWho().isPresent()) {
-            out.writeAttribute(LiftVocabulary.WHO_ATTRIBUTE, a.getWho().get());
+        if (!a.getWho().isEmpty()) {
+            out.writeAttribute(LiftVocabulary.WHO_ATTRIBUTE, a.getWho());
         }
-        if (a.getWhen().isPresent()) {
+        if (!a.getWhen().isEmpty()) {
             out.writeAttribute(
                 LiftVocabulary.WHEN_ATTRIBUTE,
-                a.getWhen().get()
+                a.getWhen()
             );
         }
         MultiTextWriters.writeMultiText(out, a.getText());

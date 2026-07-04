@@ -2,7 +2,6 @@ package fr.cnrs.lacito.liftapi.model;
 
 import javafx.beans.property.ReadOnlyStringProperty;
 import javafx.beans.property.ReadOnlyStringWrapper;
-import lombok.Setter;
 
 /**
  * A field is a generalised element to allow an application to store information in a LIFT file that
@@ -14,14 +13,12 @@ to a file. (Lift specification, p. 13)
  */
 public final class LiftField extends AbstractExtensibleWithoutField {
 
-    protected final String name;
     protected AbstractExtensibleWithField parent;
 
-    private final ReadOnlyStringWrapper namePropertyWrapper;
+    private final ReadOnlyStringWrapper nameProperty;
 
     public LiftField(String name) {
-        this.name = name;
-        this.namePropertyWrapper = new ReadOnlyStringWrapper(
+        this.nameProperty = new ReadOnlyStringWrapper(
             this,
             "name",
             name
@@ -29,7 +26,7 @@ public final class LiftField extends AbstractExtensibleWithoutField {
     }
 
     public String getName() {
-        return name;
+        return nameProperty.get();
     }
 
     public AbstractExtensibleWithField getParent() {
@@ -45,7 +42,7 @@ public final class LiftField extends AbstractExtensibleWithoutField {
     }
 
     public ReadOnlyStringProperty nameProperty() {
-        return namePropertyWrapper.getReadOnlyProperty();
+        return nameProperty.getReadOnlyProperty();
     }
 
     public static LiftField create(String name) {

@@ -5,7 +5,6 @@ import javafx.beans.property.ListProperty;
 import javafx.beans.property.SimpleListProperty;
 import javafx.collections.FXCollections;
 import lombok.Getter;
-import lombok.Setter;
 
 public final class LiftPronunciation extends AbstractExtensibleWithField {
 

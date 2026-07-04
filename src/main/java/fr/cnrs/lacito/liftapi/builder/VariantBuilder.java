@@ -1,6 +1,5 @@
 package fr.cnrs.lacito.liftapi.builder;
 
-import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
@@ -109,8 +108,8 @@ public class VariantBuilder extends AbstractLiftElementBuilder<LiftVariant> {
     /**
      * Add a relation via nested builder configuration.
      */
-    public VariantBuilder addRelation(Consumer<RelationBuilder> config) {
-        RelationBuilder rb = new RelationBuilder(registry);
+    public VariantBuilder addRelation(Consumer<RelationBuilder> config, String type) {
+        RelationBuilder rb = new RelationBuilder(dictionary, type);
         config.accept(rb);
         element.addRelation(rb.build());
         return this;
@@ -140,8 +139,8 @@ public class VariantBuilder extends AbstractLiftElementBuilder<LiftVariant> {
      * Add a note via nested builder configuration.
      */
     @Override
-    public VariantBuilder addNote(Consumer<NoteBuilder> config) {
-        super.addNote(config);
+    public VariantBuilder addNote(Consumer<NoteBuilder> config, String type) {
+        super.addNote(config, type);
         return this;
     }
 

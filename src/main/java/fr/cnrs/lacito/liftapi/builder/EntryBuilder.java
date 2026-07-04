@@ -174,7 +174,7 @@ public class EntryBuilder extends AbstractLiftElementBuilder<LiftEntry> {
                 "Type and targetId cannot be null"
             );
         }
-        LiftRelation relation = LiftRelation.create(type);
+        LiftRelation relation = new RelationBuilder(this.dictionary, type).build();
         relation.setRefId(targetId);
         element.addRelation(relation);
         return this;
@@ -184,7 +184,7 @@ public class EntryBuilder extends AbstractLiftElementBuilder<LiftEntry> {
      * Add a relation via nested builder configuration.
      */
     public EntryBuilder addRelation(Consumer<RelationBuilder> config) {
-        RelationBuilder rb = new RelationBuilder(this.registry);
+        RelationBuilder rb = new RelationBuilder(this.dictionary);
         config.accept(rb);
         element.addRelation(rb.build());
         return this;
@@ -193,8 +193,8 @@ public class EntryBuilder extends AbstractLiftElementBuilder<LiftEntry> {
     /**
      * Add an etymology via nested builder configuration.
      */
-    public EntryBuilder addEtymology(Consumer<EtymologyBuilder> config) {
-        EtymologyBuilder eb = new EtymologyBuilder(this.registry);
+    public EntryBuilder addEtymology(Consumer<EtymologyBuilder> config, String type, String source) {
+        EtymologyBuilder eb = new EtymologyBuilder(this.dictionary, type, source);
         config.accept(eb);
         element.addEtymology(eb.build());
         return this;
@@ -233,8 +233,8 @@ public class EntryBuilder extends AbstractLiftElementBuilder<LiftEntry> {
      * Add a note via nested builder configuration.
      */
     @Override
-    public EntryBuilder addNote(Consumer<NoteBuilder> config) {
-        super.addNote(config);
+    public EntryBuilder addNote(Consumer<NoteBuilder> config, String type) {
+        super.addNote(config, type);
         return this;
     }
 

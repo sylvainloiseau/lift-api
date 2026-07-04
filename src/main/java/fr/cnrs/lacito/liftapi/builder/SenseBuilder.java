@@ -150,8 +150,8 @@ public class SenseBuilder extends AbstractLiftElementBuilder<LiftSense> {
     /**
      * Add a relation via nested builder configuration.
      */
-    public SenseBuilder addRelation(Consumer<RelationBuilder> config) {
-        RelationBuilder rb = new RelationBuilder(registry);
+    public SenseBuilder addRelation(Consumer<RelationBuilder> config, String type) {
+        RelationBuilder rb = new RelationBuilder(dictionary, type);
         config.accept(rb);
         element.addRelation(rb.build());
         return this;
@@ -202,8 +202,8 @@ public class SenseBuilder extends AbstractLiftElementBuilder<LiftSense> {
      * Add a note via nested builder configuration.
      */
     @Override
-    public SenseBuilder addNote(Consumer<NoteBuilder> config) {
-        super.addNote(config);
+    public SenseBuilder addNote(Consumer<NoteBuilder> config, String type) {
+        super.addNote(config, type);
         return this;
     }
 

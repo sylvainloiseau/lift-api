@@ -1,10 +1,5 @@
 package fr.cnrs.lacito.liftapi;
 
-import fr.cnrs.lacito.liftapi.model.Form;
-import fr.cnrs.lacito.liftapi.model.MultiText;
-// import java.util.HashMap;
-// import java.util.Map;
-import java.util.Set;
 import javafx.beans.property.SimpleSetProperty;
 import javafx.collections.FXCollections;
 

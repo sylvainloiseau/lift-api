@@ -142,7 +142,7 @@ public final class LiftSaxHandler extends DefaultHandler {
                 break;
             case LiftVocabulary.HEADER_FIELD_DEFINITION_LOCAL_NAME:
                 elementStack.push(
-                    liftXMLFactory.create_field_definition(
+                    liftXMLFactory.createFieldOrTraitDefinition(
                         attributes,
                         (LiftHeader) elementStack.peek()
                     )
@@ -159,7 +159,7 @@ public final class LiftSaxHandler extends DefaultHandler {
                         "Attribute 'tag' expected on <field> in header (LIFT 0.13)"
                     );
                     elementStack.push(
-                        liftXMLFactory.create_field_definition(attributes, h)
+                        liftXMLFactory.createFieldOrTraitDefinition(attributes, h)
                     );
                 } else if (
                     elementStack.peek() instanceof AbstractExtensibleWithField a
@@ -223,7 +223,7 @@ public final class LiftSaxHandler extends DefaultHandler {
                 if (
                     elementStack.peek() instanceof AbstractNotable note_parent
                 ) elementStack.push(
-                    liftXMLFactory.create_note(attributes, note_parent)
+                    liftXMLFactory.createNoteWithAttributes(attributes, note_parent)
                 );
                 else throw new IllegalStateException(
                     "Expecting an AbstractNotable, found: " +
@@ -341,7 +341,7 @@ public final class LiftSaxHandler extends DefaultHandler {
                 break;
             case LiftVocabulary.ILLUSTRATION_LOCAL_NAME:
                 elementStack.push(
-                    liftXMLFactory.create_illustration(
+                    liftXMLFactory.createIllustration(
                         attributes,
                         (LiftSense) elementStack.peek()
                     )
@@ -352,7 +352,7 @@ public final class LiftSaxHandler extends DefaultHandler {
                 break;
             case LiftVocabulary.HEADER_RANGE_LOCAL_NAME:
                 elementStack.push(
-                    liftXMLFactory.create_range(
+                    liftXMLFactory.createRange(
                         attributes,
                         (LiftHeader) elementStack.peek()
                     )
@@ -360,7 +360,7 @@ public final class LiftSaxHandler extends DefaultHandler {
                 break;
             case LiftVocabulary.HEADER_RANGE_ELEMENT_LOCAL_NAME:
                 elementStack.push(
-                    liftXMLFactory.create_range_element(
+                    liftXMLFactory.createRangeElement(
                         attributes,
                         (LiftHeaderRange) elementStack.peek()
                     )
@@ -677,8 +677,11 @@ public final class LiftSaxHandler extends DefaultHandler {
             case LiftVocabulary.HEADER_RANGE_ELEMENT_LOCAL_NAME:
             case LiftVocabulary.TRAIT_LOCAL_NAME:
             case LiftVocabulary.MEDIA_LOCAL_NAME:
-            case LiftVocabulary.HEADER_LOCAL_NAME:
             case LiftVocabulary.HEADER_FIELD_DEFINITION_LOCAL_NAME:
+                elementStack.pop();
+                break;
+            case LiftVocabulary.HEADER_LOCAL_NAME:
+                liftXMLFactory.endHeader();
                 elementStack.pop();
                 break;
             case LiftVocabulary.FORM_LOCAL_NAME:

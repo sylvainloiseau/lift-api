@@ -1,8 +1,11 @@
 package fr.cnrs.lacito.liftapi.builder;
 
+import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftEtymology;
+import fr.cnrs.lacito.liftapi.model.LiftHeaderRangeElement;
+
 import java.util.function.Consumer;
 
 /**
@@ -24,26 +27,21 @@ public class EtymologyBuilder
      * Create an etymology builder with the given type and source.
      */
     protected EtymologyBuilder(
-        LiftDictionaryRegistry registry,
+        LiftDictionary dictionary,
         String type,
         String source
     ) {
-        if (type == null || source == null) {
-            throw new IllegalArgumentException(
-                "Etymology type and source cannot be null"
-            );
-        }
-        this.element = LiftEtymology.create(type, source);
-        this.registry = registry;
-    }
+        this.dictionary = dictionary;
+        this.registry = dictionary.getLiftDictionaryRegistry();
 
-    /**
-     * Create an etymology builder (requires type and source to be set later).
-     * @param source
-     * @param type
-     */
-    protected EtymologyBuilder(LiftDictionaryRegistry registry) {
-        this(registry, "unknown", "unknown");
+        if (type == null) {
+            throw new IllegalArgumentException("Etymology type cannot be null");
+        }
+        if (!dictionary.getHeader().containsEtymologyType(type)) {
+            dictionary.getHeader().addEtymologyType(type);
+        }
+        LiftHeaderRangeElement e = dictionary.getHeader().getEtymologyType(type);
+        this.element = LiftEtymology.create(e, source);
     }
 
     /**
@@ -107,8 +105,8 @@ public class EtymologyBuilder
      * Add a note via nested builder configuration.
      */
     @Override
-    public EtymologyBuilder addNote(Consumer<NoteBuilder> config) {
-        super.addNote(config);
+    public EtymologyBuilder addNote(Consumer<NoteBuilder> config, String type) {
+        super.addNote(config, type);
         return this;
     }
 

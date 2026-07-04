@@ -1,7 +1,9 @@
 package fr.cnrs.lacito.liftapi.builder;
 
+import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.model.Form;
+import fr.cnrs.lacito.liftapi.model.LiftHeaderRangeElement;
 import fr.cnrs.lacito.liftapi.model.LiftRelation;
 import java.util.function.Consumer;
 
@@ -23,8 +25,9 @@ public class RelationBuilder extends AbstractLiftElementBuilder<LiftRelation> {
      * @param type
      * @param dictionary
      */
-    protected RelationBuilder(LiftDictionaryRegistry registry) {
-        this.registry = registry;
+    protected RelationBuilder(LiftDictionary dictionary) {
+        this.dictionary = dictionary;
+        this.registry = dictionary.getLiftDictionaryRegistry();
         this.element = LiftRelation.create();
     }
 
@@ -32,12 +35,17 @@ public class RelationBuilder extends AbstractLiftElementBuilder<LiftRelation> {
      * Create a relation builder (requires type to be set later).
      * @param type
      */
-    protected RelationBuilder(LiftDictionaryRegistry registry, String type) {
-        this.registry = registry;
+    protected RelationBuilder(LiftDictionary dictionary, String type) {
+        this.dictionary = dictionary;
+        this.registry = dictionary.getLiftDictionaryRegistry();
         if (type == null) {
             throw new IllegalArgumentException("Relation type cannot be null");
         }
-        this.element = LiftRelation.create(type);
+        if (!dictionary.getHeader().containsRelationType(type)) {
+            dictionary.getHeader().addRelationType(type);
+        }
+        LiftHeaderRangeElement e = dictionary.getHeader().getRelationType(type);
+        this.element = LiftRelation.create(e);
     }
 
     /**
@@ -55,16 +63,6 @@ public class RelationBuilder extends AbstractLiftElementBuilder<LiftRelation> {
     @Override
     public RelationBuilder withGuid(String guid) {
         super.withGuid(guid);
-        return this;
-    }
-
-    /**
-     * Set the relation type.
-     */
-    public RelationBuilder withType(String type) {
-        if (type != null) {
-            element.setType(type);
-        }
         return this;
     }
 
@@ -125,8 +123,8 @@ public class RelationBuilder extends AbstractLiftElementBuilder<LiftRelation> {
      * Add a note via nested builder configuration.
      */
     @Override
-    public RelationBuilder addNote(Consumer<NoteBuilder> config) {
-        super.addNote(config);
+    public RelationBuilder addNote(Consumer<NoteBuilder> config, String type) {
+        super.addNote(config, type);
         return this;
     }
 
@@ -153,7 +151,7 @@ public class RelationBuilder extends AbstractLiftElementBuilder<LiftRelation> {
      */
     @Override
     public LiftRelation build() {
-        if (element.getType() == null || element.getType().isEmpty()) {
+        if (element.getType() == null) {
             throw new IllegalStateException("Relation must have a type");
         }
         super.register();

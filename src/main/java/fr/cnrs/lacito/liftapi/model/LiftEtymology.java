@@ -1,17 +1,17 @@
 package fr.cnrs.lacito.liftapi.model;
 
-import java.util.Optional;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringProperty;
 import javafx.beans.property.ReadOnlyStringWrapper;
+import javafx.beans.property.SimpleObjectProperty;
 import lombok.Getter;
-import lombok.Setter;
 
 public final class LiftEtymology
     extends AbstractExtensibleWithField
     implements HasGlosses, HasType
 {
 
-    protected Optional<String> type = Optional.empty();
     protected final String source;
 
     @Getter
@@ -20,13 +20,12 @@ public final class LiftEtymology
     @Getter
     protected LiftEntry parent;
 
-    private final ReadOnlyStringWrapper typePropertyWrapper;
+    private final ObjectProperty<LiftHeaderRangeElement> typeProperty;
     private final ReadOnlyStringWrapper sourcePropertyWrapper;
 
-    public LiftEtymology(String type, String source) {
-        this.type = Optional.of(type);
+    public LiftEtymology(LiftHeaderRangeElement type, String source) {
         this.source = source;
-        this.typePropertyWrapper = new ReadOnlyStringWrapper(
+        this.typeProperty = new SimpleObjectProperty<>(
             this,
             "type",
             type
@@ -39,8 +38,8 @@ public final class LiftEtymology
     }
 
     @Override
-    public Optional<String> getType() {
-        return type;
+    public LiftHeaderRangeElement getType() {
+        return typeProperty.get();
     }
 
     protected void setParent(LiftEntry parent) {
@@ -69,15 +68,15 @@ public final class LiftEtymology
         return glosses;
     }
 
-    public ReadOnlyStringProperty typeProperty() {
-        return typePropertyWrapper.getReadOnlyProperty();
+    public ObjectProperty<LiftHeaderRangeElement> typeProperty() {
+        return typeProperty;
     }
 
     public ReadOnlyStringProperty sourceProperty() {
         return sourcePropertyWrapper.getReadOnlyProperty();
     }
 
-    public static LiftEtymology create(String type, String source) {
+    public static LiftEtymology create(LiftHeaderRangeElement type, String source) {
         return new LiftEtymology(type, source);
     }
 }

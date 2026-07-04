@@ -7,10 +7,10 @@ import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.HasField;
 import fr.cnrs.lacito.liftapi.model.HasNote;
 import fr.cnrs.lacito.liftapi.model.HasPronunciation;
+import fr.cnrs.lacito.liftapi.model.HasRefId;
 import fr.cnrs.lacito.liftapi.model.HasRelations;
 import fr.cnrs.lacito.liftapi.model.HasReversal;
 import fr.cnrs.lacito.liftapi.model.HasSense;
-import fr.cnrs.lacito.liftapi.model.HasType;
 import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftEtymology;
@@ -27,27 +27,19 @@ import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
 import fr.cnrs.lacito.liftapi.model.MultiText;
-import fr.cnrs.lacito.liftapi.model.MultiTextMetaLanguage;
-import fr.cnrs.lacito.liftapi.model.MultiTextObjectLanguage;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import javafx.collections.FXCollections;
 import javafx.collections.MapChangeListener;
 import javafx.collections.ObservableList;
 import javafx.collections.ObservableMap;
-import javafx.collections.ObservableSet;
 
 public class LiftDictionaryRegistry {
 
-    public boolean populatingMode = false;
+    public boolean unmarshallingMode = false;
     private final LiftDictionaryFeatureManager counter;
     private final LiftDictionaryUUIDManager uuidManager =
         new LiftDictionaryUUIDManager();
@@ -55,9 +47,9 @@ public class LiftDictionaryRegistry {
     /**
      * List of IDs to which there is a reference pointing in the dictionary
      */
-    private Map<String, Integer> refId2Occurrences = new HashMap<>();
+    protected Map<String, List<HasRefId>> refId2Occurrences = new HashMap<>();
 
-    private final ObservableMap<String, LiftEntry> entriesByLiftId =
+    protected final ObservableMap<String, LiftEntry> entriesByLiftId =
         FXCollections.observableHashMap();
 
     protected final ObservableMap<String, LiftSense> sensesByLiftId =
@@ -69,33 +61,33 @@ public class LiftDictionaryRegistry {
         FXCollections.observableHashMap();
     private final ObservableMap<UUID, LiftSense> sensesById =
         FXCollections.observableHashMap();
-    private final ObservableMap<UUID, LiftExample> examplesById =
+    protected final ObservableMap<UUID, LiftExample> examplesById =
         FXCollections.observableHashMap();
     private final ObservableMap<UUID, LiftVariant> variantsById =
         FXCollections.observableHashMap();
-    private final ObservableMap<UUID, LiftTrait> traitsById =
+    protected final ObservableMap<UUID, LiftTrait> traitsById =
         FXCollections.observableHashMap();
     private final ObservableMap<UUID, LiftReversal> reversalsById =
         FXCollections.observableHashMap();
-    private final ObservableMap<UUID, LiftRelation> relationsById =
+    protected final ObservableMap<UUID, LiftRelation> relationsById =
         FXCollections.observableHashMap();
     private final ObservableMap<UUID, LiftPronunciation> pronunciationsById =
         FXCollections.observableHashMap();
-    private final ObservableMap<UUID, LiftNote> notesById =
+    protected final ObservableMap<UUID, LiftNote> notesById =
         FXCollections.observableHashMap();
     private final ObservableMap<UUID, LiftMedia> mediasById =
         FXCollections.observableHashMap();
     private final ObservableMap<UUID, LiftIllustration> illustrationsById =
         FXCollections.observableHashMap();
-    private final ObservableMap<UUID, LiftField> fieldsById =
+    protected final ObservableMap<UUID, LiftField> fieldsById =
         FXCollections.observableHashMap();
-    private final ObservableMap<UUID, LiftEtymology> etymologiesById =
+    protected final ObservableMap<UUID, LiftEtymology> etymologiesById =
         FXCollections.observableHashMap();
     private final ObservableMap<UUID, LiftAnnotation> annotationsById =
         FXCollections.observableHashMap();
-    private final ObservableMap<UUID, MultiText> objectTextById =
+    protected final ObservableMap<UUID, MultiText> objectTextById =
         FXCollections.observableHashMap();
-    private final ObservableMap<UUID, MultiText> metaTextById =
+    protected final ObservableMap<UUID, MultiText> metaTextById =
         FXCollections.observableHashMap();
 
     private ObservableList<LiftEntry> entriesReadOnly = null;
@@ -406,6 +398,7 @@ public class LiftDictionaryRegistry {
     }
 
     private ObservableList<MultiText> metaTextReadOnly = null;
+    private LiftHeader header;
 
     public ObservableList<MultiText> getMetaTextReadOnly() {
         if (metaTextReadOnly == null) {
@@ -596,9 +589,11 @@ public class LiftDictionaryRegistry {
                 variantsById.put(o.getUUID(), o);
                 String refId = o.getRefId().orElseThrow();
                 if (
-                    !populatingMode &&
-                    !(entriesByLiftId.containsKey(refId) ||
-                        sensesByLiftId.containsKey(refId))
+                    !unmarshallingMode &&
+                    !(
+                        entriesByLiftId.containsKey(refId) ||
+                        sensesByLiftId.containsKey(refId)
+                    )
                 ) {
                     throw new IllegalArgumentException(
                         "Reference id " +
@@ -606,6 +601,9 @@ public class LiftDictionaryRegistry {
                             " not found in senses or entries."
                     );
                 }
+                refId2Occurrences
+                    .computeIfAbsent(refId, k -> new ArrayList<>())
+                    .add(o);
             }
             case LiftTrait o -> traitsById.put(o.getUUID(), o);
             case LiftReversal o -> reversalsById.put(o.getUUID(), o);
@@ -613,9 +611,11 @@ public class LiftDictionaryRegistry {
                 relationsById.put(o.getUUID(), o);
                 String refId = o.getRefID().orElseThrow();
                 if (
-                    !populatingMode &&
-                    !(entriesByLiftId.containsKey(refId) ||
-                        sensesByLiftId.containsKey(refId))
+                    !unmarshallingMode &&
+                    !(
+                        entriesByLiftId.containsKey(refId) ||
+                        sensesByLiftId.containsKey(refId)
+                    )
                 ) {
                     throw new IllegalArgumentException(
                         "Reference id " +
@@ -623,7 +623,9 @@ public class LiftDictionaryRegistry {
                             " not found in senses or entries."
                     );
                 }
-                refId2Occurrences.merge(refId, 1, Integer::sum);
+                refId2Occurrences
+                    .computeIfAbsent(refId, k -> new ArrayList<>())
+                    .add(o);
             }
             case LiftPronunciation o -> pronunciationsById.put(o.getUUID(), o);
             case LiftNote o -> notesById.put(o.getUUID(), o);
@@ -780,16 +782,28 @@ public class LiftDictionaryRegistry {
     public void removeFromDictionary(AbstractLiftRoot node) {
         // manage reference counting
         if (node instanceof LiftRelation r) {
-            String referenced = r.getRefID().orElse("");
-            refId2Occurrences.compute(referenced, (k, v) -> v - 1);
+            final String referenced = r
+                .getRefID()
+                .orElseThrow(() ->
+                    new IllegalArgumentException("Reference ID is missing")
+                );
+            refId2Occurrences.get(referenced).removeIf(o -> o == r);
         } else if (node instanceof LiftVariant a) {
-            String referenced = a.getRefId().orElse("");
-            refId2Occurrences.compute(referenced, (k, v) -> v - 1);
+            final String referenced = a
+                .getRefId()
+                .orElseThrow(() ->
+                    new IllegalArgumentException("Reference ID is missing")
+                );
+            refId2Occurrences.get(referenced).removeIf(o -> o == a);
         } else if (node instanceof AbstractIdentifiable i) {
-            String refId = i.getId().orElse("");
+            final String refId = i
+                .getId()
+                .orElseThrow(() ->
+                    new IllegalArgumentException("Reference ID is missing")
+                );
             if (
                 refId2Occurrences.containsKey(refId) &&
-                refId2Occurrences.get(refId) > 0
+                refId2Occurrences.get(refId).size() > 0
             ) {
                 throw new IllegalStateException(
                     "Cannot delete this node: it is referenced from other nodes."
@@ -900,161 +914,10 @@ public class LiftDictionaryRegistry {
     }
 
     public void enterPopulatingMode() {
-        populatingMode = true;
+        unmarshallingMode = true;
     }
 
-    public void postPopulate(LiftHeader header) {
-        checkForIdRefs();
-        Set<String> objectLang = discoverLanguage(objectTextById.values());
-        for (String lang : objectLang) {
-            if (!header.containsObjectLanguage(lang)) {
-                header.addObjectLanguage(lang);
-            }
-        }
-        Set<String> metaLang = discoverLanguage(metaTextById.values());
-        for (String lang : metaLang) {
-            if (!header.containsMetaLanguage(lang)) {
-                header.addMetaLanguage(lang);
-            }
-        }
-
-        Set<String> etymologyTypes = etymologiesById
-            .values()
-            .stream()
-            .filter(x -> x.getType().isPresent())
-            .map(x -> x.getType().get())
-            .distinct()
-            .collect(Collectors.toSet());
-        for (String type : etymologyTypes) {
-            if (!header.containsEtymologyType(type)) {
-                header.addEtymologyType(type);
-            }
-        }
-
-        Set<String> noteTypes = notesById
-            .values()
-            .stream()
-            .filter(x -> x.getType().isPresent())
-            .map(x -> x.getType().get())
-            .distinct()
-            .collect(Collectors.toSet());
-        for (String type : noteTypes) {
-            if (!header.containsNoteType(type)) {
-                header.addNoteType(type);
-            }
-        }
-
-        Set<String> relationTypes = relationsById
-            .values()
-            .stream()
-            .filter(x -> x.getType().isPresent())
-            .map(x -> x.getType().get())
-            .distinct()
-            .collect(Collectors.toSet());
-        for (String type : relationTypes) {
-            if (!header.containsRelationType(type)) {
-                header.addRelationType(type);
-            }
-        }
-
-        ObservableSet<String> translationTypes = discoverTranslationType(
-            examplesById.values()
-        );
-        for (String type : translationTypes) {
-            if (!header.containsTranslationType(type)) {
-                header.addTranslationType(type);
-            }
-        }
-
-        guessFieldKind();
-
-        this.populatingMode = true;
-    }
-
-    /**
-     * After reading a dictionary serialisation, check that all
-     * the references to another nodes are valid (i.e. the referenced node exists).
-     */
-    private void checkForIdRefs() {
-        if (!populatingMode) throw new IllegalStateException(
-            "Cant check for id refs after populating mode is off"
-        );
-        for (String id : refId2Occurrences.keySet()) {
-            if (
-                !entriesByLiftId.containsKey(id) &&
-                !sensesByLiftId.containsKey(id)
-            ) {
-                throw new IllegalArgumentException(
-                    "Reference id " + id + " not found in entries or senses."
-                );
-            }
-        }
-    }
-
-    // call finalizer (or whatever) on LiftXMLFactory
-    // call discoverFields() on ValueManager, LangManager
-    // update Header accordingly
-    // Link range to Trait definition
-
-    /**
-     * Post-process field-definitions with UNKNOWN kind/type in the header by checking whether
-     * the name matches a trait name or a field name actually used in the dictionary.
-     * A name that appears as a trait name is classified as TRAIT; as a field name, FIELD.
-     */
-    public void guessFieldKind() {
-        java.util.Set<String> traitNames = traitsById
-            .values()
-            .stream()
-            .map(LiftTrait::getName)
-            .collect(java.util.stream.Collectors.toSet());
-        java.util.Set<String> fieldNames = fieldsById
-            .values()
-            .stream()
-            .map(LiftField::getName)
-            .collect(java.util.stream.Collectors.toSet());
-
-        for (LiftFieldAndTraitDefinition fd : header.getFields()) {
-            if (fd.getKind() == LiftFieldAndTraitDefinitionKind.UNKNOWN) {
-                if (traitNames.contains(fd.getName())) {
-                    fd.setKind(LiftFieldAndTraitDefinitionKind.TRAIT);
-                } else if (fieldNames.contains(fd.getName())) {
-                    fd.setKind(LiftFieldAndTraitDefinitionKind.FIELD);
-                }
-            }
-            // Link option-range to actual LiftHeaderRange object (m/)
-            fd.resolveRange(header);
-        }
-    }
-
-    public static ObservableSet<String> discoverTranslationType(
-        Collection<LiftExample> exemples
-    ) {
-        Set<String> type = new HashSet<>();
-        for (LiftExample ex : exemples) {
-            for (String t : ex.getTranslations().keySet()) {
-                type.add(t);
-            }
-        }
-        return FXCollections.observableSet(type);
-    }
-
-    public static Set<String> discoverType(Collection<HasType> objects) {
-        Set<String> type = new HashSet<>();
-        for (HasType a : objects) {
-            type.add(a.getType().get());
-        }
-        return type;
-    }
-
-    public static Set<String> discoverLanguage(
-        Collection<MultiText> multiTexts
-    ) {
-        Set<String> lang = new HashSet<>();
-        for (MultiText m : multiTexts) {
-            for (Form f : m.getForms()) {
-                lang.add(f.getLang());
-            }
-        }
-        return lang;
+    public void unmarshallingModeOff() {
+        this.unmarshallingMode = false;
     }
 }

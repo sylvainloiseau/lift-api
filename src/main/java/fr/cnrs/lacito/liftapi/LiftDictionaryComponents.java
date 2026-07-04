@@ -15,8 +15,6 @@ import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
 import fr.cnrs.lacito.liftapi.model.MultiText;
-import fr.cnrs.lacito.liftapi.model.MultiTextMetaLanguage;
-import fr.cnrs.lacito.liftapi.model.MultiTextObjectLanguage;
 import java.util.List;
 import java.util.Map;
 

@@ -401,7 +401,7 @@ public final class LiftXMLFactory implements LiftDictionaryComponents {
         String guid = attributes.getValue(LiftVocabulary.LIFT_URI, "guid");
         if (guid != null) hr.setGuid(guid);
 
-        parent.getRanges().add(hr);
+        parent.addRanges(hr);
         return hr;
     }
 
@@ -414,7 +414,7 @@ public final class LiftXMLFactory implements LiftDictionaryComponents {
             name,
             parent
         );
-        parent.getFields().add(fd);
+        parent.getFieldsAndTraitsDefinitions().add(fd);
         return fd;
     }
 
@@ -462,7 +462,7 @@ public final class LiftXMLFactory implements LiftDictionaryComponents {
             Optional.of(writingSystem)
         );
 
-        parent.getFields().add(f);
+        parent.getFieldsAndTraitsDefinitions().add(f);
         return f;
     }
 
@@ -482,13 +482,13 @@ public final class LiftXMLFactory implements LiftDictionaryComponents {
         String guid = attributes.getValue(LiftVocabulary.LIFT_URI, "guid");
         if (guid != null) hre.setGuid(guid);
 
-        parent.getRangeElements().add(hre);
+        parent.addRangeElement(hre);
         return hre;
     }
 
     public LiftHeaderRange createRange(String id, LiftHeader parent) {
         LiftHeaderRange hr = new LiftHeaderRange(id, parent);
-        parent.getRanges().add(hr);
+        parent.addRanges(hr);
         return hr;
     }
 
@@ -497,7 +497,7 @@ public final class LiftXMLFactory implements LiftDictionaryComponents {
         LiftHeaderRange parent
     ) {
         LiftHeaderRangeElement hre = new LiftHeaderRangeElement(id, parent);
-        parent.getRangeElements().add(hre);
+        parent.addRangeElement(hre);
         return hre;
     }
 

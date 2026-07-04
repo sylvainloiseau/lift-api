@@ -7,7 +7,6 @@ import javafx.beans.property.SimpleMapProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
-import lombok.Setter;
 
 public final class LiftExample extends AbstractNotable {
 

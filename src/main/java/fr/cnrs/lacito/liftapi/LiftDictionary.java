@@ -67,15 +67,14 @@ public final class LiftDictionary {
         );
         r.parse();
         LiftHeader header = r.getHeader();
-        registry.postPopulate(header);
-
+        PostUnmarshalling post = new PostUnmarshalling(header, registry);
+        post.operate();
+        registry.unmarshallingModeOff();
         LiftDictionary d = new LiftDictionary(
             registry,
-            header,
-            new DictionaryBuilder(registry)
+            header
         );
         d.source = f;
-
         LOGGER.info(
             "Dictionary created with " +
                 d.getLiftDictionaryRegistry().nEntries() +
@@ -126,19 +125,18 @@ public final class LiftDictionary {
     protected LiftDictionary() {
         registry = new LiftDictionaryRegistry();
         languageManager = new LiftDictionaryLanguagesManager(registry);
-        componentBuilder = new DictionaryBuilder(registry);
+        componentBuilder = new DictionaryBuilder(this);
         header = new LiftHeader();
         liftDictionaryComponents = null;
     }
 
     protected LiftDictionary(
         LiftDictionaryRegistry registry,
-        LiftHeader header,
-        DictionaryBuilder componentBuilder
+        LiftHeader header
     ) {
         this.registry = registry;
         languageManager = new LiftDictionaryLanguagesManager(registry);
-        this.componentBuilder = componentBuilder;
+        this.componentBuilder = new DictionaryBuilder(this);
         this.header = header;
         liftDictionaryComponents = null;
     }

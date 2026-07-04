@@ -89,7 +89,7 @@ public abstract sealed class AbstractLiftRoot
                 .removeIf(x -> x == this);
             case LiftNote o -> o.getParent()
                 .getNotes()
-                .remove(o.getType().orElse(""));
+                .remove(o.getType());
             case LiftMedia o -> o.getParent()
                 .getMedias()
                 .removeIf(x -> x == this);

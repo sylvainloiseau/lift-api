@@ -1,10 +1,7 @@
 package fr.cnrs.lacito.liftapi.builder;
 
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
-import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.MultiTextMetaLanguage;
-import java.util.UUID;
-import javafx.collections.MapChangeListener;
 
 public final class MultitextMetaLanguageBuilder extends MultiTextBuilder {
 

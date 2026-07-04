@@ -82,8 +82,8 @@ public class FieldBuilder extends AbstractLiftElementBuilder<LiftField> {
      * Add a note via nested builder configuration.
      */
     @Override
-    public FieldBuilder addNote(Consumer<NoteBuilder> config) {
-        super.addNote(config);
+    public FieldBuilder addNote(Consumer<NoteBuilder> config, String type) {
+        super.addNote(config, type);
         return this;
     }
 

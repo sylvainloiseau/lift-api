@@ -1,11 +1,9 @@
 package fr.cnrs.lacito.liftapi.model;
 
-import java.util.Optional;
 import javafx.beans.property.ReadOnlyStringProperty;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
-import lombok.Setter;
 
 /**
  * An annotation.
@@ -20,42 +18,22 @@ import lombok.Setter;
  */
 public final class LiftAnnotation extends AbstractLiftRoot {
 
-    protected final String name;
-    protected Optional<String> value = Optional.empty();
-    protected Optional<String> who = Optional.empty();
-    protected Optional<String> when = Optional.empty();
     protected HasAnnotation parent;
 
     private final ReadOnlyStringWrapper namePropertyWrapper;
-    private final StringProperty valueProperty;
-    private final StringProperty whoProperty;
-    private final StringProperty whenProperty;
+    private final StringProperty valueProperty = new SimpleStringProperty(this, "value", "");;
+    private final StringProperty whoProperty = new SimpleStringProperty(this, "who", "");
+    private final StringProperty whenProperty = new SimpleStringProperty(this, "when", "");
 
     /**
      * Create an annotation. The name is the only mandatory component of an annotation.
      */
     public LiftAnnotation(String name) {
-        this.name = name;
         this.namePropertyWrapper = new ReadOnlyStringWrapper(
             this,
             "name",
             name
         );
-        this.valueProperty = new SimpleStringProperty(this, "value", "");
-        this.whoProperty = new SimpleStringProperty(this, "who", "");
-        this.whenProperty = new SimpleStringProperty(this, "when", "");
-        this.valueProperty.addListener((obs, oldV, newV) -> {
-            String v = newV == null ? "" : newV.trim();
-            this.value = v.isEmpty() ? Optional.empty() : Optional.of(v);
-        });
-        this.whoProperty.addListener((obs, oldV, newV) -> {
-            String v = newV == null ? "" : newV.trim();
-            this.who = v.isEmpty() ? Optional.empty() : Optional.of(v);
-        });
-        this.whenProperty.addListener((obs, oldV, newV) -> {
-            String v = newV == null ? "" : newV.trim();
-            this.when = v.isEmpty() ? Optional.empty() : Optional.of(v);
-        });
     }
 
     protected void setParent(HasAnnotation parent) {
@@ -67,19 +45,19 @@ public final class LiftAnnotation extends AbstractLiftRoot {
     }
 
     public String getName() {
-        return name;
+        return namePropertyWrapper.get();
     }
 
-    public Optional<String> getValue() {
-        return value;
+    public String getValue() {
+        return valueProperty.get();
     }
 
-    public Optional<String> getWho() {
-        return who;
+    public String getWho() {
+        return whoProperty.get();
     }
 
-    public Optional<String> getWhen() {
-        return when;
+    public String getWhen() {
+        return whenProperty.get();
     }
 
     public HasAnnotation getParent() {
@@ -88,19 +66,16 @@ public final class LiftAnnotation extends AbstractLiftRoot {
 
     public void setValue(String value) {
         String v = value == null ? "" : value.trim();
-        this.value = v.isEmpty() ? Optional.empty() : Optional.of(v);
         this.valueProperty.set(v);
     }
 
     public void setWho(String who) {
         String v = who == null ? "" : who.trim();
-        this.who = v.isEmpty() ? Optional.empty() : Optional.of(v);
         this.whoProperty.set(v);
     }
 
     public void setWhen(String when) {
         String v = when == null ? "" : when.trim();
-        this.when = v.isEmpty() ? Optional.empty() : Optional.of(v);
         this.whenProperty.set(v);
     }
 

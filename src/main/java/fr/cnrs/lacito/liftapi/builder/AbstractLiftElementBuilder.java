@@ -1,9 +1,9 @@
 package fr.cnrs.lacito.liftapi.builder;
 
+import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.model.AbstractExtensibleWithField;
 import fr.cnrs.lacito.liftapi.model.AbstractExtensibleWithoutField;
-import fr.cnrs.lacito.liftapi.model.AbstractIdentifiable;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.HasAnnotation;
@@ -14,10 +14,6 @@ import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
 import fr.cnrs.lacito.liftapi.model.LiftField;
 import fr.cnrs.lacito.liftapi.model.LiftNote;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
-import java.util.UUID;
 import java.util.function.Consumer;
 
 /**
@@ -30,6 +26,7 @@ public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot> {
 
     protected T element;
     protected LiftDictionaryRegistry registry;
+    protected LiftDictionary dictionary;
 
     /**
      * Set the element ID (for identifiable elements).
@@ -102,10 +99,7 @@ public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot> {
         String text
     ) {
         if (element instanceof HasNote) {
-            LiftNote note = LiftNote.create();
-            if (type != null && !type.isEmpty()) {
-                note.setType(type);
-            }
+            LiftNote note = new NoteBuilder(dictionary, type).build();
             note.addText(new Form(language, text));
             ((HasNote) element).addNote(note);
         } else {
@@ -121,9 +115,9 @@ public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot> {
      *
      * @throws IllegalArgumentException if the element built is not an instance of HasNote.
      */
-    public AbstractLiftElementBuilder<T> addNote(Consumer<NoteBuilder> config) {
+    public AbstractLiftElementBuilder<T> addNote(Consumer<NoteBuilder> config, String type) {
         if (element instanceof HasNote) {
-            NoteBuilder nb = new NoteBuilder(this.registry);
+            NoteBuilder nb = new NoteBuilder(dictionary, type);
             config.accept(nb);
             ((HasNote) element).addNote(nb.build());
         } else {

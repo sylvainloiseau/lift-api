@@ -1,7 +1,9 @@
 package fr.cnrs.lacito.liftapi.builder;
 
+import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.model.Form;
+import fr.cnrs.lacito.liftapi.model.LiftHeaderRangeElement;
 import fr.cnrs.lacito.liftapi.model.LiftNote;
 import java.util.function.Consumer;
 
@@ -18,17 +20,16 @@ import java.util.function.Consumer;
  */
 public class NoteBuilder extends AbstractLiftElementBuilder<LiftNote> {
 
-    protected NoteBuilder(LiftDictionaryRegistry registry) {
-        this.registry = registry;
-        this.element = LiftNote.create();
-    }
-
     /**
      * Create a note with a type.
      */
-    protected NoteBuilder(LiftDictionaryRegistry registry, String type) {
-        this.registry = registry;
-        this.element = LiftNote.create(type);
+    protected NoteBuilder(LiftDictionary dictionary, String type) {
+        this.registry = dictionary.getLiftDictionaryRegistry();
+        if (!dictionary.getHeader().containsNoteType(type)) {
+            dictionary.getHeader().addNoteType(type);
+        }
+        LiftHeaderRangeElement e = dictionary.getHeader().getNoteType(type);
+        this.element = LiftNote.create(e);
     }
 
     /**
@@ -46,16 +47,6 @@ public class NoteBuilder extends AbstractLiftElementBuilder<LiftNote> {
     @Override
     public NoteBuilder withGuid(String guid) {
         super.withGuid(guid);
-        return this;
-    }
-
-    /**
-     * Set the note type.
-     */
-    public NoteBuilder withType(String type) {
-        if (type != null) {
-            element.setType(type);
-        }
         return this;
     }
 
@@ -94,8 +85,8 @@ public class NoteBuilder extends AbstractLiftElementBuilder<LiftNote> {
      * Add a note via nested builder configuration.
      */
     @Override
-    public NoteBuilder addNote(Consumer<NoteBuilder> config) {
-        super.addNote(config);
+    public NoteBuilder addNote(Consumer<NoteBuilder> config, String type) {
+        super.addNote(config, type);
         return this;
     }
 

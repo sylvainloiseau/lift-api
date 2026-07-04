@@ -119,8 +119,8 @@ public class ExampleBuilder extends AbstractLiftElementBuilder<LiftExample> {
      * Add a note via nested builder configuration.
      */
     @Override
-    public ExampleBuilder addNote(Consumer<NoteBuilder> config) {
-        super.addNote(config);
+    public ExampleBuilder addNote(Consumer<NoteBuilder> config, String type) {
+        super.addNote(config, type);
         return this;
     }
 

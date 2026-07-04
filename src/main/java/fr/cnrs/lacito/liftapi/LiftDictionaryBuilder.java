@@ -1,7 +1,6 @@
 package fr.cnrs.lacito.liftapi;
 
 import fr.cnrs.lacito.liftapi.model.Form;
-import fr.cnrs.lacito.liftapi.model.LiftHeader;
 
 /**
  * This class is a builder for the {@LiftDictionary} class.

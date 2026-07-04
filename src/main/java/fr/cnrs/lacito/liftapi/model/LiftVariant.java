@@ -6,14 +6,12 @@ import javafx.beans.property.ListProperty;
 import javafx.beans.property.SimpleListProperty;
 import javafx.collections.FXCollections;
 import lombok.Getter;
-import lombok.Setter;
 
 public final class LiftVariant
     extends AbstractExtensibleWithField
-    implements HasPronunciation, HasRelations
+    implements HasPronunciation, HasRelations, HasRefId
 {
 
-    @Getter
     protected Optional<String> refId = Optional.empty();
 
     protected final ListProperty<LiftPronunciation> pronunciationsProperty =
@@ -34,8 +32,30 @@ public final class LiftVariant
 
     public LiftVariant() {}
 
+    @Override
+    public Optional<String> getRefId() {
+        return this.refId;
+    }
+
+    @Override
     public void setRefId(String refId) {
         this.refId = Optional.of(refId);
+    }
+
+    @Override
+    public AbstractIdentifiable getRefObject() {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException(
+            "Unimplemented method 'getRefObject'"
+        );
+    }
+
+    @Override
+    public void setRefObject(AbstractIdentifiable refObject) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException(
+            "Unimplemented method 'setRefObject'"
+        );
     }
 
     protected void setParent(LiftEntry parent) {

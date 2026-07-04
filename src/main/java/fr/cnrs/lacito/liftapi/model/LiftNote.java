@@ -1,9 +1,7 @@
 package fr.cnrs.lacito.liftapi.model;
 
-import java.util.Optional;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.property.StringProperty;
-import lombok.Setter;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleObjectProperty;
 
 /**
  * A note contains a Multitext and has a type. Eg :
@@ -25,17 +23,19 @@ public final class LiftNote
     implements HasType
 {
 
-    protected Optional<String> type = Optional.empty();
-
     protected AbstractNotable parent;
 
-    private final StringProperty typeProperty = new SimpleStringProperty(
+    private final ObjectProperty<LiftHeaderRangeElement> typeProperty = new SimpleObjectProperty<>(
         this,
         "type",
-        ""
+        null
     );
 
-    public LiftNote() {}
+    //public LiftNote() {}
+
+    public LiftNote(LiftHeaderRangeElement element) {
+        typeProperty.set(element);
+    }
 
     public MultiText getText() {
         return getMainMultiText();
@@ -46,20 +46,20 @@ public final class LiftNote
     }
 
     @Override
-    public Optional<String> getType() {
-        return type;
+    public LiftHeaderRangeElement getType() {
+        return typeProperty.get();
     }
 
     public void addText(Form f) {
         getText().add(f);
     }
 
-    public void setType(String type) {
-        this.type = Optional.of(type);
+    public void setType(LiftHeaderRangeElement type) {
+        if (type == null) throw new IllegalArgumentException("type cannot be null");
         this.typeProperty.set(type);
     }
 
-    public StringProperty typeProperty() {
+    public ObjectProperty<LiftHeaderRangeElement> typeProperty() {
         return typeProperty;
     }
 
@@ -67,13 +67,8 @@ public final class LiftNote
         return parent;
     }
 
-    public static LiftNote create() {
-        return new LiftNote();
+    public static LiftNote create(LiftHeaderRangeElement element) {
+        return new LiftNote(element);
     }
 
-    public static LiftNote create(String type) {
-        LiftNote note = new LiftNote();
-        note.setType(type);
-        return note;
-    }
 }

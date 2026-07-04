@@ -25,7 +25,7 @@ public abstract sealed class AbstractNotable
 
     @Override
     public void addNote(LiftNote n) throws DuplicateTypeException {
-        String key = n.type.orElse("");
+        String key = n.getType().getId();
         if (notesProperty.containsKey(key)) {
             throw new IllegalStateException(
                 "Duplicate Note type: " +

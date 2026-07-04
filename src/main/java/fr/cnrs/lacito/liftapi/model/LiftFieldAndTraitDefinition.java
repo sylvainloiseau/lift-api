@@ -89,6 +89,10 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
     @Setter
     Optional<String> optionRange = Optional.empty();
 
+    // @Getter
+    // @Setter
+    // LiftHeaderRange rangeObject = null;
+
     @Getter
     @Setter
     Optional<String> writingSystem = Optional.empty();
@@ -113,6 +117,7 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
 
     /** Resolved link to the LiftHeaderRange named by {@code @option-range}, set after parsing. */
     @Getter
+    @Setter
     private Optional<LiftHeaderRange> resolvedRange = Optional.empty();
 
     public LiftFieldAndTraitDefinition(String tag, LiftHeader parent) {
@@ -165,21 +170,5 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
 
     public boolean isTraitDefinition() {
         return kind == LiftFieldAndTraitDefinitionKind.TRAIT;
-    }
-
-    /**
-     * After the header is fully parsed, resolve the {@code @option-range} string to the
-     * actual {@link LiftHeaderRange} in the given header. Call this once from
-     * {@link LiftXMLFactory#resolveFieldDefinitionKinds()}.
-     */
-    //TODO dissociate resolveRange from kind resolution
-    public void resolveRange(LiftHeader header) {
-        this.resolvedRange = optionRange.flatMap(rangeId ->
-            header
-                .getRanges()
-                .stream()
-                .filter(r -> rangeId.equals(r.getId()))
-                .findFirst()
-        );
     }
 }

@@ -11,7 +11,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.BiFunction;
 import javafx.collections.ListChangeListener;
-import lombok.val;
 
 /**
  * The {@LiftDictionaryFeatureManager} keeps track of the number of

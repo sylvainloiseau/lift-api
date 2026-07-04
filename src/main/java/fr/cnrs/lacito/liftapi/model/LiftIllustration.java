@@ -7,7 +7,7 @@ import lombok.Getter;
  */
 public final class LiftIllustration
     extends AbstractLiftRoot
-    implements ExternalDocument
+    implements HasExternalDocument
 {
 
     final String href;

@@ -1,26 +1,36 @@
 package fr.cnrs.lacito.liftapi.model;
 
 import java.util.Optional;
-
 import lombok.Getter;
 
 public final class LiftHeaderRangeElement extends AbstractExtensibleWithField {
-    @Getter final String id;
-    final LiftHeaderRange parentRange;
+
+    @Getter
+    private String id;
+
+    private final LiftHeaderRange parentRange;
 
     /** The id of the parent range-element (for hierarchical organisation). */
-    @Getter Optional<String> parentId = Optional.empty();
-    @Getter Optional<String> guid = Optional.empty();
+    @Getter
+    private Optional<String> parentId = Optional.empty();
 
-    @Getter MultiText label = new MultiText();
-    @Getter MultiText abbrev = new MultiText();
+    @Getter
+    Optional<String> guid = Optional.empty();
+
+    @Getter
+    MultiText label = new MultiText();
+
+    @Getter
+    MultiText abbrev = new MultiText();
 
     public LiftHeaderRangeElement(String id, LiftHeaderRange parent) {
         this.id = id;
         this.parentRange = parent;
     }
 
-    public LiftHeaderRange getParentRange() { return parentRange; }
+    public LiftHeaderRange getParentRange() {
+        return parentRange;
+    }
 
     /** Set the {@code @parent} attribute (id of parent range-element). */
     public void setParentId(String parentId) {
@@ -39,5 +49,17 @@ public final class LiftHeaderRangeElement extends AbstractExtensibleWithField {
 
     public MultiText getDescription() {
         return getMainMultiText();
+    }
+
+    /**
+     * This method should only be called by {@link
+     * LiftHeaderRange#changeElementId(LiftHeaderRangeElement, String)}, in
+     * order to take care of the id -> LiftHeaderRangeElement mapping in {@link
+     * LiftHeaderRange#rangeContent} in that class.
+     * *
+     *
+     */
+    protected void setId(String id) {
+        this.id = id;
     }
 }

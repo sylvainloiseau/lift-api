@@ -1,6 +1,5 @@
 package fr.cnrs.lacito.liftapi.builder;
 
-import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
 import java.util.function.Consumer;

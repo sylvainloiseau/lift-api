@@ -1,9 +1,12 @@
 package fr.cnrs.lacito.liftapi.builder;
 
+import fr.cnrs.lacito.liftapi.LiftDictionary;
+import fr.cnrs.lacito.liftapi.LiftDictionaryBuilder;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftExample;
+import fr.cnrs.lacito.liftapi.model.LiftHeader;
 import fr.cnrs.lacito.liftapi.model.LiftPronunciation;
 import fr.cnrs.lacito.liftapi.model.LiftRelation;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
@@ -13,7 +16,7 @@ import fr.cnrs.lacito.liftapi.model.LiftVariant;
  * Static factory for creating builder instances using fluent API,
  * ensuring that all created objects are consistently registered in
  * a dictionary.
- * 
+ *
  * Usage:
  * <pre>
  *   LiftDictionary dictionary = Builders.dictionary()
@@ -27,7 +30,7 @@ import fr.cnrs.lacito.liftapi.model.LiftVariant;
  *      .withForm("en", "entry1")
  *      .build();
  * </pre>
- * 
+ *
  * @see LiftDictionaryRegistry
  * @see LiftDitionary
  * @see LiftDictionaryBuilder
@@ -35,9 +38,11 @@ import fr.cnrs.lacito.liftapi.model.LiftVariant;
 public class DictionaryBuilder {
 
     private final LiftDictionaryRegistry registry;
+    private final LiftDictionary dictionary;
 
-    public DictionaryBuilder(LiftDictionaryRegistry registry) {
-        this.registry = registry;
+    public DictionaryBuilder(LiftDictionary dictionary) {
+        this.dictionary = dictionary;
+        this.registry = dictionary.getLiftDictionaryRegistry();
     }
 
     /**
@@ -149,8 +154,8 @@ public class DictionaryBuilder {
     /**
      * Create a new note builder.
      */
-    public NoteBuilder note() {
-        return new NoteBuilder(registry);
+    public NoteBuilder note(String type) {
+        return new NoteBuilder(dictionary, type);
     }
 
     /**
@@ -203,7 +208,7 @@ public class DictionaryBuilder {
      * Create a new relation builder with the given type.
      */
     public RelationBuilder relation(String type) {
-        return new RelationBuilder(registry, type);
+        return new RelationBuilder(dictionary, type);
     }
 
     /**
@@ -217,13 +222,11 @@ public class DictionaryBuilder {
      * Create a new etymology builder.
      */
     public EtymologyBuilder etymology(String type, String source) {
-        return new EtymologyBuilder(registry, type, source);
+        return new EtymologyBuilder(dictionary, type, source);
     }
 
-    /**
-     * Create a new etymology builder.
-     */
-    public EtymologyBuilder etymology() {
-        return new EtymologyBuilder(registry);
+
+    public LiftHeaderRangeBuilder range(String rangeId, LiftHeader header) {
+        return new LiftHeaderRangeBuilder(registry, header, rangeId);
     }
 }

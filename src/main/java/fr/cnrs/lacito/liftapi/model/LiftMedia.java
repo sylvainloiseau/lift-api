@@ -7,7 +7,7 @@ import lombok.Getter;
  */
 public final class LiftMedia
     extends AbstractLiftRoot
-    implements ExternalDocument
+    implements HasExternalDocument
 {
 
     protected String url;
