@@ -4,7 +4,6 @@ import java.util.List;
 import javafx.beans.property.ListProperty;
 import javafx.beans.property.SimpleListProperty;
 import javafx.collections.FXCollections;
-import lombok.Getter;
 
 public final class LiftPronunciation extends AbstractExtensibleWithField {
 
@@ -15,8 +14,11 @@ public final class LiftPronunciation extends AbstractExtensibleWithField {
             FXCollections.observableArrayList()
         );
 
-    @Getter
     private HasPronunciation parent;
+
+    public HasPronunciation getParent() {
+        return parent;
+    }
 
     public LiftPronunciation() {}
 

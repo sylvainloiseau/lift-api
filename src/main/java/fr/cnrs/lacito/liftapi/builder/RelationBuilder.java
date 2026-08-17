@@ -2,7 +2,9 @@ package fr.cnrs.lacito.liftapi.builder;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
+import fr.cnrs.lacito.liftapi.model.AbstractIdentifiable;
 import fr.cnrs.lacito.liftapi.model.Form;
+import fr.cnrs.lacito.liftapi.model.HasRelations;
 import fr.cnrs.lacito.liftapi.model.LiftHeaderRangeElement;
 import fr.cnrs.lacito.liftapi.model.LiftRelation;
 import java.util.function.Consumer;
@@ -18,34 +20,31 @@ import java.util.function.Consumer;
  *       .build();
  * </pre>
  */
-public class RelationBuilder extends AbstractLiftElementBuilder<LiftRelation> {
+public class RelationBuilder extends AbstractLiftElementBuilder<LiftRelation, HasRelations> {
 
     /**
      * Create a relation builder (requires type to be set later).
      * @param type
      * @param dictionary
      */
-    protected RelationBuilder(LiftDictionary dictionary) {
-        this.dictionary = dictionary;
-        this.registry = dictionary.getLiftDictionaryRegistry();
-        this.element = LiftRelation.create();
+    protected RelationBuilder(LiftDictionary dictionary, HasRelations parent) {
+        super(LiftRelation.create(), dictionary, parent);
     }
 
     /**
      * Create a relation builder (requires type to be set later).
      * @param type
      */
-    protected RelationBuilder(LiftDictionary dictionary, String type) {
-        this.dictionary = dictionary;
-        this.registry = dictionary.getLiftDictionaryRegistry();
+    protected RelationBuilder(LiftDictionary dictionary, HasRelations parent, String type) {
+        super(LiftRelation.create(), dictionary, parent);
         if (type == null) {
             throw new IllegalArgumentException("Relation type cannot be null");
         }
-        if (!dictionary.getHeader().containsRelationType(type)) {
-            dictionary.getHeader().addRelationType(type);
+        if (!dictionary.getHeader().getRelationTypeManager().hasRangeElements(type)) {
+            dictionary.getHeader().getRelationTypeManager().createRangeElement(type);
         }
-        LiftHeaderRangeElement e = dictionary.getHeader().getRelationType(type);
-        this.element = LiftRelation.create(e);
+        LiftHeaderRangeElement e = dictionary.getHeader().getRelationTypeManager().getRangeElement(type);
+        this.element.setType(e);
     }
 
     /**
@@ -70,8 +69,11 @@ public class RelationBuilder extends AbstractLiftElementBuilder<LiftRelation> {
      * Set the reference ID (target of the relation).
      */
     public RelationBuilder withRefId(String refId) {
-        if (refId != null) {
-            element.setRefId(refId);
+        AbstractIdentifiable target = dictionary.getLiftDictionaryRegistry().getEntryOrSenseByLiftId(refId);
+        if (target == null) {
+            throw new IllegalArgumentException("No entry or sense found for liftId: " + refId);
+        } else {
+            element.setRefObject(target);
         }
         return this;
     }

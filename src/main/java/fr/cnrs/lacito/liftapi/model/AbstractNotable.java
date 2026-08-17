@@ -25,16 +25,16 @@ public abstract sealed class AbstractNotable
 
     @Override
     public void addNote(LiftNote n) throws DuplicateTypeException {
-        String key = n.getType().getId();
-        if (notesProperty.containsKey(key)) {
+        LiftHeaderRangeElement type = n.getType();
+        if (notesProperty.containsKey(type.getId())) {
             throw new IllegalStateException(
                 "Duplicate Note type: " +
-                    key +
+                    type.getId() +
                     "; Id: " +
                     ((AbstractIdentifiable) this).getId()
             );
         }
-        notesProperty.put(key, n);
+        notesProperty.put(type.getId(), n);
         n.setParent(this);
     }
 

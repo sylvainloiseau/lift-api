@@ -1,13 +1,14 @@
 package fr.cnrs.lacito.liftapi.builder;
 
-import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
+import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.model.Form;
+import fr.cnrs.lacito.liftapi.model.HasPronunciation;
 import fr.cnrs.lacito.liftapi.model.LiftPronunciation;
 import java.util.function.Consumer;
 
 /**
  * Builder for creating LiftPronunciation instances with a fluent API.
- * 
+ *
  * Usage:
  * <pre>
  *   LiftPronunciation pronunciation = Builders.pronunciation()
@@ -15,11 +16,10 @@ import java.util.function.Consumer;
  *       .build();
  * </pre>
  */
-public class PronunciationBuilder extends AbstractLiftElementBuilder<LiftPronunciation> {
+public class PronunciationBuilder extends AbstractLiftElementBuilder<LiftPronunciation, HasPronunciation> {
 
-    protected PronunciationBuilder(LiftDictionaryRegistry registry) {
-        this.registry = registry;
-        this.element = LiftPronunciation.create();
+    protected PronunciationBuilder(LiftDictionary dictionary, HasPronunciation parent) {
+        super(LiftPronunciation.create(), dictionary, parent);
     }
 
     /**

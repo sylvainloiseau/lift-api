@@ -31,7 +31,7 @@ public final class LiftNote
         null
     );
 
-    //public LiftNote() {}
+    public LiftNote() {}
 
     public LiftNote(LiftHeaderRangeElement element) {
         typeProperty.set(element);
@@ -55,7 +55,7 @@ public final class LiftNote
     }
 
     public void setType(LiftHeaderRangeElement type) {
-        if (type == null) throw new IllegalArgumentException("type cannot be null");
+        if (type == null) throw new IllegalArgumentException("note type cannot be null");
         this.typeProperty.set(type);
     }
 
@@ -67,8 +67,8 @@ public final class LiftNote
         return parent;
     }
 
-    public static LiftNote create(LiftHeaderRangeElement element) {
-        return new LiftNote(element);
+    public static LiftNote create() {
+        return new LiftNote();
     }
 
 }

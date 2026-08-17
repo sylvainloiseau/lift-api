@@ -10,7 +10,7 @@ import fr.cnrs.lacito.liftapi.model.Form;
  * Usage:
  * <pre>
  *   LiftDictionary dictionary = Builders.dictionary()
- *       .withLiftVersion("1.0")
+ *       .withLiftVersion(LiftVersion.V0_13)
  *       .withProducer("MyProducer")
  *       .withDescription("en", "My Dictionary")
  *       .build();
@@ -32,7 +32,7 @@ public class LiftDictionaryBuilder {
         this.dictionary = new LiftDictionary();
     }
 
-    public LiftDictionaryBuilder withLiftVersion(String version) {
+    public LiftDictionaryBuilder withLiftVersion(LiftVersion version) {
         if (version == null) {
             throw new IllegalArgumentException("version must not be null");
         }

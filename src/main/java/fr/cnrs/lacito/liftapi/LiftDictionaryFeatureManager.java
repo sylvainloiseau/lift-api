@@ -83,11 +83,11 @@ public class LiftDictionaryFeatureManager {
     }
 
     // getKnownTraitValues
-    // TODO bug: when removing a trait, it remove its value altooghtehe
+    // TODO bug: when removing a trait, it remove its value
     private void initTraitValue() {
         for (LiftTrait trait : this.liftDictionaryRegistry.getTraitsReadOnly()) {
             traitValue.compute(
-                trait.getName(),
+                trait.getDefinition().getName(),
                 key2SetUpdater(trait.getValue())
             );
         }
@@ -101,20 +101,20 @@ public class LiftDictionaryFeatureManager {
                         if (change.wasAdded()) {
                             for (LiftTrait trait : change.getAddedSubList()) {
                                 traitValue.compute(
-                                    trait.getName(),
+                                    trait.getDefinition().getName(),
                                     key2SetUpdater(trait.getValue())
                                 );
                             }
                         }
                         if (change.wasRemoved()) {
                             for (LiftTrait trait : change.getRemoved()) {
-                                if (traitValue.containsKey(trait.getName())) {
+                                if (traitValue.containsKey(trait.getDefinition().getName())) {
                                     Set<String> values = traitValue.get(
-                                        trait.getName()
+                                        trait.getDefinition().getName()
                                     );
                                     values.remove(trait.getValue());
                                     if (values.isEmpty()) {
-                                        traitValue.remove(trait.getName());
+                                        traitValue.remove(trait.getDefinition().getName());
                                     }
                                 }
                             }

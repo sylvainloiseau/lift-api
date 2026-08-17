@@ -1,7 +1,9 @@
 package fr.cnrs.lacito.liftapi.builder;
 
+import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.model.Form;
+import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
 import fr.cnrs.lacito.liftapi.model.LiftPronunciation;
 import fr.cnrs.lacito.liftapi.model.LiftRelation;
@@ -9,7 +11,7 @@ import java.util.function.Consumer;
 
 /**
  * Builder for creating LiftVariant instances with a fluent API.
- * 
+ *
  * Usage:
  * <pre>
  *   LiftVariant variant = Builders.variant()
@@ -20,11 +22,10 @@ import java.util.function.Consumer;
  *       .build();
  * </pre>
  */
-public class VariantBuilder extends AbstractLiftElementBuilder<LiftVariant> {
+public class VariantBuilder extends AbstractLiftElementBuilder<LiftVariant, LiftEntry> {
 
-    protected VariantBuilder(LiftDictionaryRegistry registry) {
-        this.registry = registry;
-        this.element = LiftVariant.create();
+    protected VariantBuilder(LiftDictionary dictionary, LiftEntry parent) {
+        super(LiftVariant.create(), dictionary, parent);
     }
 
     /**
@@ -88,7 +89,7 @@ public class VariantBuilder extends AbstractLiftElementBuilder<LiftVariant> {
      * Add a pronunciation via nested builder configuration.
      */
     public VariantBuilder addPronunciation(Consumer<PronunciationBuilder> config) {
-        PronunciationBuilder pb = new PronunciationBuilder(registry);
+        PronunciationBuilder pb = new PronunciationBuilder(dictionary, element);
         config.accept(pb);
         element.addPronunciation(pb.build());
         return this;
@@ -109,7 +110,7 @@ public class VariantBuilder extends AbstractLiftElementBuilder<LiftVariant> {
      * Add a relation via nested builder configuration.
      */
     public VariantBuilder addRelation(Consumer<RelationBuilder> config, String type) {
-        RelationBuilder rb = new RelationBuilder(dictionary, type);
+        RelationBuilder rb = new RelationBuilder(dictionary, element, type);
         config.accept(rb);
         element.addRelation(rb.build());
         return this;

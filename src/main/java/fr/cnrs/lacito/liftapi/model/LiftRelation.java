@@ -4,9 +4,6 @@ import java.util.Optional;
 
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.property.StringProperty;
-import lombok.Getter;
 
 public final class LiftRelation
     extends AbstractExtensibleWithField
@@ -17,31 +14,29 @@ public final class LiftRelation
 
     protected Optional<String> refId = Optional.empty();
 
-    @Getter
     protected HasRelations parent;
 
-    @Getter
+    public HasRelations getParent() {
+        return parent;
+    }
+
     protected Optional<Integer> order = Optional.empty();
 
+    public Optional<Integer> getOrder() {
+        return order;
+    }
+
     private final ObjectProperty<LiftHeaderRangeElement> typeProperty;
-    private final StringProperty refIdProperty;
+    private final ObjectProperty<AbstractIdentifiable> refObjectProperty;
 
     public LiftRelation(LiftHeaderRangeElement type) {
-        this.typeProperty = new SimpleObjectProperty<>(
-            this,
-            "type",
-            type
-        );
-        this.refIdProperty = new SimpleStringProperty(this, "refId", "");
+        this();
+        this.typeProperty.set(type);
     }
 
     public LiftRelation() {
-        this.typeProperty = new SimpleObjectProperty<>(
-            this,
-            "type",
-            null
-        );
-        this.refIdProperty = new SimpleStringProperty(this, "refId", "");
+        this.typeProperty = new SimpleObjectProperty<>(this, "type", null);
+        this.refObjectProperty = new SimpleObjectProperty<AbstractIdentifiable>(this, "refObject", null);
     }
 
     protected void setParent(HasRelations parent) {
@@ -76,33 +71,17 @@ public final class LiftRelation
     }
 
     @Override
-    public void setRefId(String refId) {
-        this.refId = Optional.of(refId);
-        refIdProperty.set(refId);
-    }
-
-    @Override
     public AbstractIdentifiable getRefObject() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException(
-            "Unimplemented method 'getRefObject'"
-        );
+        return this.refObjectProperty.get();
     }
 
     @Override
     public void setRefObject(AbstractIdentifiable refObject) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException(
-            "Unimplemented method 'setRefObject'"
-        );
+        this.refObjectProperty.set(refObject);
     }
 
     public ObjectProperty<LiftHeaderRangeElement> typeProperty() {
         return typeProperty;
-    }
-
-    public StringProperty refIdProperty() {
-        return refIdProperty;
     }
 
     public static LiftRelation create(LiftHeaderRangeElement type) {

@@ -5,22 +5,29 @@ import java.util.Optional;
 import javafx.beans.property.ListProperty;
 import javafx.beans.property.SimpleListProperty;
 import javafx.collections.FXCollections;
-import lombok.Getter;
-import lombok.Setter;
 
 public final class LiftSense
     extends AbstractIdentifiable
     implements HasGlosses, HasRelations, HasSense, HasReversal
 {
 
-    @Getter
     protected Optional<Integer> order = Optional.empty();
 
-    @Getter
+    public Optional<Integer> getOrder() {
+        return order;
+    }
+
     protected Optional<GrammaticalInfo> grammaticalInfo = Optional.empty();
 
-    @Getter
+    public Optional<GrammaticalInfo> getGrammaticalInfo() {
+        return grammaticalInfo;
+    }
+
     protected final MultiText definition = new MultiText();
+
+    public MultiText getDefinition() {
+        return definition;
+    }
 
     protected final ListProperty<LiftRelation> relationsProperty =
         new SimpleListProperty<>(
@@ -53,12 +60,21 @@ public final class LiftSense
             FXCollections.observableArrayList()
         );
 
-    @Getter
     private HasSense parent;
 
-    @Getter
-    @Setter
+    public HasSense getParent() {
+        return parent;
+    }
+
     private LiftEntry parentEntry;
+
+    public LiftEntry getParentEntry() {
+        return parentEntry;
+    }
+
+    public void setParentEntry(LiftEntry parent) {
+        this.parentEntry = parent;
+    }
 
     public LiftSense() {}
 

@@ -2,6 +2,7 @@ package fr.cnrs.lacito.liftapi.xml;
 
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.LiftDocumentLoadingException;
+import fr.cnrs.lacito.liftapi.LiftVersion;
 import fr.cnrs.lacito.liftapi.model.LiftHeader;
 import java.io.File;
 import java.io.IOException;
@@ -79,15 +80,11 @@ public final class LiftDictionaryXmlReader {
         }
     }
 
-    //public LiftDictionaryComponents getLiftDictionaryComponents() {
-    //    return liftFactory.getLiftDictionaryComponents();
-    //}
-
     public LiftHeader getHeader() {
         return liftFactory.getHeader();
     }
 
-    public String getLiftVersion() {
+    public LiftVersion getLiftVersion() {
         return liftFactory.getLiftVersion();
     }
 

@@ -5,20 +5,16 @@ import java.util.Optional;
 import javafx.beans.property.ListProperty;
 import javafx.beans.property.SimpleListProperty;
 import javafx.collections.FXCollections;
-import lombok.Getter;
 
 public final class LiftEntry
     extends AbstractIdentifiable
     implements HasPronunciation, HasRelations, HasSense
 {
 
-    @Getter
     protected Optional<String> order = Optional.empty();
 
-    @Getter
     protected Optional<String> dateDeleted = Optional.empty();
 
-    @Getter
     protected final MultiText citations = new MultiText();
 
     protected final ListProperty<LiftPronunciation> pronunciationsProperty =
@@ -53,6 +49,18 @@ public final class LiftEntry
         );
 
     public LiftEntry() {}
+
+    public MultiText getCitations() {
+        return citations;
+    }
+
+    public Optional<String> getDateDeleted() {
+        return dateDeleted;
+    }
+
+    public Optional<String> getOrder() {
+        return order;
+    }
 
     public void setDateDeleted(String date) {
         dateDeleted = Optional.of(date);

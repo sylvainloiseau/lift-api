@@ -1,7 +1,5 @@
 package fr.cnrs.lacito.liftapi.model;
 
-import lombok.Getter;
-
 /**
  * A media file associated to a {@link LiftPronunciation} object.
  */
@@ -12,8 +10,11 @@ public final class LiftMedia
 
     protected String url;
 
-    @Getter
     protected LiftPronunciation parent;
+
+    public LiftPronunciation getParent() {
+        return parent;
+    }
 
     public LiftMedia(String href) {
         this.url = href;

@@ -7,6 +7,7 @@ import java.util.List;
  *
  */
 public sealed interface HasAnnotation
+    extends LiftObject
     permits AbstractExtensibleWithoutField, Form, LiftTrait, MultiText
 {
     public void addAnnotation(LiftAnnotation a);

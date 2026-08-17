@@ -68,20 +68,19 @@ public class LiftWriterSession implements AutoCloseable {
     public void marshall(LiftDictionary d) throws Exception {
         try {
             initializeWriter();
-            LiftDictionaryComponents c = d.getLiftDictionaryComponents();
 
             out.writeStartDocument();
             out.writeStartElement(LiftVocabulary.LIFT_LOCAL_NAME);
             out.writeAttribute(
                 LiftVocabulary.VERSION_ATTRIBUTE,
-                d.getLiftVersion()
+                d.getLiftVersion().toString()
             );
             out.writeAttribute(
                 LiftVocabulary.PRODUCER_ATTRIBUTE,
                 d.getLiftProducer()
             );
 
-            LiftHeader header = c.getHeader();
+            LiftHeader header = d.getHeader();
             if (header != null) {
                 writeHeader(header);
             }
@@ -90,7 +89,7 @@ public class LiftWriterSession implements AutoCloseable {
                 writeRangesToExternalFiles(header);
             }
 
-            List<LiftEntry> entries = c.getAllEntries();
+            List<LiftEntry> entries = d.getLiftDictionaryRegistry().getEntries();
             if (entries != null) {
                 for (LiftEntry e : entries) {
                     if (e != null) {
@@ -389,11 +388,11 @@ public class LiftWriterSession implements AutoCloseable {
         if (f.getFClass().isPresent()) {
             out.writeAttribute("class", f.getFClass().get());
         }
-        if (f.getType().isPresent()) {
-            out.writeAttribute("type", f.getType().get());
+        if (f.getTypeStr().isPresent()) {
+            out.writeAttribute("type", f.getTypeStr().get());
         }
-        if (f.getOptionRange().isPresent()) {
-            out.writeAttribute("option-range", f.getOptionRange().get());
+        if (f.getResolvedRange().isPresent()) {
+            out.writeAttribute("option-range", f.getResolvedRange().get().getId());
         }
         if (f.getWritingSystem().isPresent()) {
             out.writeAttribute("writing-system", f.getWritingSystem().get());
@@ -466,8 +465,8 @@ public class LiftWriterSession implements AutoCloseable {
 
     private void writeVariant(LiftVariant v) throws Exception {
         out.writeStartElement(LiftVocabulary.VARIANT_LOCAL_NAME);
-        if (v.getRefId().isPresent()) {
-            out.writeAttribute("ref", v.getRefId().get());
+        if (v.getRefObject() != null) {
+            out.writeAttribute(LiftVocabulary.REF_ATTRIBUTE, v.getRefObject().getId().get());
         }
         AbstractPropertyWriters.writeAbstractExtensibleWithoutField(out, v);
         AbstractPropertyWriters.writeAbstractExtensibleWithField(out, v);
@@ -483,10 +482,10 @@ public class LiftWriterSession implements AutoCloseable {
             LiftVocabulary.TYPE_ATTRIBUTE,
             r.getType().getId()
         );
-        if (r.getRefID().isPresent()) {
+        if (r.getRefObject() != null) {
             out.writeAttribute(
                 LiftVocabulary.REF_ATTRIBUTE,
-                r.getRefID().get()
+                r.getRefObject().getId().get()
             );
         }
         if (r.getOrder().isPresent()) {
@@ -630,7 +629,7 @@ public class LiftWriterSession implements AutoCloseable {
 
     private void writeTrait(LiftTrait t) throws Exception {
         out.writeStartElement(LiftVocabulary.TRAIT_LOCAL_NAME);
-        out.writeAttribute(LiftVocabulary.NAME_ATTRIBUTE, t.getName());
+        out.writeAttribute(LiftVocabulary.NAME_ATTRIBUTE, t.getDefinition().getName());
         out.writeAttribute(LiftVocabulary.VALUE_ATTRIBUTE, t.getValue());
         t.getAnnotations().forEach(unchecked(this::writeAnnotation));
         out.writeEndElement();

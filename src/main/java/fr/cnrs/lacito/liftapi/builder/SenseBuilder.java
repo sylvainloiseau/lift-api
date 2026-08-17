@@ -1,7 +1,9 @@
 package fr.cnrs.lacito.liftapi.builder;
 
+import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.model.Form;
+import fr.cnrs.lacito.liftapi.model.HasSense;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.LiftExample;
 import fr.cnrs.lacito.liftapi.model.LiftRelation;
@@ -10,7 +12,7 @@ import java.util.function.Consumer;
 
 /**
  * Builder for creating LiftSense instances with a fluent API.
- * 
+ *
  * Usage:
  * <pre>
  *   LiftSense sense = Builders.sense()
@@ -26,11 +28,10 @@ import java.util.function.Consumer;
  *       .build();
  * </pre>
  */
-public class SenseBuilder extends AbstractLiftElementBuilder<LiftSense> {
+public class SenseBuilder extends AbstractLiftElementBuilder<LiftSense, HasSense> {
 
-    protected SenseBuilder(LiftDictionaryRegistry registry) {
-        this.registry = registry;
-        this.element = LiftSense.create();
+    protected SenseBuilder(LiftDictionary dictionary, HasSense parent) {
+        super(LiftSense.create(), dictionary, parent);
     }
 
     /**
@@ -119,7 +120,7 @@ public class SenseBuilder extends AbstractLiftElementBuilder<LiftSense> {
      * Add an example via nested builder configuration.
      */
     public SenseBuilder addExample(Consumer<ExampleBuilder> config) {
-        ExampleBuilder eb = new ExampleBuilder(registry);
+        ExampleBuilder eb = new ExampleBuilder(dictionary, element);
         config.accept(eb);
         element.addExample(eb.build());
         return this;
@@ -151,7 +152,7 @@ public class SenseBuilder extends AbstractLiftElementBuilder<LiftSense> {
      * Add a relation via nested builder configuration.
      */
     public SenseBuilder addRelation(Consumer<RelationBuilder> config, String type) {
-        RelationBuilder rb = new RelationBuilder(dictionary, type);
+        RelationBuilder rb = new RelationBuilder(dictionary, element, type);
         config.accept(rb);
         element.addRelation(rb.build());
         return this;
@@ -172,7 +173,7 @@ public class SenseBuilder extends AbstractLiftElementBuilder<LiftSense> {
      * Add a sub-sense via nested builder configuration.
      */
     public SenseBuilder addSubSense(Consumer<SenseBuilder> config) {
-        SenseBuilder sb = new SenseBuilder(registry);
+        SenseBuilder sb = new SenseBuilder(dictionary, element);
         config.accept(sb);
         element.addSense(sb.build());
         return this;

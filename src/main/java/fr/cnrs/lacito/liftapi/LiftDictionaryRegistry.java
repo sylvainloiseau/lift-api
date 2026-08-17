@@ -39,15 +39,14 @@ import javafx.collections.ObservableMap;
 
 public class LiftDictionaryRegistry {
 
-    public boolean unmarshallingMode = false;
     private final LiftDictionaryFeatureManager counter;
     private final LiftDictionaryUUIDManager uuidManager =
         new LiftDictionaryUUIDManager();
 
     /**
-     * List of IDs to which there is a reference pointing in the dictionary
+     * Map from IDs (of referenced object) to objects pointing at them in the dictionary
      */
-    protected Map<String, List<HasRefId>> refId2Occurrences = new HashMap<>();
+    public Map<String, List<HasRefId>> refId2Occurrences = new HashMap<>();
 
     protected final ObservableMap<String, LiftEntry> entriesByLiftId =
         FXCollections.observableHashMap();
@@ -89,6 +88,16 @@ public class LiftDictionaryRegistry {
         FXCollections.observableHashMap();
     protected final ObservableMap<UUID, MultiText> metaTextById =
         FXCollections.observableHashMap();
+
+    public AbstractIdentifiable getEntryOrSenseByLiftId(String liftId) {
+        if (entriesByLiftId.containsKey(liftId)) {
+            return entriesByLiftId.get(liftId);
+        } else if (sensesByLiftId.containsKey(liftId)) {
+            return sensesByLiftId.get(liftId);
+        } else {
+            return null;
+        }
+    }
 
     private ObservableList<LiftEntry> entriesReadOnly = null;
 
@@ -441,9 +450,11 @@ public class LiftDictionaryRegistry {
     }
 
     /**
-     * Add a node to the directory. The node should not have been created with
-     * the fluent API ({@link LiftDictionary#getComponentBuilder()}), since via this API,
-     * the node is automatically added to the directory (an Exception will be thrown).
+     * Add a node (and its descendants) to the directory using the low-level
+     * API, intended for unmarshalling efficiently
+     * the dictionary. The high-level (fluent) API, using {@link
+     * LiftDictionary#getComponentBuilder()}, should be preferred in all other
+     * situation.
      *
      * This method is intended for nodes that has been created manually, via the
      * constructors for {@link LiftEntry}, {@link LiftSense}, etc.
@@ -451,21 +462,21 @@ public class LiftDictionaryRegistry {
      * All subnodes of the node (added with addX method, such as {@link
      * LiftElement#addSense}) will also be added to the dictionary.
      */
-    public void addToDictionary(AbstractLiftRoot node) {
+    public void addToDictionaryLowLevel(AbstractLiftRoot node) {
         // add to register
         register(node);
 
         // recursively add its descendants
         switch (node) {
             case LiftEntry e -> {
-                e.getVariants().forEach(x -> addToDictionary(x));
-                e.getEtymologies().forEach(x -> addToDictionary(x));
+                e.getVariants().forEach(x -> addToDictionaryLowLevel(x));
+                e.getEtymologies().forEach(x -> addToDictionaryLowLevel(x));
                 registerObjectLanguage(node.getMainMultiText());
             }
             case LiftSense s -> {
-                s.getExamples().forEach(x -> addToDictionary(x));
-                s.getIllustrations().forEach(x -> addToDictionary(x));
-                s.getReversals().forEach(x -> addToDictionary(x));
+                s.getExamples().forEach(x -> addToDictionaryLowLevel(x));
+                s.getIllustrations().forEach(x -> addToDictionaryLowLevel(x));
+                s.getReversals().forEach(x -> addToDictionaryLowLevel(x));
                 registerMetaLanguage(node.getMainMultiText());
                 registerMetaLanguage(s.getDefinition());
             }
@@ -473,7 +484,7 @@ public class LiftDictionaryRegistry {
                 registerObjectLanguage(e.getExample());
                 e.getTranslations()
                     .values()
-                    .forEach(x -> unregisterMetaMultiText(x));
+                    .forEach(x -> registerMetaLanguage(x));
             }
             case LiftVariant v -> {
                 registerObjectLanguage(v.getForms());
@@ -513,45 +524,47 @@ public class LiftDictionaryRegistry {
         }
 
         if (node instanceof AbstractExtensibleWithoutField a) {
-            a.getAnnotations().forEach(x -> addToDictionary(x));
-            a.getTraits().forEach(x -> addToDictionary(x));
+            a.getAnnotations().forEach(x -> addToDictionaryLowLevel(x));
+            a.getTraits().forEach(x -> addToDictionaryLowLevel(x));
             if (node instanceof HasField b) {
-                b.getFields().forEach(x -> addToDictionary(x));
+                b.getFields().forEach(x -> addToDictionaryLowLevel(x));
             }
         }
 
         if (node instanceof HasNote n) {
             n.getNotes()
                 .values()
-                .forEach(x -> addToDictionary(x));
+                .forEach(x -> addToDictionaryLowLevel(x));
         }
 
         if (node instanceof HasPronunciation n) {
-            n.getPronunciations().forEach(x -> addToDictionary(x));
+            n.getPronunciations().forEach(x -> addToDictionaryLowLevel(x));
         }
 
         if (node instanceof HasRelations n) {
-            n.getRelations().forEach(x -> addToDictionary(x));
+            n.getRelations().forEach(x -> addToDictionaryLowLevel(x));
         }
 
         if (node instanceof HasReversal r) {
-            r.getReversals().forEach(x -> addToDictionary(x));
+            r.getReversals().forEach(x -> addToDictionaryLowLevel(x));
         }
 
         if (node instanceof HasSense s) {
-            s.getSenses().forEach(x -> addToDictionary(x));
+            s.getSenses().forEach(x -> addToDictionaryLowLevel(x));
         }
     }
 
     /**
-     * Non-recursively add the node.
+     * Non-recursively add the node. Should not be called directly: use the
+     * fluent API instead ({@link LiftDictionary#getComponentBuilder()}).
      *
-     * Add a LIFT ID to the node if it doesn't have one.
+     * Register the node in the dictionary; add a LIFT ID to the node if it
+     * doesn't have one.
      */
     public void register(AbstractLiftRoot node) {
         if (node.getUUID() != null) {
             throw new IllegalArgumentException(
-                "Added node should not contains a UUID"
+                "This node seems to have already been registered in a dictionary."
             );
         }
         UUID uuid = getNewUUID();
@@ -585,48 +598,10 @@ public class LiftDictionaryRegistry {
                 senseLiftId2Uuid.put(uuidS, s.getUUID());
             }
             case LiftExample o -> examplesById.put(o.getUUID(), o);
-            case LiftVariant o -> {
-                variantsById.put(o.getUUID(), o);
-                String refId = o.getRefId().orElseThrow();
-                if (
-                    !unmarshallingMode &&
-                    !(
-                        entriesByLiftId.containsKey(refId) ||
-                        sensesByLiftId.containsKey(refId)
-                    )
-                ) {
-                    throw new IllegalArgumentException(
-                        "Reference id " +
-                            refId +
-                            " not found in senses or entries."
-                    );
-                }
-                refId2Occurrences
-                    .computeIfAbsent(refId, k -> new ArrayList<>())
-                    .add(o);
-            }
+            case LiftVariant o -> { variantsById.put(o.getUUID(), o); }
             case LiftTrait o -> traitsById.put(o.getUUID(), o);
             case LiftReversal o -> reversalsById.put(o.getUUID(), o);
-            case LiftRelation o -> {
-                relationsById.put(o.getUUID(), o);
-                String refId = o.getRefID().orElseThrow();
-                if (
-                    !unmarshallingMode &&
-                    !(
-                        entriesByLiftId.containsKey(refId) ||
-                        sensesByLiftId.containsKey(refId)
-                    )
-                ) {
-                    throw new IllegalArgumentException(
-                        "Reference id " +
-                            refId +
-                            " not found in senses or entries."
-                    );
-                }
-                refId2Occurrences
-                    .computeIfAbsent(refId, k -> new ArrayList<>())
-                    .add(o);
-            }
+            case LiftRelation o -> { relationsById.put(o.getUUID(), o); }
             case LiftPronunciation o -> pronunciationsById.put(o.getUUID(), o);
             case LiftNote o -> notesById.put(o.getUUID(), o);
             case LiftMedia o -> mediasById.put(o.getUUID(), o);
@@ -658,53 +633,26 @@ public class LiftDictionaryRegistry {
         metaTextById.put(uuid, element);
     }
 
-    // unregister : remove a node from the registry
-
+    /**
+     * unregister : remove a node from the registry
+     */
     protected void unregister(AbstractLiftRoot node) {
         Map<UUID, ? extends AbstractLiftRoot> map = null;
         switch (node) {
-            case LiftEntry _ -> {
-                map = entriesById;
-            }
-            case LiftSense _ -> {
-                map = sensesById;
-            }
-            case LiftExample _ -> {
-                map = examplesById;
-            }
-            case LiftVariant _ -> {
-                map = variantsById;
-            }
-            case LiftTrait _ -> {
-                map = traitsById;
-            }
-            case LiftReversal _ -> {
-                map = reversalsById;
-            }
-            case LiftRelation _ -> {
-                map = relationsById;
-            }
-            case LiftPronunciation _ -> {
-                map = pronunciationsById;
-            }
-            case LiftNote _ -> {
-                map = notesById;
-            }
-            case LiftMedia _ -> {
-                map = mediasById;
-            }
-            case LiftIllustration _ -> {
-                map = illustrationsById;
-            }
-            case LiftField _ -> {
-                map = fieldsById;
-            }
-            case LiftEtymology _ -> {
-                map = etymologiesById;
-            }
-            case LiftAnnotation _ -> {
-                map = annotationsById;
-            }
+            case LiftEntry _ ->  map = entriesById;
+            case LiftSense _ ->  map = sensesById;
+            case LiftExample _ ->  map = examplesById;
+            case LiftVariant _ ->  map = variantsById;
+            case LiftTrait _ ->  map = traitsById;
+            case LiftReversal _ ->  map = reversalsById;
+            case LiftRelation _ ->  map = relationsById;
+            case LiftPronunciation _ ->  map = pronunciationsById;
+            case LiftNote _ ->  map = notesById;
+            case LiftMedia _ ->  map = mediasById;
+            case LiftIllustration _ ->  map = illustrationsById;
+            case LiftField _ ->  map = fieldsById;
+            case LiftEtymology _ ->  map = etymologiesById;
+            case LiftAnnotation _ ->  map = annotationsById;
             default -> throw new IllegalStateException(
                 "Unknown type: " + node.getClass()
             );
@@ -715,6 +663,14 @@ public class LiftDictionaryRegistry {
             );
         }
         map.remove(node.getUUID());
+
+        if (node instanceof AbstractIdentifiable identifiable) {
+            String liftId = identifiable.getId().get();
+            switch (identifiable) {
+                case LiftEntry _ ->  entriesByLiftId.remove(liftId);
+                case LiftSense _ ->  sensesByLiftId.remove(liftId);
+            }
+        }
     }
 
     protected void unregisterObjectMultiText(MultiText node) {
@@ -780,21 +736,36 @@ public class LiftDictionaryRegistry {
      * @param entry
      */
     public void removeFromDictionary(AbstractLiftRoot node) {
+
+        /**
+         * TODO : check that object is removed from all these objects:
+        public Map<String, List<HasRefId>> refId2Occurrences = new HashMap<>();
+
+        protected final ObservableMap<String, LiftEntry> entriesByLiftId =
+            FXCollections.observableHashMap();
+
+        protected final ObservableMap<String, LiftSense> sensesByLiftId =
+            FXCollections.observableHashMap();
+
+        protected Map<String, UUID> entryLiftId2Uuid = new HashMap<>(200);
+        protected Map<String, UUID> senseLiftId2Uuid = new HashMap<>(200);
+        */
+
         // manage reference counting
         if (node instanceof LiftRelation r) {
-            final String referenced = r
-                .getRefID()
+            final String target = r
+                .getRefObject().getId()
                 .orElseThrow(() ->
                     new IllegalArgumentException("Reference ID is missing")
                 );
-            refId2Occurrences.get(referenced).removeIf(o -> o == r);
+            refId2Occurrences.get(target).removeIf(o -> o == r);
         } else if (node instanceof LiftVariant a) {
-            final String referenced = a
-                .getRefId()
+            final String target = a
+                .getRefObject().getId()
                 .orElseThrow(() ->
                     new IllegalArgumentException("Reference ID is missing")
                 );
-            refId2Occurrences.get(referenced).removeIf(o -> o == a);
+            refId2Occurrences.get(target).removeIf(o -> o == a);
         } else if (node instanceof AbstractIdentifiable i) {
             final String refId = i
                 .getId()
@@ -913,11 +884,4 @@ public class LiftDictionaryRegistry {
         return entriesById.values().size();
     }
 
-    public void enterPopulatingMode() {
-        unmarshallingMode = true;
-    }
-
-    public void unmarshallingModeOff() {
-        this.unmarshallingMode = false;
-    }
 }

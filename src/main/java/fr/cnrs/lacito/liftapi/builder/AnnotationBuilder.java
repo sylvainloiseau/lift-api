@@ -1,40 +1,38 @@
 package fr.cnrs.lacito.liftapi.builder;
 
-import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
+import fr.cnrs.lacito.liftapi.LiftDictionary;
+import fr.cnrs.lacito.liftapi.model.HasAnnotation;
 import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
 
 /**
  * Builder for creating LiftAnnotation instances with a fluent API.
- * 
+ *
  * Usage:
  * <pre>
- *   LiftAnnotation annotation = Builders.annotation()
- *       .withName("verified")
+ *   LiftAnnotation annotation = Builders.annotation("name")
  *       .withValue("true")
  *       .withWho("john@example.com")
  *       .withWhen("2024-01-15")
  *       .build();
  * </pre>
  */
-public class AnnotationBuilder extends AbstractLiftElementBuilder<LiftAnnotation> {
+public class AnnotationBuilder extends AbstractLiftElementBuilder<LiftAnnotation, HasAnnotation> {
 
     /**
      * Create an annotation builder.
      */
-    protected AnnotationBuilder(LiftDictionaryRegistry registry) {
-        this.registry = registry;
-        this.element = LiftAnnotation.create("default");
+    protected AnnotationBuilder(LiftDictionary dictionary, HasAnnotation parent) {
+        this(dictionary, parent, "default");
     }
 
     /**
      * Create an annotation builder with the given name.
      */
-    protected AnnotationBuilder(LiftDictionaryRegistry registry, String name) {
-        this.registry = registry;
+    protected AnnotationBuilder(LiftDictionary dictionary, HasAnnotation parent, String name) {
+        super(LiftAnnotation.create(name), dictionary, parent);
         if (name == null) {
             throw new IllegalArgumentException("Annotation name cannot be null");
         }
-        this.element = LiftAnnotation.create(name);
     }
 
     /**
@@ -52,18 +50,6 @@ public class AnnotationBuilder extends AbstractLiftElementBuilder<LiftAnnotation
     @Override
     public AnnotationBuilder withGuid(String guid) {
         super.withGuid(guid);
-        return this;
-    }
-
-    /**
-     * Set the annotation name.
-     */
-    public AnnotationBuilder withName(String name) {
-        if (name == null) {
-            throw new IllegalArgumentException("Annotation name cannot be null");
-        }
-        // Name is immutable in LiftAnnotation, so we need to create a new one
-        this.element = LiftAnnotation.create(name);
         return this;
     }
 

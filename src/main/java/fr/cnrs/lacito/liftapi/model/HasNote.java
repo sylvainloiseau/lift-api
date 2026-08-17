@@ -5,7 +5,7 @@ import java.util.Map;
 /**
  * For objects that can have note.
  */
-public sealed interface HasNote permits AbstractNotable {
+public sealed interface HasNote extends LiftObject permits AbstractNotable {
     /**
      * Add a note to the Lift object.
      *
@@ -17,4 +17,5 @@ public sealed interface HasNote permits AbstractNotable {
     public LiftNote getNote(String type);
 
     public Map<String, LiftNote> getNotes();
+
 }

@@ -3,13 +3,14 @@ package fr.cnrs.lacito.liftapi.builder;
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.model.Form;
+import fr.cnrs.lacito.liftapi.model.HasNote;
 import fr.cnrs.lacito.liftapi.model.LiftHeaderRangeElement;
 import fr.cnrs.lacito.liftapi.model.LiftNote;
 import java.util.function.Consumer;
 
 /**
  * Builder for creating LiftNote instances with a fluent API.
- * 
+ *
  * Usage:
  * <pre>
  *   LiftNote note = Builders.note()
@@ -18,18 +19,18 @@ import java.util.function.Consumer;
  *       .build();
  * </pre>
  */
-public class NoteBuilder extends AbstractLiftElementBuilder<LiftNote> {
+public class NoteBuilder extends AbstractLiftElementBuilder<LiftNote, HasNote> {
 
     /**
      * Create a note with a type.
      */
-    protected NoteBuilder(LiftDictionary dictionary, String type) {
-        this.registry = dictionary.getLiftDictionaryRegistry();
-        if (!dictionary.getHeader().containsNoteType(type)) {
-            dictionary.getHeader().addNoteType(type);
+    protected NoteBuilder(LiftDictionary dictionary, HasNote parent, String type) {
+        super(LiftNote.create(), dictionary, parent);
+        if (!dictionary.getHeader().getNoteTypeManager().hasRangeElements(type)) {
+            dictionary.getHeader().getNoteTypeManager().addRangeElement(type);
         }
-        LiftHeaderRangeElement e = dictionary.getHeader().getNoteType(type);
-        this.element = LiftNote.create(e);
+        LiftHeaderRangeElement e = dictionary.getHeader().getNoteTypeManager().getRangeElement(type);
+        element.setType(e);
     }
 
     /**
@@ -113,6 +114,9 @@ public class NoteBuilder extends AbstractLiftElementBuilder<LiftNote> {
      */
     @Override
     public LiftNote build() {
+        if (element.getType() == null) {
+            throw new IllegalStateException("Note type cannot be null");
+        }
         super.register();
         return element;
     }

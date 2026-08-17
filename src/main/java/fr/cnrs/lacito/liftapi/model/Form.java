@@ -10,7 +10,6 @@ import javafx.beans.property.ReadOnlyStringProperty;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
-import lombok.Getter;
 
 /**
  * A textual representation of linguistic material in a given language and in a given writting system.
@@ -28,7 +27,6 @@ public final class Form implements HasAnnotation {
     private String toText = null;
     private String toPlainText = null;
 
-    @Getter
     protected final List<LiftAnnotation> annotations = new ArrayList<>();
 
     private final Deque<TextSpan> current = new ArrayDeque<>();

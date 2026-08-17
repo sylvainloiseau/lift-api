@@ -1,15 +1,24 @@
 package fr.cnrs.lacito.liftapi.model;
 
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.stream.Collectors;
+
+import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ReadOnlyStringProperty;
 import javafx.beans.property.ReadOnlyStringWrapper;
+import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.property.SimpleListProperty;
+import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.SimpleSetProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 
 /**
- * A trait is a key-value pair. The key doesn't have to be unique on the object that receive the field.
+ * A trait is a key-value pair. The key doesn't have to be unique on the object that receive the trait.
  *
  *
  * A trait is simply a reference to a single range-element in a range. It can be used to give the
@@ -24,33 +33,62 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
 
     protected HasTrait parent;
 
+    private SimpleObjectProperty<ZonedDateTime> dateTimeProperty;
+    private StringProperty stringValueProperty;
+    private SimpleObjectProperty<LiftHeaderRangeElement> rangeElementProperty;
+    private SimpleSetProperty<LiftHeaderRangeElement> rangeElementSetProperty;
+    private SimpleListProperty<LiftHeaderRangeElement> rangeElementListProperty;
+    private SimpleIntegerProperty integerProperty;
 
-    private ReadOnlyStringWrapper nameProperty;
-    private StringProperty valueProperty;
+    private SimpleObjectProperty<LiftFieldAndTraitDefinition> definitionProperty;
 
-    public LiftTrait(String name, String value) {
-        this.nameProperty = new ReadOnlyStringWrapper(this, "name", name);
-        this.valueProperty = new SimpleStringProperty(this, "value", value);
+    public LiftTrait(LiftFieldAndTraitDefinition def) {
+        this.definitionProperty = new SimpleObjectProperty<>(this, "definition", def);
+        switch (def.getType().get()) {
+            case LiftFieldAndTraitDefinitionType.DATETIME ->
+                this.dateTimeProperty = new SimpleObjectProperty<>(this, "value", null);
+            case LiftFieldAndTraitDefinitionType.STRING ->
+                this.stringValueProperty = new SimpleStringProperty(this, "value", null);
+            case LiftFieldAndTraitDefinitionType.OPTION ->
+                this.rangeElementProperty = new SimpleObjectProperty<>(this, "value", null);
+            case LiftFieldAndTraitDefinitionType.OPTION_COLLECTION ->
+                this.rangeElementSetProperty = new SimpleSetProperty<>(this, "value", null);
+            case LiftFieldAndTraitDefinitionType.OPTION_SEQUENCE ->
+                this.rangeElementListProperty = new SimpleListProperty<>(this, "value", null);
+            case LiftFieldAndTraitDefinitionType.INTEGER ->
+                this.integerProperty = new SimpleIntegerProperty(this, "value");
+            default -> throw new IllegalArgumentException("Illegal trait type: " + def.getTypeStr());
+        }
     }
 
+//    public LiftTrait(String name, String value) {
+//        this.nameProperty = new ReadOnlyStringWrapper(this, "name", name);
+//        this.valueProperty = new SimpleStringProperty(this, "value", value);
+//    }
+
     public LiftTrait(LiftFieldAndTraitDefinition def, String value) {
-        //TODO Auto-generated constructor stub
+        this(def);
+        this.stringValueProperty.set(value);
     }
 
     public LiftTrait(LiftFieldAndTraitDefinition def, LiftHeaderRangeElement e) {
-        //TODO Auto-generated constructor stub
+        this(def);
+        this.rangeElementProperty.set(e);
     }
 
     public LiftTrait(LiftFieldAndTraitDefinition def, HashSet<LiftHeaderRangeElement> set) {
-        //TODO Auto-generated constructor stub
+        this(def);
+        this.rangeElementSetProperty.addAll(set);
     }
 
     public LiftTrait(LiftFieldAndTraitDefinition def, List<LiftHeaderRangeElement> elements) {
-        //TODO Auto-generated constructor stub
+        this(def);
+        this.rangeElementListProperty.setAll(elements);
     }
 
     public LiftTrait(LiftFieldAndTraitDefinition def, Integer v) {
-        //TODO Auto-generated constructor stub
+        this(def);
+        this.integerProperty.set(v);
     }
 
     @Override
@@ -61,34 +99,71 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
     @Override
     protected void addToMainMultiText(Form t) {
         throw new UnsupportedOperationException(
-            "Trait does not support adding to main MultiText"
+            "Trait does not have a main MultiText"
         );
     }
 
-    public ReadOnlyStringProperty nameProperty() {
-        return nameProperty.getReadOnlyProperty();
+    public LiftFieldAndTraitDefinition getDefinition() {
+        return definitionProperty.get();
     }
 
-    public String getName() {
-        return nameProperty.get();
-    }
+    // Values
+
+    // private SimpleObjectProperty<ZonedDateTime> dateTimeProperty;
+    // private StringProperty stringValueProperty;
+    // private SimpleObjectProperty<LiftHeaderRangeElement> rangeElementProperty;
+
+    // private SimpleSetProperty<LiftHeaderRangeElement> rangeElementSetProperty;
+    // private SimpleListProperty<LiftHeaderRangeElement> rangeElementListProperty;
+    // private SimpleIntegerProperty integerProperty;
 
     public String getValue() {
-        return valueProperty.get();
+        return switch (definitionProperty.get().getType().get()) {
+            case LiftFieldAndTraitDefinitionType.DATETIME -> this.dateTimeProperty.get().toString();
+            case LiftFieldAndTraitDefinitionType.STRING -> this.stringValueProperty.get();
+            case LiftFieldAndTraitDefinitionType.OPTION -> this.rangeElementProperty.get().getId();
+            case LiftFieldAndTraitDefinitionType.OPTION_COLLECTION -> {
+                throw new UnsupportedOperationException("OPTION_COLLECTION type is not supported for trait value");
+                // this.rangeElementSetProperty.get().stream()
+                //     .map(LiftHeaderRangeElement::getId)
+                //     .collect(Collectors.joining(", "));
+            }
+            case LiftFieldAndTraitDefinitionType.OPTION_SEQUENCE -> {
+                throw new UnsupportedOperationException("OPTION_SEQUENCE type is not supported for trait value");
+                // this.rangeElementListProperty.get().stream()
+                //     .map(LiftHeaderRangeElement::getId)
+                //  .collect(Collectors.joining(", "));
+            }
+            case LiftFieldAndTraitDefinitionType.INTEGER -> Integer.toString(this.integerProperty.get());
+            default -> throw new IllegalArgumentException("Illegal trait type: " + definitionProperty.get().getTypeStr());
+        };
     }
 
     public StringProperty valueProperty() {
-        return valueProperty;
+        throw new UnsupportedOperationException("valueProperty is not supported for trait type: " + definitionProperty.get().getTypeStr());
     }
 
     public void setValue(String value) {
         if (value == null) value = "";
-        valueProperty.set(value);
+        //valueProperty.set(value);
+        switch (definitionProperty.get().getType().get()) {
+            case LiftFieldAndTraitDefinitionType.DATETIME -> this.dateTimeProperty.set(ZonedDateTime.parse(value, DateTimeFormatter.ISO_ZONED_DATE_TIME));
+            case LiftFieldAndTraitDefinitionType.STRING -> this.stringValueProperty.set(value);
+            case LiftFieldAndTraitDefinitionType.OPTION -> throw new UnsupportedOperationException("OPTION type is not supported for trait value");
+            case LiftFieldAndTraitDefinitionType.OPTION_COLLECTION -> throw new UnsupportedOperationException("OPTION_COLLECTION type is not supported for trait value");
+            case LiftFieldAndTraitDefinitionType.OPTION_SEQUENCE -> throw new UnsupportedOperationException("OPTION_SEQUENCE type is not supported for trait value");
+            case LiftFieldAndTraitDefinitionType.INTEGER -> this.integerProperty.set(Integer.parseInt(value));
+            default -> throw new IllegalArgumentException("Illegal trait type: " + definitionProperty.get().getTypeStr());
+        }
     }
+
+    // Parent
 
     protected void setParent(HasTrait parent) {
         this.parent = parent;
     }
+
+    // Annotations
 
     @Override
     public void addAnnotation(LiftAnnotation a) {
@@ -104,8 +179,4 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
         return parent;
     }
 
-    public static LiftTrait create(String name, String value) {
-        // TODO parse name
-        return new LiftTrait(name, value);
-    }
 }

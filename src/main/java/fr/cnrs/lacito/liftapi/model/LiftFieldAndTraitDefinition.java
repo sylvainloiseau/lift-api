@@ -3,8 +3,6 @@ package fr.cnrs.lacito.liftapi.model;
 import java.util.EnumSet;
 import java.util.Optional;
 import java.util.Set;
-import lombok.Getter;
-import lombok.Setter;
 
 // between 0.13 and 0.15 : field -> field-definition, field/@tag -> field-definition/@name,
 /**
@@ -79,50 +77,74 @@ repeated.
  */
 public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
 
-    @Getter
     final String name;
 
     final LiftHeader parent;
 
-    /** Raw {@code @option-range} attribute value (range id). */
-    @Getter
-    @Setter
-    Optional<String> optionRange = Optional.empty();
+    private Optional<LiftHeaderRange> resolvedRange = Optional.empty();
 
-    // @Getter
-    // @Setter
-    // LiftHeaderRange rangeObject = null;
+    public Optional<LiftHeaderRange> getResolvedRange() {
+        return resolvedRange;
+    }
 
-    @Getter
-    @Setter
+    public void setResolvedRange(Optional<LiftHeaderRange> resolvedRange) {
+        this.resolvedRange = resolvedRange;
+    }
+
     Optional<String> writingSystem = Optional.empty();
 
-    @Getter
+    public Optional<String> getWritingSystem() {
+        return writingSystem;
+    }
+
+    public void setWritingSystem(Optional<String> writingSystem) {
+        this.writingSystem = writingSystem;
+    }
+
     MultiText label = new MultiText();
 
-    @Getter
-    @Setter
+    public MultiText getLabel() {
+        return label;
+    }
+
     private LiftFieldAndTraitDefinitionKind kind =
         LiftFieldAndTraitDefinitionKind.UNKNOWN;
 
-    @Getter
-    @Setter
+    public void setKind(LiftFieldAndTraitDefinitionKind kind) {
+        this.kind = kind;
+    }
+
+    public LiftFieldAndTraitDefinitionKind getKind() {
+        return kind;
+    }
+
     private Optional<LiftFieldAndTraitDefinitionType> definitionType =
         Optional.empty();
 
-    @Getter
+    public Optional<LiftFieldAndTraitDefinitionType> getDefinitionType() {
+        return definitionType;
+    }
+
+    public void setDefinitionType(Optional<LiftFieldAndTraitDefinitionType> definitionType) {
+        this.definitionType = definitionType;
+    }
+
     private Set<LiftFieldAndTraitDefinitionTarget> targets = EnumSet.noneOf(
         LiftFieldAndTraitDefinitionTarget.class
     );
 
-    /** Resolved link to the LiftHeaderRange named by {@code @option-range}, set after parsing. */
-    @Getter
-    @Setter
-    private Optional<LiftHeaderRange> resolvedRange = Optional.empty();
+    public Set<LiftFieldAndTraitDefinitionTarget> getTargets() {
+        return targets;
+    }
 
-    public LiftFieldAndTraitDefinition(String tag, LiftHeader parent) {
-        this.name = tag;
+    public LiftFieldAndTraitDefinition(String name, LiftHeader parent) {
+        this.name = name;
         this.parent = parent;
+        definitionType = Optional.of(LiftFieldAndTraitDefinitionType.STRING);
+    }
+
+    public String getName() {
+        return name;
     }
 
     public MultiText getDescription() {
@@ -149,8 +171,12 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
     //     this.targets = targets != null ? targets : EnumSet.noneOf(LiftFieldAndTraitDefinitionTarget.class);
     // }
 
+    public Optional<LiftFieldAndTraitDefinitionType> getType() {
+        return definitionType;
+    }
+
     /** Raw @type value (for serialization). */
-    public Optional<String> getType() {
+    public Optional<String> getTypeStr() {
         return definitionType.map(LiftFieldAndTraitDefinitionType::toLiftValue);
     }
 

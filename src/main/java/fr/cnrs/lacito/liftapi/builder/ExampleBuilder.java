@@ -1,13 +1,16 @@
 package fr.cnrs.lacito.liftapi.builder;
 
+import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftExample;
+import fr.cnrs.lacito.liftapi.model.LiftSense;
+
 import java.util.function.Consumer;
 
 /**
  * Builder for creating LiftExample instances with a fluent API.
- * 
+ *
  * Usage:
  * <pre>
  *   LiftExample example = Builders.example()
@@ -17,19 +20,17 @@ import java.util.function.Consumer;
  *       .build();
  * </pre>
  */
-public class ExampleBuilder extends AbstractLiftElementBuilder<LiftExample> {
+public class ExampleBuilder extends AbstractLiftElementBuilder<LiftExample, LiftSense> {
 
-    protected ExampleBuilder(LiftDictionaryRegistry registry) {
-        this.registry = registry;
-        this.element = LiftExample.create();
+    protected ExampleBuilder(LiftDictionary dictionary, LiftSense parent) {
+        super(LiftExample.create(), dictionary, parent);
     }
 
     /**
      * Create an example with a source.
      */
-    protected ExampleBuilder(LiftDictionaryRegistry registry, String source) {
-        this.registry = registry;
-        this.element = LiftExample.create(source);
+    protected ExampleBuilder(LiftDictionary dictionary, LiftSense parent, String source) {
+        super(LiftExample.create(source), dictionary, parent);
     }
 
     /**

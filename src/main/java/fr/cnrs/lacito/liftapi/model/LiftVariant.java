@@ -3,7 +3,9 @@ package fr.cnrs.lacito.liftapi.model;
 import java.util.List;
 import java.util.Optional;
 import javafx.beans.property.ListProperty;
+import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleListProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 import lombok.Getter;
 
@@ -26,9 +28,13 @@ public final class LiftVariant
             "relations",
             FXCollections.observableArrayList()
         );
+    private final ObjectProperty<AbstractIdentifiable> refObjectProperty = new SimpleObjectProperty<AbstractIdentifiable>(this, "refObject", null);
 
-    @Getter
     protected LiftEntry parent;
+
+    public LiftEntry getParent() {
+        return parent;
+    }
 
     public LiftVariant() {}
 
@@ -38,24 +44,13 @@ public final class LiftVariant
     }
 
     @Override
-    public void setRefId(String refId) {
-        this.refId = Optional.of(refId);
-    }
-
-    @Override
     public AbstractIdentifiable getRefObject() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException(
-            "Unimplemented method 'getRefObject'"
-        );
+        return this.refObjectProperty.get();
     }
 
     @Override
     public void setRefObject(AbstractIdentifiable refObject) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException(
-            "Unimplemented method 'setRefObject'"
-        );
+        this.refObjectProperty.set(refObject);
     }
 
     protected void setParent(LiftEntry parent) {

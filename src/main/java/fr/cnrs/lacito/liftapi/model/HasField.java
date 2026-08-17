@@ -6,7 +6,7 @@ import java.util.List;
  * Interface for lift objects that can receive fields.
  */
 public sealed interface HasField
-    extends ExtensibleWithoutField
+    extends ExtensibleWithoutField, LiftObject
     permits AbstractExtensibleWithField {
 
     /**

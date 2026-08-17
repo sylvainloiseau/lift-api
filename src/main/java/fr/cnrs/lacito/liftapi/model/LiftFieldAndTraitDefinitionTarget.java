@@ -49,7 +49,7 @@ public enum LiftFieldAndTraitDefinitionTarget {
             case "LiftHeaderRange" -> RANGE;
             case "LiftHeaderRangeElement" -> RANGE_ELEMENT;
             default -> throw new IllegalArgumentException(
-                "Don't recognize this type: " + className
+                "Unexpected class name: " + className
             );
         };
     }
@@ -70,7 +70,7 @@ public enum LiftFieldAndTraitDefinitionTarget {
             case LiftHeaderRange _ -> RANGE;
             case LiftHeaderRangeElement _ -> RANGE_ELEMENT;
             default -> throw new IllegalArgumentException(
-                "Don't recognize this type: " + o.getClass().getSimpleName()
+                "Unexpected class name: " + o.getClass().getSimpleName()
             );
         };
     }

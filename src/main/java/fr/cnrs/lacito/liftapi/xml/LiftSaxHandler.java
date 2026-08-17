@@ -1,6 +1,7 @@
 package fr.cnrs.lacito.liftapi.xml;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
+import fr.cnrs.lacito.liftapi.LiftVersion;
 import fr.cnrs.lacito.liftapi.model.AbstractExtensibleWithField;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
 import fr.cnrs.lacito.liftapi.model.AbstractNotable;
@@ -96,9 +97,13 @@ public final class LiftSaxHandler extends DefaultHandler {
                 String version = attributes.getValue(
                     LiftVocabulary.VERSION_ATTRIBUTE
                 );
-                //if (!version.equals("15")) throw new UnsupportedVersionException("The lift-api read dictionary with version " + LiftVocabulary.CURRENT_LIFT_VERSION + "; found: " + version);
-                // TODO Parameter the reader to take into account v. 13 features
-                liftXMLFactory.setLiftVersion(version);
+                if (version.equals("13")) {
+                    liftXMLFactory.setLiftVersion(LiftVersion.V0_13);
+                } else if (version.equals("15")) {
+                    liftXMLFactory.setLiftVersion(LiftVersion.V0_15);
+                } else {
+                    throw new IllegalArgumentException("Cannot read lift dictionary with version " + version + "; supported versions are 13 and 15");
+                }
                 liftXMLFactory.setLiftProducer(
                     attributes.getValue(LiftVocabulary.PRODUCER_ATTRIBUTE)
                 );
@@ -478,9 +483,13 @@ public final class LiftSaxHandler extends DefaultHandler {
                     LiftVocabulary.LIFT_URI,
                     "type"
                 );
-                if (type == null) type = LiftExample.DEFAULT_TRANSLATION_TYPE; // TODO
+                if (type == null) type = LiftExample.DEFAULT_TRANSLATION_TYPE;
+                LiftHeaderRangeElement typeObject = liftXMLFactory.getTranslationType(type);
+                // System.out.println(typeObject);
+                // System.out.println(" -> " + typeObject.getId());
+                //if (type == null) type = LiftExample.DEFAULT_TRANSLATION_TYPE; // TODO
                 if (elementStack.peek() instanceof LiftExample e) {
-                    multiTextStack.push(e.createTranslation(type));
+                    multiTextStack.push(e.createTranslation(typeObject.getId()));
                 } else {
                     throw new IllegalStateException();
                 }
@@ -586,6 +595,13 @@ public final class LiftSaxHandler extends DefaultHandler {
         // end of second switch
 
         super.startElement(uri, localName, qName, attributes);
+    }
+
+    @Override
+    public void endDocument()
+        throws SAXException {
+            liftXMLFactory.endDocument();
+            super.endDocument();
     }
 
     @Override

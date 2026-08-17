@@ -1,12 +1,10 @@
 package fr.cnrs.lacito.liftapi.model;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javafx.beans.property.MapProperty;
 import javafx.beans.property.SimpleSetProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.MapChangeListener;
@@ -24,20 +22,29 @@ public final class LiftHeader extends AbstractLiftRoot {
 
     private Map<String, LiftFieldAndTraitDefinition> fieldsAndTraitsDefinition = new HashMap<>();
 
+    public Map<String, List<LiftFieldAndTraitDefinition>> rangeId2TraitDefinition = new HashMap<>();
+
     private final ObservableList<LiftHeaderRange> derivedRangeList =
         FXCollections.observableArrayList();
 
     private final ObservableMap<String, LiftHeaderRange> rangesMap =
         FXCollections.observableHashMap();
 
-    private LiftHeaderTypeManager noteTypesManager;
-    private LiftHeaderTypeManager relationTypesManager;
-    private LiftHeaderTypeManager inverseTypesManager;
-    private LiftHeaderTypeManager etymologyTypesManager;
-    private LiftHeaderTypeManager translationTypesManager;
+    //private LiftHeaderTypeManager noteTypesManager;
+    //private LiftHeaderTypeManager relationTypesManager;
+    //private LiftHeaderTypeManager inverseTypesManager;
+    //private LiftHeaderTypeManager etymologyTypesManager;
+    //private LiftHeaderTypeManager translationTypesManager;
+
+    private LiftHeaderRange noteTypesManager;
+    private LiftHeaderRange relationTypesManager;
+    private LiftHeaderRange inverseTypesManager;
+    private LiftHeaderRange etymologyTypesManager;
+    private LiftHeaderRange translationTypesManager;
 
     private final SimpleSetProperty<String> metaLanguages =
         new SimpleSetProperty<>(FXCollections.emptyObservableSet());
+
     private final SimpleSetProperty<String> objectLanguages =
         new SimpleSetProperty<>(FXCollections.emptyObservableSet());
 
@@ -59,12 +66,24 @@ public final class LiftHeader extends AbstractLiftRoot {
                 }
             }
         );
-        noteTypesManager = new LiftHeaderTypeManager(NOTE_TYPE_RANGE, rangesMap, this);
-        relationTypesManager = new LiftHeaderTypeManager(RELATION_TYPE_RANGE, rangesMap, this);
-        inverseTypesManager = new LiftHeaderTypeManager(INVERSE_TYPE_RANGE, rangesMap, this);
-        etymologyTypesManager = new LiftHeaderTypeManager(ETYMOLOGY_TYPE_RANGE, rangesMap, this);
-        translationTypesManager = new LiftHeaderTypeManager(TRANSLATION_TYPE_RANGE, rangesMap, this);
-        
+
+        // //noteTypesManager = new LiftHeaderTypeManager(NOTE_TYPE_RANGE, rangesMap, this);
+        // noteTypesManager = new LiftHeaderTypeManager(rangesMap.computeIfAbsent(NOTE_TYPE_RANGE, x -> new LiftHeaderRange(NOTE_TYPE_RANGE, this)), null);
+        // //relationTypesManager = new LiftHeaderTypeManager(RELATION_TYPE_RANGE, rangesMap, this);
+        // relationTypesManager = new LiftHeaderTypeManager(rangesMap.computeIfAbsent(RELATION_TYPE_RANGE, x -> new LiftHeaderRange(RELATION_TYPE_RANGE, this)), null);
+        // //inverseTypesManager = new LiftHeaderTypeManager(INVERSE_TYPE_RANGE, rangesMap, this);
+        // inverseTypesManager = new LiftHeaderTypeManager(rangesMap.computeIfAbsent(INVERSE_TYPE_RANGE, x -> new LiftHeaderRange(INVERSE_TYPE_RANGE, this)), null);
+        // //etymologyTypesManager = new LiftHeaderTypeManager(ETYMOLOGY_TYPE_RANGE, rangesMap, this);
+        // etymologyTypesManager = new LiftHeaderTypeManager(rangesMap.computeIfAbsent(ETYMOLOGY_TYPE_RANGE, x -> new LiftHeaderRange(ETYMOLOGY_TYPE_RANGE, this)), null);
+        // //translationTypesManager = new LiftHeaderTypeManager(TRANSLATION_TYPE_RANGE, rangesMap, this);
+        // translationTypesManager = new LiftHeaderTypeManager(rangesMap.computeIfAbsent(TRANSLATION_TYPE_RANGE, x -> new LiftHeaderRange(TRANSLATION_TYPE_RANGE, this)), null);
+        //noteTypesManager = new LiftHeaderTypeManager(NOTE_TYPE_RANGE, rangesMap, this);
+
+        noteTypesManager = new LiftHeaderRange(NOTE_TYPE_RANGE, this);
+        relationTypesManager = new LiftHeaderRange(RELATION_TYPE_RANGE, this);
+        inverseTypesManager = new LiftHeaderRange(INVERSE_TYPE_RANGE, this);
+        etymologyTypesManager = new LiftHeaderRange(ETYMOLOGY_TYPE_RANGE, this);
+        translationTypesManager = new LiftHeaderRange(TRANSLATION_TYPE_RANGE, this);
     }
 
     public MultiText getDescription() {
@@ -92,28 +111,28 @@ public final class LiftHeader extends AbstractLiftRoot {
         rangesMap.put(range.getId(), range);
     }
 
-    public List<LiftHeaderRange> getRanges() {
+    public ObservableList<LiftHeaderRange> getRanges() {
         return derivedRangeList;
     }
 
-    public LiftFieldAndTraitDefinition createTraitDefinition(String name) {
+    public LiftFieldAndTraitDefinition createUnknownDefinition(String name) {
         LiftFieldAndTraitDefinition fd = new LiftFieldAndTraitDefinition(
             name,
             this
         );
-        fd.setKind(LiftFieldAndTraitDefinitionKind.TRAIT);
         fieldsAndTraitsDefinition.put(name, fd);
         return fd;
+    }
 
+    public LiftFieldAndTraitDefinition createTraitDefinition(String name) {
+        LiftFieldAndTraitDefinition fd = createUnknownDefinition(name);
+        fd.setKind(LiftFieldAndTraitDefinitionKind.TRAIT);
+        return fd;
     }
 
     public LiftFieldAndTraitDefinition createFieldDefinition(String name) {
-        LiftFieldAndTraitDefinition fd = new LiftFieldAndTraitDefinition(
-            name,
-            this
-        );
+        LiftFieldAndTraitDefinition fd = createUnknownDefinition(name);
         fd.setKind(LiftFieldAndTraitDefinitionKind.FIELD);
-        fieldsAndTraitsDefinition.put(name, fd);
         return fd;
     }
 
@@ -155,177 +174,177 @@ public final class LiftHeader extends AbstractLiftRoot {
 
     // note types
 
-    /**
-     * An updated property reflecting the actual available note types.
-     *
-     * @return
-     */
-    public SimpleSetProperty<String> noteTypesProperty() {
-        return noteTypesManager.typesProperty();
+    public LiftHeaderRange getNoteTypeManager() {
+        return noteTypesManager;
     }
 
-    public void addNoteType(String type) {
-        noteTypesManager.addType(type);
-    }
+    // public SimpleSetProperty<LiftHeaderRangeElement> noteTypesProperty() {
+    //     return noteTypesManager.typesProperty();
+    // }
 
-    public boolean containsNoteType(String type) {
-        return noteTypesManager.containsType(type);
-    }
+    // public void addNoteType(String type) {
+    //     noteTypesManager.createRangeElement(type);
+    // }
 
-    public LiftHeaderRangeElement getNoteType(String type) {
-        return noteTypesManager.getType(type);
-    }
+    // public boolean containsNoteType(String type) {
+    //     return noteTypesManager.containsType(type);
+    // }
+
+    // public LiftHeaderRangeElement getNoteType(String type) {
+    //     return noteTypesManager.getType(type);
+    // }
 
     // relation types
 
-    public SimpleSetProperty<String> relationTypesProperty() {
-        return relationTypesManager.typesProperty();
+    public LiftHeaderRange getRelationTypeManager() {
+        return relationTypesManager;
     }
 
-    public void addRelationType(String type) {
-        relationTypesManager.addType(type);
-    }
+    // public SimpleSetProperty<LiftHeaderRangeElement> relationTypesProperty() {
+    //     return relationTypesManager.typesProperty();
+    // }
 
-    public boolean containsRelationType(String type) {
-        return relationTypesManager.containsType(type);
-    }
+    // public void addRelationType(String type) {
+    //     relationTypesManager.createRangeElement(type);
+    // }
 
-    public LiftHeaderRangeElement getRelationType(String type) {
-        return relationTypesManager.getType(type);
-    }
+    // public boolean containsRelationType(String type) {
+    //     return relationTypesManager.containsType(type);
+    // }
+
+    // public LiftHeaderRangeElement getRelationType(String type) {
+    //     return relationTypesManager.getType(type);
+    // }
 
     // inverse types
 
-    public SimpleSetProperty<String> inverseTypesProperty() {
-        return inverseTypesManager.typesProperty();
+    public LiftHeaderRange getInverseTypeManager() {
+        return inverseTypesManager;
     }
 
-    public void addInverseType(String type) {
-        inverseTypesManager.addType(type);
-    }
+    // public SimpleSetProperty<LiftHeaderRangeElement> inverseTypesProperty() {
+    //     return inverseTypesManager.typesProperty();
+    // }
 
-    public boolean containsInverseType(String type) {
-        return inverseTypesManager.containsType(type);
-    }
+    // public void addInverseType(String type) {
+    //     inverseTypesManager.createRangeElement(type);
+    // }
 
-    public LiftHeaderRangeElement getInverseType(String type) {
-        return inverseTypesManager.getType(type);
-    }
+    // public boolean containsInverseType(String type) {
+    //     return inverseTypesManager.containsType(type);
+    // }
+
+    // public LiftHeaderRangeElement getInverseType(String type) {
+    //     return inverseTypesManager.getType(type);
+    // }
 
     // etymology types
 
-    public SimpleSetProperty<String> etymologyTypesProperty() {
-        return etymologyTypesManager.typesProperty();
+    public LiftHeaderRange getEtymologyTypeManager() {
+        return etymologyTypesManager;
     }
 
-    public void addEtymologyType(String type) {
-        etymologyTypesManager.addType(type);;
-    }
+    // public SimpleSetProperty<LiftHeaderRangeElement> etymologyTypesProperty() {
+    //     return etymologyTypesManager.typesProperty();
+    // }
 
-    public boolean containsEtymologyType(String type) {
-        return etymologyTypesManager.containsType(type);
-    }
+    // public void addEtymologyType(String type) {
+    //     etymologyTypesManager.createRangeElement(type);
+    // }
 
-    public LiftHeaderRangeElement getEtymologyType(String type) {
-        return etymologyTypesManager.getType(type);
-    }
+    // public boolean containsEtymologyType(String type) {
+    //     return etymologyTypesManager.containsType(type);
+    // }
+
+    // public LiftHeaderRangeElement getEtymologyType(String type) {
+    //     return etymologyTypesManager.getType(type);
+    // }
 
     // translation types
 
-    public SimpleSetProperty<String> translationTypesProperty() {
-        return translationTypesManager.typesProperty();
+    public LiftHeaderRange getTranslationTypeManager() {
+        return translationTypesManager;
     }
 
-    public void addTranslationType(String type) {
-        translationTypesManager.addType(type);
-    }
+    // public SimpleSetProperty<LiftHeaderRangeElement> translationTypesProperty() {
+    //     return translationTypesManager.typesProperty();
+    // }
 
-    public boolean containsTranslationType(String type) {
-        return translationTypesManager.containsType(type);
-    }
+    // public void addTranslationType(String type) {
+    //     translationTypesManager.createRangeElement(type);
+    // }
 
-    public LiftHeaderRangeElement getTranslationType(String type) {
-        return translationTypesManager.getType(type);
-    }
+    // public boolean containsTranslationType(String type) {
+    //     return translationTypesManager.containsType(type);
+    // }
 
-    private class LiftHeaderTypeManager {
+    // public LiftHeaderRangeElement getTranslationType(String type) {
+    //     return translationTypesManager.getType(type);
+    // }
 
-        private String name;
-        private ObservableMap<String, LiftHeaderRange> rangesMap;
+    ///** duplicate of LiftHeaderRange */
+    //private class LiftHeaderTypeManager {
 
-        private SimpleSetProperty<String> types = null;
-        // new SimpleSetProperty<>(
-        //     FXCollections.emptyObservableSet()
-        // );
+    //    private String name;
+    //    private LiftHeaderRange range;
 
-        LiftHeaderTypeManager(String type_name, ObservableMap<String, LiftHeaderRange> rangesMap, LiftHeader header) {
-            this.rangesMap = rangesMap;
-            this.name = type_name;
-            if (!rangesMap.containsKey(name)) {
-                rangesMap.put(
-                    name,
-                    new LiftHeaderRange(name, header)
-                );
-            }
-        }
+    //    private SimpleSetProperty<LiftHeaderRangeElement> types = null;
+    //    // new SimpleSetProperty<>(
+    //    //     FXCollections.emptyObservableSet()
+    //    // );
 
-        protected SimpleSetProperty<String> typesProperty() {
-            if (types == null) {
-                initTypes();
-            }
-            return types;
-        }
+    //    LiftHeaderTypeManager(LiftHeaderRange range, LiftHeader header) {
+    //        this.range = range;
+    //        this.name = range.getId();
+    //    }
 
-        protected LiftHeaderRangeElement getType(String type) {
-            return rangesMap
-                .get(name)
-                .getRangeElements().get(type);
-        }
+    //    protected SimpleSetProperty<LiftHeaderRangeElement> typesProperty() {
+    //        if (types == null) {
+    //            initTypes();
+    //        }
+    //        return types;
+    //    }
 
-        protected void addType(String type) {
-            if (types == null) {
-                initTypes();
-            }
-            LiftHeaderRange range = rangesMap.get(name);
-            range
-                .getRangeElements()
-                .put(type, new LiftHeaderRangeElement(type, range));
-        }
+    //    protected LiftHeaderRangeElement getType(String type) {
+    //        return range.getRangeElements().get(type);
+    //    }
 
-        protected boolean containsType(String type) {
-            if (types == null) {
-                initTypes();
-            }
-            return rangesMap
-                .get(name)
-                .getRangeElements().containsKey(type);
-        }
+    //    protected void addType(String type) {
+    //        range
+    //            .getRangeElements()
+    //            .put(type, new LiftHeaderRangeElement(type, range));
+    //    }
 
-        private void initTypes() {
-            MapProperty<String, LiftHeaderRangeElement> typeRangeElements = rangesMap
-                .get(name)
-                .getRangeElements();
-            types = new SimpleSetProperty<>(
-                FXCollections.observableSet(typeRangeElements.keySet())
-            );
-            typeRangeElements.addListener(
-                new MapChangeListener<String, LiftHeaderRangeElement>() {
-                    @Override
-                    public void onChanged(
-                        Change<
-                            ? extends String,
-                            ? extends LiftHeaderRangeElement
-                        > change
-                    ) {
-                        if (change.wasAdded()) {
-                            types.add(change.getKey());
-                        } else if (change.wasRemoved()) {
-                            types.remove(change.getKey());
-                        }
-                    }
-                }
-            );
-        }
-    }
+    //    protected boolean containsType(String type) {
+    //        return range.getRangeElements().containsKey(type);
+    //    }
+
+    //    private void initTypes() {
+    //        MapProperty<String, LiftHeaderRangeElement> typeRangeElements = rangesMap
+    //            .get(name)
+    //            .getRangeElements();
+    //        types = new SimpleSetProperty<>(
+    //            FXCollections.emptyObservableSet()
+    //        );
+    //        types.addAll(typeRangeElements.values());
+    //        typeRangeElements.addListener(
+    //            new MapChangeListener<String, LiftHeaderRangeElement>() {
+    //                @Override
+    //                public void onChanged(
+    //                    Change<
+    //                        ? extends String,
+    //                        ? extends LiftHeaderRangeElement
+    //                    > change
+    //                ) {
+    //                    if (change.wasAdded()) {
+    //                        types.add(change.getValueAdded());
+    //                    } else if (change.wasRemoved()) {
+    //                        types.remove(change.getValueRemoved());
+    //                    }
+    //                }
+    //            }
+    //        );
+    //    }
+    //}
 
 }

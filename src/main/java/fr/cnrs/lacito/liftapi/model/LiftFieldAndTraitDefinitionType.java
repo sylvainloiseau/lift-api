@@ -3,7 +3,7 @@ package fr.cnrs.lacito.liftapi.model;
 import java.util.Optional;
 
 /**
- * 
+ *
  * Maps the {@code @type} attribute of a {@code <field-definition>} element.
  * <p>
  * For field-definitions describing a <b>trait</b>, standard values are:
@@ -17,6 +17,7 @@ import java.util.Optional;
  */
 public enum LiftFieldAndTraitDefinitionType {
 
+    STRING("string"),
     DATETIME("datetime"),
     INTEGER("integer"),
     OPTION("option"),

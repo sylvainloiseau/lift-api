@@ -3,6 +3,7 @@ package fr.cnrs.lacito.liftapi.builder;
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.model.Form;
+import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftEtymology;
 import fr.cnrs.lacito.liftapi.model.LiftHeaderRangeElement;
 
@@ -20,7 +21,7 @@ import java.util.function.Consumer;
  * </pre>
  */
 public class EtymologyBuilder
-    extends AbstractLiftElementBuilder<LiftEtymology>
+    extends AbstractLiftElementBuilder<LiftEtymology, LiftEntry>
 {
 
     /**
@@ -28,20 +29,23 @@ public class EtymologyBuilder
      */
     protected EtymologyBuilder(
         LiftDictionary dictionary,
+        LiftEntry parent,
         String type,
         String source
     ) {
-        this.dictionary = dictionary;
-        this.registry = dictionary.getLiftDictionaryRegistry();
+        super(LiftEtymology.create(null, null), dictionary, parent);
 
         if (type == null) {
             throw new IllegalArgumentException("Etymology type cannot be null");
         }
-        if (!dictionary.getHeader().containsEtymologyType(type)) {
-            dictionary.getHeader().addEtymologyType(type);
+        if (!dictionary.getHeader().getEtymologyTypeManager().hasRangeElements(type)) {
+            dictionary.getHeader().getEtymologyTypeManager().createRangeElement(type);
         }
-        LiftHeaderRangeElement e = dictionary.getHeader().getEtymologyType(type);
-        this.element = LiftEtymology.create(e, source);
+        LiftHeaderRangeElement e = dictionary.getHeader().getEtymologyTypeManager().getRangeElement(type);
+
+        this.element.setType(e);
+        this.element.setSource(source);
+
     }
 
     /**

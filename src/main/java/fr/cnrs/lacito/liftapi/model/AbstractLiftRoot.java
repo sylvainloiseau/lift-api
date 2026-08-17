@@ -13,7 +13,7 @@ import java.util.UUID;
  * with the correct accessor. For instance {@code LiftEntry#getForms()}
  * refers to this field, while renamming it.
  */
-public abstract sealed class AbstractLiftRoot
+public abstract sealed class AbstractLiftRoot implements LiftObject
     permits
         AbstractExtensibleWithoutField,
         LiftAnnotation,

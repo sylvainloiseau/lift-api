@@ -1,6 +1,6 @@
 package fr.cnrs.lacito.liftapi;
 
-import fr.cnrs.lacito.liftapi.builder.DictionaryBuilder;
+import fr.cnrs.lacito.liftapi.builder.DictionaryObjectBuilderFactory;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftExample;
@@ -19,13 +19,14 @@ import java.util.Set;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import javax.xml.stream.XMLStreamException;
-import lombok.Getter;
-import lombok.Setter;
 
 /**
  *
  */
 public final class LiftDictionary {
+
+    protected LiftVersion DEFAULT_VERSION = LiftVersion.V0_15;
+    protected String DEFAULT_PRODUCER = "fr.cnrs.lacito.liftapi";
 
     private static final Logger LOGGER = Logger.getLogger(
         LiftDictionary.class.getName()
@@ -33,19 +34,43 @@ public final class LiftDictionary {
 
     private final LiftDictionaryLanguagesManager languageManager;
 
-    @Getter
     protected final LiftDictionaryComponents liftDictionaryComponents;
 
-    @Getter
-    private final DictionaryBuilder componentBuilder;
+    public LiftDictionaryComponents getLiftDictionaryComponents() {
+        return liftDictionaryComponents;
+    }
 
-    @Getter
-    @Setter // setter should be removed
-    protected String liftVersion;
+    private final DictionaryObjectBuilderFactory componentBuilder;
 
-    @Getter
-    @Setter // setter should be removed
-    protected String liftProducer;
+    public DictionaryObjectBuilderFactory getComponentBuilder() {
+        return componentBuilder;
+    }
+
+    protected LiftVersion liftVersion = DEFAULT_VERSION;
+
+    public LiftVersion getLiftVersion() {
+        return liftVersion;
+    }
+
+    public void setLiftVersion(LiftVersion liftVersion) {
+        if (liftVersion == null) {
+            throw new IllegalArgumentException("liftVersion cannot be null");
+        }
+        this.liftVersion = liftVersion;
+    }
+
+    protected String liftProducer = DEFAULT_PRODUCER;
+
+    public String getLiftProducer() {
+        return liftProducer;
+    }
+
+    public void setLiftProducer(String liftProducer) {
+        if (liftProducer == null) {
+            throw new IllegalArgumentException("liftProducer cannot be null");
+        }
+        this.liftProducer = liftProducer;
+    }
 
     private File source;
 
@@ -59,7 +84,6 @@ public final class LiftDictionary {
         //long dictionarySizeUnits = (int) (size / 1024 / 1024);
         // the zero-argument constructor should be called
         LiftDictionaryRegistry registry = new LiftDictionaryRegistry();
-        registry.enterPopulatingMode();
         LiftDictionaryXmlReader r = new LiftDictionaryXmlReader(
             f,
             registry,
@@ -67,9 +91,6 @@ public final class LiftDictionary {
         );
         r.parse();
         LiftHeader header = r.getHeader();
-        PostUnmarshalling post = new PostUnmarshalling(header, registry);
-        post.operate();
-        registry.unmarshallingModeOff();
         LiftDictionary d = new LiftDictionary(
             registry,
             header
@@ -99,8 +120,8 @@ public final class LiftDictionary {
     }
 
     /**
-     * Save the dictionary at the given location.
-     * @param f the File to read
+     * Save the dictionary at the given location using Lift-XML vocabulary.
+     * @param f the File to be writed
      * @throws WrittingLiftDocumentException
      */
     public void save(File f) throws WrittingLiftDocumentException {
@@ -125,7 +146,7 @@ public final class LiftDictionary {
     protected LiftDictionary() {
         registry = new LiftDictionaryRegistry();
         languageManager = new LiftDictionaryLanguagesManager(registry);
-        componentBuilder = new DictionaryBuilder(this);
+        componentBuilder = new DictionaryObjectBuilderFactory(this);
         header = new LiftHeader();
         liftDictionaryComponents = null;
     }
@@ -136,7 +157,7 @@ public final class LiftDictionary {
     ) {
         this.registry = registry;
         languageManager = new LiftDictionaryLanguagesManager(registry);
-        this.componentBuilder = new DictionaryBuilder(this);
+        this.componentBuilder = new DictionaryObjectBuilderFactory(this);
         this.header = header;
         liftDictionaryComponents = null;
     }
@@ -216,7 +237,7 @@ public final class LiftDictionary {
         return this.liftDictionaryComponents
             .getAllTraits()
             .stream()
-            .map(t -> t.getName())
+            .map(t -> t.getDefinition().getName())
             .collect(Collectors.toSet());
     }
 
@@ -240,7 +261,7 @@ public final class LiftDictionary {
         return this.liftDictionaryComponents
             .getAllTraits()
             .stream()
-            .filter(t -> t.getName().equals(traitName))
+            .filter(t -> t.getDefinition().getName().equals(traitName))
             .collect(
                 Collectors.groupingBy(x -> x.getValue(), Collectors.counting())
             );

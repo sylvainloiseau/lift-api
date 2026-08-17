@@ -1,7 +1,5 @@
 package fr.cnrs.lacito.liftapi.model;
 
-import lombok.Getter;
-
 /**
  * A still image associated with a {@link LiftSense LiftSense}.
  */
@@ -12,8 +10,11 @@ public final class LiftIllustration
 
     final String href;
 
-    @Getter
     LiftSense parent;
+
+    public LiftSense getParent() {
+        return parent;
+    }
 
     public LiftIllustration(String href) {
         this.href = href;

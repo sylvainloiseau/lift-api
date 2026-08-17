@@ -1,8 +1,9 @@
 package fr.cnrs.lacito.liftapi.builder;
 
-import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
+import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
+import fr.cnrs.lacito.liftapi.model.LiftObject;
 import fr.cnrs.lacito.liftapi.model.LiftPronunciation;
 import fr.cnrs.lacito.liftapi.model.LiftRelation;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
@@ -24,11 +25,10 @@ import java.util.function.Consumer;
  *       .build();
  * </pre>
  */
-public class EntryBuilder extends AbstractLiftElementBuilder<LiftEntry> {
+public class EntryBuilder extends AbstractLiftElementBuilder<LiftEntry, LiftObject> {
 
-    protected EntryBuilder(LiftDictionaryRegistry registry) {
-        this.registry = registry;
-        this.element = LiftEntry.create();
+    protected EntryBuilder(LiftDictionary dictionary, LiftObject parent) {
+        super(LiftEntry.create(), dictionary, parent);
     }
 
     /**
@@ -90,7 +90,7 @@ public class EntryBuilder extends AbstractLiftElementBuilder<LiftEntry> {
      * Add a sense via nested builder configuration.
      */
     public EntryBuilder addSense(Consumer<SenseBuilder> config) {
-        SenseBuilder sb = new SenseBuilder(this.registry);
+        SenseBuilder sb = new SenseBuilder(dictionary, element);
         config.accept(sb);
         element.addSense(sb.build());
         return this;
@@ -127,7 +127,7 @@ public class EntryBuilder extends AbstractLiftElementBuilder<LiftEntry> {
     public EntryBuilder addPronunciation(
         Consumer<PronunciationBuilder> config
     ) {
-        PronunciationBuilder pb = new PronunciationBuilder(this.registry);
+        PronunciationBuilder pb = new PronunciationBuilder(dictionary, element);
         config.accept(pb);
         element.addPronunciation(pb.build());
         return this;
@@ -148,7 +148,7 @@ public class EntryBuilder extends AbstractLiftElementBuilder<LiftEntry> {
      * Add a variant via nested builder configuration.
      */
     public EntryBuilder addVariant(Consumer<VariantBuilder> config) {
-        VariantBuilder vb = new VariantBuilder(this.registry);
+        VariantBuilder vb = new VariantBuilder(dictionary, element);
         config.accept(vb);
         element.addVariant(vb.build());
         return this;
@@ -174,8 +174,7 @@ public class EntryBuilder extends AbstractLiftElementBuilder<LiftEntry> {
                 "Type and targetId cannot be null"
             );
         }
-        LiftRelation relation = new RelationBuilder(this.dictionary, type).build();
-        relation.setRefId(targetId);
+        LiftRelation relation = new RelationBuilder(this.dictionary, this.element, type).withRefId(targetId).build();
         element.addRelation(relation);
         return this;
     }
@@ -184,7 +183,7 @@ public class EntryBuilder extends AbstractLiftElementBuilder<LiftEntry> {
      * Add a relation via nested builder configuration.
      */
     public EntryBuilder addRelation(Consumer<RelationBuilder> config) {
-        RelationBuilder rb = new RelationBuilder(this.dictionary);
+        RelationBuilder rb = new RelationBuilder(dictionary, element);
         config.accept(rb);
         element.addRelation(rb.build());
         return this;
@@ -194,7 +193,7 @@ public class EntryBuilder extends AbstractLiftElementBuilder<LiftEntry> {
      * Add an etymology via nested builder configuration.
      */
     public EntryBuilder addEtymology(Consumer<EtymologyBuilder> config, String type, String source) {
-        EtymologyBuilder eb = new EtymologyBuilder(this.dictionary, type, source);
+        EtymologyBuilder eb = new EtymologyBuilder(this.dictionary, element, type, source);
         config.accept(eb);
         element.addEtymology(eb.build());
         return this;

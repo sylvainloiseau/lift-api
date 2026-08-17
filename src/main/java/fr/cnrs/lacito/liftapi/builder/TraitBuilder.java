@@ -1,19 +1,22 @@
 package fr.cnrs.lacito.liftapi.builder;
 
+import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
+import fr.cnrs.lacito.liftapi.model.HasTrait;
+import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
 import java.util.function.Consumer;
 
 /**
  * Builder for creating LiftTrait instances with a fluent API.
- * 
+ *
  * Usage:
  * <pre>
  *   LiftTrait trait = Builders.trait("category", "noun")
  *       .build();
  * </pre>
  */
-public class TraitBuilder extends AbstractLiftElementBuilder<LiftTrait> {
+public class TraitBuilder extends AbstractLiftElementBuilder<LiftTrait, HasTrait> {
 
     /**
      * Create a trait builder with the given name and value.
@@ -21,12 +24,12 @@ public class TraitBuilder extends AbstractLiftElementBuilder<LiftTrait> {
      * @param name the trait name
      * @param value the trait value
      */
-    protected TraitBuilder(LiftDictionaryRegistry registry, String name, String value) {
-        if (name == null || value == null) {
+    protected TraitBuilder(LiftDictionary dictionary, HasTrait parent, String type, String value) {
+        super(new LiftTrait(dictionary.getHeader().getFieldsAndTraitsDefinitions(type)), dictionary, parent);
+        if (type == null || value == null) {
             throw new IllegalArgumentException("Trait name and value cannot be null");
         }
-        this.registry = registry;
-        this.element = LiftTrait.create(name, value);
+        element.setValue(value);
     }
 
     /**
@@ -61,7 +64,7 @@ public class TraitBuilder extends AbstractLiftElementBuilder<LiftTrait> {
      * Add an annotation via nested builder configuration.
      */
     public TraitBuilder addAnnotation(Consumer<AnnotationBuilder> config) {
-        AnnotationBuilder ab = new AnnotationBuilder(registry);
+        AnnotationBuilder ab = new AnnotationBuilder(dictionary, element);
         config.accept(ab);
         element.getAnnotations().add(ab.build());
         return this;

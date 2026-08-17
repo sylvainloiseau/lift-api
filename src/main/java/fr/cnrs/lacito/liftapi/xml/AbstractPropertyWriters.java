@@ -16,7 +16,7 @@ import fr.cnrs.lacito.liftapi.model.LiftField;
 public class AbstractPropertyWriters {
 
     public static void writeAbstractExtensibleWithoutField(
-            XMLStreamWriter w, 
+            XMLStreamWriter w,
             AbstractExtensibleWithoutField obj) throws Exception {
         if (obj.getDateCreated().isPresent()) {
             w.writeAttribute("dateCreated", obj.getDateCreated().get());
@@ -33,7 +33,7 @@ public class AbstractPropertyWriters {
     }
 
     public static void writeAbstractExtensibleWithField(
-            XMLStreamWriter w, 
+            XMLStreamWriter w,
             AbstractExtensibleWithField obj) throws Exception {
         for (LiftField f : obj.getFields()) {
             writeFieldElement(w, f);
@@ -41,7 +41,7 @@ public class AbstractPropertyWriters {
     }
 
     public static void writeAbstractIdentifiable(
-            XMLStreamWriter w, 
+            XMLStreamWriter w,
             AbstractIdentifiable obj) throws Exception {
         if (obj.getId().isPresent()) {
             w.writeAttribute(LiftVocabulary.ID_ATTRIBUTE, obj.getId().get());
@@ -52,7 +52,7 @@ public class AbstractPropertyWriters {
     }
 
     public static void writeAbstractNotable(
-            XMLStreamWriter w, 
+            XMLStreamWriter w,
             AbstractNotable obj) throws Exception {
         for (var entry : obj.getNotes().entrySet()) {
             writeNoteElement(w, entry.getValue());
@@ -79,7 +79,7 @@ public class AbstractPropertyWriters {
 
     private static void writeTraitElement(XMLStreamWriter w, LiftTrait t) throws Exception {
         w.writeStartElement(LiftVocabulary.TRAIT_LOCAL_NAME);
-        w.writeAttribute(LiftVocabulary.NAME_ATTRIBUTE, t.getName());
+        w.writeAttribute(LiftVocabulary.NAME_ATTRIBUTE, t.getDefinition().getName());
         w.writeAttribute(LiftVocabulary.VALUE_ATTRIBUTE, t.getValue());
         for (LiftAnnotation a : t.getAnnotations()) {
             writeAnnotationElement(w, a);

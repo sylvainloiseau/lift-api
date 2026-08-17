@@ -1,13 +1,15 @@
 package fr.cnrs.lacito.liftapi.builder;
 
+import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.model.Form;
+import fr.cnrs.lacito.liftapi.model.HasField;
 import fr.cnrs.lacito.liftapi.model.LiftField;
 import java.util.function.Consumer;
 
 /**
  * Builder for creating LiftField instances with a fluent API.
- * 
+ *
  * Usage:
  * <pre>
  *   LiftField field = Builders.field("customData")
@@ -15,18 +17,17 @@ import java.util.function.Consumer;
  *       .build();
  * </pre>
  */
-public class FieldBuilder extends AbstractLiftElementBuilder<LiftField> {
+public class FieldBuilder extends AbstractLiftElementBuilder<LiftField, HasField> {
 
     /**
      * Create a field builder with the given field name.
-      * @param name 
+      * @param name
      */
-    protected FieldBuilder(LiftDictionaryRegistry registry, String name) {
+    protected FieldBuilder(LiftDictionary dictionary, HasField field, String name) {
+        super(LiftField.create(name), dictionary, field);
         if (name == null) {
             throw new IllegalArgumentException("Field name cannot be null");
         }
-        this.registry = registry;
-        this.element = LiftField.create(name);
     }
 
     /**
@@ -110,6 +111,9 @@ public class FieldBuilder extends AbstractLiftElementBuilder<LiftField> {
      */
     @Override
     public LiftField build() {
+        if (element.getName() == null) {
+            throw new IllegalArgumentException("Field name cannot be null");
+        }
         super.register();
         return element;
     }

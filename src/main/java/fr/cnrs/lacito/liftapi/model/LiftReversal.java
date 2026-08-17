@@ -5,10 +5,7 @@ import javafx.beans.property.ListProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleListProperty;
 import javafx.beans.property.SimpleObjectProperty;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
-import lombok.Getter;
 
 /**
  * A reversal entry associated with a sense.
@@ -36,8 +33,11 @@ public final class LiftReversal
             FXCollections.observableArrayList()
         );
 
-    @Getter
     protected HasReversal parent;
+
+    public HasReversal getParent() {
+        return parent;
+    }
 
     private final ObjectProperty<LiftHeaderRangeElement> typeProperty = new SimpleObjectProperty<>(
         this,
