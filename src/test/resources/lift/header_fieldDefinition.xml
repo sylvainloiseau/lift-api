@@ -1,0 +1,24 @@
+<lift producer="SIL.FLEx 9.0.17.44670" version="0.15">
+<!--
+tiny test LIFT dictionary containing two entries.
+Three languages : tww, en, tpi
+-->
+<header>
+<fields>
+<field-definition name="cv-pattern" class="Entry">
+<form lang="en"><text>This records the syllable pattern for a LexPronunciation in field-definitionWorks.</text></form>
+</field-definition>
+<field-definition name="tone" class="Example">
+<form lang="en"><text>This records the tone information for a LexPronunciation in field-definitionWorks.</text></form>
+</field-definition>
+<field-definition name="foo" class="Example Sense">
+<form lang="en"><text>This records the tone information for a LexPronunciation in field-definitionWorks.</text></form>
+</field-definition>
+</fields>
+</header>
+<entry dateCreated="2015-06-19T08:46:53Z" dateModified="2023-06-09T13:23:14Z" id="nala_001199a3-0e7f-4b4d-ab9e-38cfd0fbff58" guid="001199a3-0e7f-4b4d-ab9e-38cfd0fbff58">
+<lexical-unit>
+<form lang="tww"><text>nala</text></form>
+</lexical-unit>
+</entry>
+</lift>
