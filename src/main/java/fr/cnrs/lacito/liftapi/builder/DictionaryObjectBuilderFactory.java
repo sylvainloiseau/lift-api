@@ -228,7 +228,6 @@ public class DictionaryObjectBuilderFactory {
         return new EtymologyBuilder(dictionary, parent, type, source);
     }
 
-
     public LiftHeaderRangeBuilder range(String rangeId) {
         return new LiftHeaderRangeBuilder(dictionary, rangeId);
     }

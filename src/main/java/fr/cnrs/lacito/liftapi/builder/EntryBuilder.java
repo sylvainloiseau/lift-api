@@ -92,34 +92,35 @@ public class EntryBuilder extends AbstractLiftElementBuilder<LiftEntry, LiftObje
     public EntryBuilder addSense(Consumer<SenseBuilder> config) {
         SenseBuilder sb = new SenseBuilder(dictionary, element);
         config.accept(sb);
-        element.addSense(sb.build());
+        sb.build();
+        //element.addSense(sb.build());
         return this;
     }
 
-    /**
-     * Add a sense directly.
-     */
-    public EntryBuilder addSense(LiftSense sense) {
-        if (sense == null) {
-            throw new IllegalArgumentException("Sense cannot be null");
-        }
-        element.addSense(sense);
-        return this;
-    }
-
-    /**
-     * Add multiple senses.
-     */
-    public EntryBuilder addSenses(LiftSense... senses) {
-        if (senses != null) {
-            for (LiftSense sense : senses) {
-                if (sense != null) {
-                    element.addSense(sense);
-                }
-            }
-        }
-        return this;
-    }
+//    /**
+//     * Add a sense directly.
+//     */
+//    public EntryBuilder addSense(LiftSense sense) {
+//        if (sense == null) {
+//            throw new IllegalArgumentException("Sense cannot be null");
+//        }
+//        element.addSense(sense);
+//        return this;
+//    }
+//
+//    /**
+//     * Add multiple senses.
+//     */
+//    public EntryBuilder addSenses(LiftSense... senses) {
+//        if (senses != null) {
+//            for (LiftSense sense : senses) {
+//                if (sense != null) {
+//                    element.addSense(sense);
+//                }
+//            }
+//        }
+//        return this;
+//    }
 
     /**
      * Add a pronunciation via nested builder configuration.
@@ -129,20 +130,21 @@ public class EntryBuilder extends AbstractLiftElementBuilder<LiftEntry, LiftObje
     ) {
         PronunciationBuilder pb = new PronunciationBuilder(dictionary, element);
         config.accept(pb);
-        element.addPronunciation(pb.build());
+        pb.build();
+        //element.addPronunciation(pb.build());
         return this;
     }
 
-    /**
-     * Add a pronunciation directly.
-     */
-    public EntryBuilder addPronunciation(LiftPronunciation pronunciation) {
-        if (pronunciation == null) {
-            throw new IllegalArgumentException("Pronunciation cannot be null");
-        }
-        element.addPronunciation(pronunciation);
-        return this;
-    }
+//    /**
+//     * Add a pronunciation directly.
+//     */
+//    public EntryBuilder addPronunciation(LiftPronunciation pronunciation) {
+//        if (pronunciation == null) {
+//            throw new IllegalArgumentException("Pronunciation cannot be null");
+//        }
+//        element.addPronunciation(pronunciation);
+//        return this;
+//    }
 
     /**
      * Add a variant via nested builder configuration.
@@ -150,20 +152,21 @@ public class EntryBuilder extends AbstractLiftElementBuilder<LiftEntry, LiftObje
     public EntryBuilder addVariant(Consumer<VariantBuilder> config) {
         VariantBuilder vb = new VariantBuilder(dictionary, element);
         config.accept(vb);
-        element.addVariant(vb.build());
+        vb.build();
+        //element.addVariant(vb.build());
         return this;
     }
 
-    /**
-     * Add a variant directly.
-     */
-    public EntryBuilder addVariant(LiftVariant variant) {
-        if (variant == null) {
-            throw new IllegalArgumentException("Variant cannot be null");
-        }
-        element.addVariant(variant);
-        return this;
-    }
+//    /**
+//     * Add a variant directly.
+//     */
+//    public EntryBuilder addVariant(LiftVariant variant) {
+//        if (variant == null) {
+//            throw new IllegalArgumentException("Variant cannot be null");
+//        }
+//        element.addVariant(variant);
+//        return this;
+//    }
 
     /**
      * Add a relation with type and target ID.
@@ -175,7 +178,7 @@ public class EntryBuilder extends AbstractLiftElementBuilder<LiftEntry, LiftObje
             );
         }
         LiftRelation relation = new RelationBuilder(this.dictionary, this.element, type).withRefId(targetId).build();
-        element.addRelation(relation);
+        //element.addRelation(relation);
         return this;
     }
 
@@ -185,17 +188,20 @@ public class EntryBuilder extends AbstractLiftElementBuilder<LiftEntry, LiftObje
     public EntryBuilder addRelation(Consumer<RelationBuilder> config) {
         RelationBuilder rb = new RelationBuilder(dictionary, element);
         config.accept(rb);
-        element.addRelation(rb.build());
+        rb.build();
+        // element.addRelation(rb.build());
         return this;
     }
 
     /**
      * Add an etymology via nested builder configuration.
+     * @see DictionaryObjectBuilderFactory#etymology(LiftEntry, String, String)
      */
     public EntryBuilder addEtymology(Consumer<EtymologyBuilder> config, String type, String source) {
         EtymologyBuilder eb = new EtymologyBuilder(this.dictionary, element, type, source);
         config.accept(eb);
-        element.addEtymology(eb.build());
+        eb.build();
+        //element.addEtymology(eb.build());
         return this;
     }
 

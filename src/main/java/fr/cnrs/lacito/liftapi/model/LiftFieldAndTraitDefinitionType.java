@@ -26,14 +26,14 @@ public enum LiftFieldAndTraitDefinitionType {
     MULTISTRING("multistring"),
     MULTITEXT("multitext");
 
-    private final String liftValue;
+    private final String str;
 
-    LiftFieldAndTraitDefinitionType(String liftValue) {
-        this.liftValue = liftValue;
+    LiftFieldAndTraitDefinitionType(String str) {
+        this.str = str;
     }
 
-    public String toLiftValue() {
-        return liftValue;
+    public String toStringValue() {
+        return str;
     }
 
     public boolean describesField() {
@@ -44,10 +44,10 @@ public enum LiftFieldAndTraitDefinitionType {
         return !describesField();
     }
 
-    public static Optional<LiftFieldAndTraitDefinitionType> fromLiftValue(String value) {
+    public static Optional<LiftFieldAndTraitDefinitionType> fromStringValue(String value) {
         if (value == null || value.isBlank()) return Optional.empty();
         for (LiftFieldAndTraitDefinitionType t : values()) {
-            if (t.liftValue.equals(value.trim().toLowerCase())) return Optional.of(t);
+            if (t.str.toLowerCase().equals(value.trim().toLowerCase())) return Optional.of(t);
         }
         return Optional.empty();
     }

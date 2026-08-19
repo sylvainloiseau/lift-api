@@ -14,7 +14,7 @@ public class LiftDictionaryRegisterTest {
     @BeforeEach
     public void setUp() {
         this.dictionary = LiftDictionary.makeBuilder()
-            .withLiftVersion("0.13")
+            .withLiftVersion(LiftVersion.V0_13)
             .withProducer("Test Producer")
             .build();
     }
@@ -63,10 +63,13 @@ public class LiftDictionaryRegisterTest {
     public void testRegistryThrowsExceptionOnAdd() {
         DictionaryObjectBuilderFactory builder = dictionary.getComponentBuilder();
 
-        builder.entry().withForm("en", "dictionary").build();
-
         LiftDictionaryRegistry registry =
             dictionary.getLiftDictionaryRegistry();
+
+        assertEquals(0, registry.getEntries().size());
+
+        builder.entry().withForm("en", "dictionary").build();
+        assertEquals(1, registry.getEntries().size());
 
         assertThrows(Exception.class, () -> {
             registry

@@ -13,10 +13,10 @@ public final class LiftHeaderRangeElement extends AbstractExtensibleWithField {
     private final LiftHeaderRange parentRange;
 
     /** The id of the parent range-element (for hierarchical organisation). */
-    private Optional<String> parentId = Optional.empty();
+    private Optional<LiftHeaderRangeElement> parentElement = Optional.empty();
 
-    public Optional<String> getParentId() {
-        return parentId;
+    public Optional<LiftHeaderRangeElement> getParentId() {
+        return parentElement;
     }
 
     Optional<String> guid = Optional.empty();
@@ -46,15 +46,11 @@ public final class LiftHeaderRangeElement extends AbstractExtensibleWithField {
         return parentRange;
     }
 
-    /** Set the {@code @parent} attribute (id of parent range-element). */
-    public void setParentId(String parentId) {
-        this.parentId = Optional.ofNullable(parentId);
-    }
-
-    /** @deprecated Use {@link #setParentId(String)} — kept for existing callers. */
-    @Deprecated
-    public void setOtherParent(String otherParent) {
-        setParentId(otherParent);
+    /**
+     * A parent range-element (for hierarchical organisation of range-element).
+     */
+    public void setParentElement(LiftHeaderRangeElement parent) {
+        this.parentElement = Optional.of(parent);
     }
 
     public void setGuid(String guid) {

@@ -5,6 +5,7 @@ import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftExample;
 import fr.cnrs.lacito.liftapi.model.LiftHeader;
+import fr.cnrs.lacito.liftapi.model.LiftHeaderRangeElement;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.MultiText;
 import fr.cnrs.lacito.liftapi.model.TextSpan;
@@ -16,6 +17,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import javax.xml.stream.XMLStreamException;
@@ -34,11 +36,9 @@ public final class LiftDictionary {
 
     private final LiftDictionaryLanguagesManager languageManager;
 
-    protected final LiftDictionaryComponents liftDictionaryComponents;
-
-    public LiftDictionaryComponents getLiftDictionaryComponents() {
-        return liftDictionaryComponents;
-    }
+    // public LiftDictionaryComponents getLiftDictionaryComponents() {
+    //     return liftDictionaryComponents;
+    // }
 
     private final DictionaryObjectBuilderFactory componentBuilder;
 
@@ -148,7 +148,6 @@ public final class LiftDictionary {
         languageManager = new LiftDictionaryLanguagesManager(registry);
         componentBuilder = new DictionaryObjectBuilderFactory(this);
         header = new LiftHeader();
-        liftDictionaryComponents = null;
     }
 
     protected LiftDictionary(
@@ -159,7 +158,6 @@ public final class LiftDictionary {
         languageManager = new LiftDictionaryLanguagesManager(registry);
         this.componentBuilder = new DictionaryObjectBuilderFactory(this);
         this.header = header;
-        liftDictionaryComponents = null;
     }
 
     public LiftHeader getHeader() {
@@ -189,7 +187,7 @@ public final class LiftDictionary {
 
     public Set<String> getObjectLanguagesInLexicalUnit() {
         Set<String> objectLanguages = new HashSet<>();
-        for (LiftEntry e : this.liftDictionaryComponents.getAllEntries()) {
+        for (LiftEntry e : this.registry.getEntries()) {
             // objectLanguages.addAll( ((Subfields)e.getAnnotationOrTraitOrField()).get_object_languages() );
             objectLanguages.addAll(e.getForms().getLangs());
         }
@@ -197,8 +195,7 @@ public final class LiftDictionary {
     }
 
     public Map<String, Long> getGramInfoCounter() {
-        Map<String, Long> result = this.liftDictionaryComponents
-            .getAllSenses()
+        Map<String, Long> result = this.registry.getSenses()
             .stream()
             .filter(x -> x.getGrammaticalInfo().isPresent())
             .collect(
@@ -213,7 +210,7 @@ public final class LiftDictionary {
 
     public Set<String> getGramInfoSet() {
         Set<String> gramInfoSet = new HashSet<>();
-        for (LiftSense s : this.liftDictionaryComponents.getAllSenses()) {
+        for (LiftSense s : this.registry.getSenses()) {
             s.getGrammaticalInfo().ifPresent(gi ->
                 gramInfoSet.add(gi.getGramInfoValue())
             );
@@ -223,43 +220,42 @@ public final class LiftDictionary {
 
     public Set<String> getObjectLanguagesOfAllText() {
         return getLanguagesInAllField(
-            this.liftDictionaryComponents.getAllObjectLanguagesMultiText()
+            this.registry.getObjectTextReadOnly()
+            //this.liftDictionaryComponents.getAllObjectLanguagesMultiText()
         );
     }
 
     public Set<String> getMetaLanguagesOfAllText() {
         return getLanguagesInAllField(
-            this.liftDictionaryComponents.getAllMetaLanguagesMultiText()
+            this.registry.getMetaTextReadOnly()
+            //this.liftDictionaryComponents.getAllMetaLanguagesMultiText()
         );
     }
 
     public Set<String> getTraitName() {
-        return this.liftDictionaryComponents
-            .getAllTraits()
+        return this.registry.getTraitsReadOnly()
             .stream()
             .map(t -> t.getDefinition().getName())
             .collect(Collectors.toSet());
     }
 
     public Set<String> getFieldType() {
-        return this.liftDictionaryComponents
-            .getAllFields()
+        return this.registry.getFieldsReadOnly()
             .stream()
             .map(t -> t.getName())
             .collect(Collectors.toSet());
     }
 
-    public Set<String> getTranslationType() {
-        Set<String> result = new HashSet<>();
-        for (LiftExample le : this.liftDictionaryComponents.getAllExamples()) {
-            result.addAll(le.getTranslations().keySet());
-        }
-        return result;
-    }
+    // public Set<LiftHeaderRangeElement> getTranslationType() {
+    //     Set<LiftHeaderRangeElement> result = new HashSet<>();
+    //     for (LiftExample le : this.registry.getExamples()) {
+    //         result.addAll(le.getTranslations().keySet());
+    //     }
+    //     return result;
+    // }
 
     public Map<String, Long> getValueCounterForTraitName(String traitName) {
-        return this.liftDictionaryComponents
-            .getAllTraits()
+        return this.registry.getTraitsReadOnly()
             .stream()
             .filter(t -> t.getDefinition().getName().equals(traitName))
             .collect(
@@ -269,7 +265,7 @@ public final class LiftDictionary {
 
     public Set<String> getLangInObjectTextSpan() {
         List<MultiText> ms =
-            this.liftDictionaryComponents.getAllObjectLanguagesMultiText();
+            this.registry.getObjectTextReadOnly();
         Set<String> langs = new HashSet<>();
         for (MultiText m : ms) {
             for (Form t : m.getForms()) {
@@ -289,6 +285,56 @@ public final class LiftDictionary {
             languages.addAll(m.getLangs());
         }
         return languages;
+    }
+
+    // access to content of the dictionary
+
+    public List<LiftEntry> getEntryByForm(String lang, String form) {
+        // System.out.println(registry.entriesById.values().size());
+        // for (LiftEntry entry : registry.entriesById.values()) {
+        //     for (String l : entry.getForms().getLangs()) {
+        //         System.out.println(l);
+        //         System.out.println(entry.getForms().getForm(l).get().toString());
+        //     }
+        // }
+        return registry.entriesById
+            .values()
+            .stream()
+            .filter(x -> x.getForms().containsLang(lang))
+            .filter(x ->
+                x.getForms().getForm(lang).get().textProperty().get().equals(form)
+            )
+            .toList();
+    }
+
+    public List<MultiText> searchInMetaLanguage(String lang, String searched) {
+        return searchInLanguage(lang, searched, registry.metaTextById);
+    }
+
+    public List<MultiText> searchInObjectLanguage(
+        String lang,
+        String searched
+    ) {
+        return searchInLanguage(lang, searched, registry.objectTextById);
+    }
+
+    private List<MultiText> searchInLanguage(
+        String lang,
+        String searched,
+        Map<UUID, MultiText> texts
+    ) {
+        if (lang == null) throw new IllegalArgumentException(
+            "lang must not be null"
+        );
+        if (searched == null) throw new IllegalArgumentException(
+            "searched string must not be null"
+        );
+        return texts
+            .values()
+            .stream()
+            .filter(x -> x.containsLang(lang))
+            .filter(x -> x.getForm(lang).get().toPlainText().matches(searched))
+            .toList();
     }
 
     //    public void removeEntry(LiftEntry entry) {

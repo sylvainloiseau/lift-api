@@ -3,6 +3,7 @@ package fr.cnrs.lacito.liftapi;
 import fr.cnrs.lacito.liftapi.model.AbstractExtensibleWithoutField;
 import fr.cnrs.lacito.liftapi.model.AbstractIdentifiable;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
+import fr.cnrs.lacito.liftapi.model.DuplicateIdException;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.HasField;
 import fr.cnrs.lacito.liftapi.model.HasNote;
@@ -28,10 +29,14 @@ import fr.cnrs.lacito.liftapi.model.LiftTrait;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
 import fr.cnrs.lacito.liftapi.model.MultiText;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
+import org.xml.sax.EntityResolver;
+
 import javafx.collections.FXCollections;
 import javafx.collections.MapChangeListener;
 import javafx.collections.ObservableList;
@@ -55,11 +60,15 @@ public class LiftDictionaryRegistry {
         FXCollections.observableHashMap();
 
     protected Map<String, UUID> entryLiftId2Uuid = new HashMap<>(200);
+
     protected Map<String, UUID> senseLiftId2Uuid = new HashMap<>(200);
+
     protected final ObservableMap<UUID, LiftEntry> entriesById =
         FXCollections.observableHashMap();
+
     private final ObservableMap<UUID, LiftSense> sensesById =
         FXCollections.observableHashMap();
+
     protected final ObservableMap<UUID, LiftExample> examplesById =
         FXCollections.observableHashMap();
     private final ObservableMap<UUID, LiftVariant> variantsById =
@@ -99,24 +108,28 @@ public class LiftDictionaryRegistry {
         }
     }
 
-    private ObservableList<LiftEntry> entriesReadOnly = null;
+    private ObservableList<LiftEntry> entriesReadOnly = FXCollections.observableArrayList();
 
     public ObservableList<LiftEntry> getEntries() {
-        if (entriesReadOnly == null) {
-            entriesReadOnly = FXCollections.observableArrayList(
-                entriesById.values()
-            );
-            entriesById.addListener(
-                (MapChangeListener<UUID, LiftEntry>) change -> {
-                    if (change.wasAdded()) {
-                        entriesReadOnly.add(change.getValueAdded());
-                    } else if (change.wasRemoved()) {
-                        entriesReadOnly.remove(change.getValueRemoved());
-                    }
-                }
-            );
-        }
-        return entriesReadOnly;
+        // In the particular case of entries, we
+        // do not use an observable list but register the entry
+        // from the begining in order to keep the order of entries.
+
+        // if (entriesReadOnly == null) {
+        //     entriesReadOnly = FXCollections.observableArrayList(
+        //         entriesById.values()
+        //     );
+        //     entriesById.addListener(
+        //         (MapChangeListener<UUID, LiftEntry>) change -> {
+        //             if (change.wasAdded()) {
+        //                 entriesReadOnly.add(change.getValueAdded());
+        //             } else if (change.wasRemoved()) {
+        //                 entriesReadOnly.remove(change.getValueRemoved());
+        //             }
+        //         }
+        //     );
+        // }
+        return FXCollections.unmodifiableObservableList(entriesReadOnly);
     }
 
     private ObservableList<LiftSense> sensesReadOnly = null;
@@ -407,7 +420,6 @@ public class LiftDictionaryRegistry {
     }
 
     private ObservableList<MultiText> metaTextReadOnly = null;
-    private LiftHeader header;
 
     public ObservableList<MultiText> getMetaTextReadOnly() {
         if (metaTextReadOnly == null) {
@@ -583,19 +595,27 @@ public class LiftDictionaryRegistry {
         switch (node) {
             case LiftEntry e -> {
                 entriesById.put(e.getUUID(), e);
-                String uuidS = e.getUUID().toString();
                 if (e.getId().isEmpty()) {
+                    String uuidS = e.getUUID().toString();
                     e.setId(uuidS);
                 }
-                entryLiftId2Uuid.put(uuidS, e.getUUID());
+                if (entriesByLiftId.containsKey(e.getId().get())) {
+                    throw new DuplicateIdException(
+                        "Duplicate lift id: " + e.getId().get()
+                    );
+                }
+                entriesByLiftId.put(e.getId().get(), e);
+                entryLiftId2Uuid.put(e.getId().get(), e.getUUID());
+                entriesReadOnly.add(e);
             }
             case LiftSense s -> {
                 sensesById.put(s.getUUID(), s);
-                String uuidS = s.getUUID().toString();
                 if (s.getId().isEmpty()) {
+                    String uuidS = s.getUUID().toString();
                     s.setId(uuidS);
                 }
-                senseLiftId2Uuid.put(uuidS, s.getUUID());
+                sensesByLiftId.put(s.getId().get(), s);
+                senseLiftId2Uuid.put(s.getId().get(), s.getUUID());
             }
             case LiftExample o -> examplesById.put(o.getUUID(), o);
             case LiftVariant o -> { variantsById.put(o.getUUID(), o); }
@@ -667,8 +687,14 @@ public class LiftDictionaryRegistry {
         if (node instanceof AbstractIdentifiable identifiable) {
             String liftId = identifiable.getId().get();
             switch (identifiable) {
-                case LiftEntry _ ->  entriesByLiftId.remove(liftId);
-                case LiftSense _ ->  sensesByLiftId.remove(liftId);
+                case LiftEntry _ ->  {
+                    entriesByLiftId.remove(liftId);
+                    entryLiftId2Uuid.remove(liftId);
+                }
+                case LiftSense _ ->  {
+                    sensesByLiftId.remove(liftId);
+                    senseLiftId2Uuid.remove(liftId);
+                }
             }
         }
     }
@@ -681,53 +707,6 @@ public class LiftDictionaryRegistry {
         metaTextById.remove(node.getUUID());
     }
 
-    // access to content of the dictionary
-
-    public List<LiftEntry> getEntryByForm(String form, String lang) {
-        final Form empty = new Form(lang, "");
-        return entriesById
-            .values()
-            .stream()
-            .filter(x -> x.getForms().containsLang(lang))
-            .filter(x ->
-                x.getForms().getForm(lang).get().toPlainText().equals(form)
-            )
-            .toList();
-    }
-
-    public List<MultiText> searchInMetaLanguage(String lang, String searched) {
-        if (lang == null) throw new IllegalArgumentException(
-            "lang must not be null"
-        );
-        if (searched == null) throw new IllegalArgumentException(
-            "searched string must not be null"
-        );
-        return metaTextById
-            .values()
-            .stream()
-            .filter(x -> x.containsLang(lang))
-            .filter(x -> x.getForm(lang).get().toPlainText().matches(searched))
-            .toList();
-    }
-
-    public List<MultiText> searchInObjectLanguage(
-        String lang,
-        String searched
-    ) {
-        if (lang == null) throw new IllegalArgumentException(
-            "lang must not be null"
-        );
-        if (searched == null) throw new IllegalArgumentException(
-            "searched string must not be null"
-        );
-        return objectTextById
-            .values()
-            .stream()
-            .filter(x -> x.containsLang(lang))
-            .filter(x -> x.getForm(lang).get().toPlainText().matches(searched))
-            .toList();
-    }
-
     /**
      * Completely remove a node from the dictionary. The node will not be seen by its parent
      * (for instance a sense will not be seen anymore by its parent entry), and
@@ -736,20 +715,6 @@ public class LiftDictionaryRegistry {
      * @param entry
      */
     public void removeFromDictionary(AbstractLiftRoot node) {
-
-        /**
-         * TODO : check that object is removed from all these objects:
-        public Map<String, List<HasRefId>> refId2Occurrences = new HashMap<>();
-
-        protected final ObservableMap<String, LiftEntry> entriesByLiftId =
-            FXCollections.observableHashMap();
-
-        protected final ObservableMap<String, LiftSense> sensesByLiftId =
-            FXCollections.observableHashMap();
-
-        protected Map<String, UUID> entryLiftId2Uuid = new HashMap<>(200);
-        protected Map<String, UUID> senseLiftId2Uuid = new HashMap<>(200);
-        */
 
         // manage reference counting
         if (node instanceof LiftRelation r) {

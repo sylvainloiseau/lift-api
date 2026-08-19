@@ -1,12 +1,10 @@
 package fr.cnrs.lacito.liftapi.builder;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
-import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftExample;
+import fr.cnrs.lacito.liftapi.model.LiftHeaderRangeElement;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
-
-import java.util.function.Consumer;
 
 /**
  * Builder for creating LiftExample instances with a fluent API.
@@ -88,11 +86,7 @@ public class ExampleBuilder extends AbstractLiftElementBuilder<LiftExample, Lift
      * The type is used to categorize translations (e.g. "free translation", "literal translation").
      */
     public ExampleBuilder addTranslation(String type, String language, String text) {
-        if (type == null || language == null || text == null) {
-            throw new IllegalArgumentException("Type, language and text cannot be null");
-        }
-        element.getOrCreateTranslation(type).add(new Form(language, text));
-        return this;
+        return addTranslation(type, new Form(language, text));
     }
 
     /**
@@ -102,46 +96,49 @@ public class ExampleBuilder extends AbstractLiftElementBuilder<LiftExample, Lift
         if (type == null || translation == null) {
             throw new IllegalArgumentException("Type and translation cannot be null");
         }
-        element.getOrCreateTranslation(type).add(translation);
+        if (!dictionary.getHeader().getTranslationTypeManager().hasRangeElements(type)) {
+            dictionary.getHeader().getTranslationTypeManager().createRangeElement(type);
+        }
+        LiftHeaderRangeElement rangeElement = dictionary.getHeader().getTranslationTypeManager().getRangeElement(type);
+        element.getOrCreateTranslation(rangeElement).add(translation);
         return this;
     }
 
-
-    /**
-     * Add a note via nested builder configuration.
-     */
-    @Override
-    public ExampleBuilder addNote(String type, String language, String text) {
-        super.addNote(type, language, text);
-        return this;
-    }
-
-    /**
-     * Add a note via nested builder configuration.
-     */
-    @Override
-    public ExampleBuilder addNote(Consumer<NoteBuilder> config, String type) {
-        super.addNote(config, type);
-        return this;
-    }
-
-    /**
-     * Add a trait.
-     */
-    @Override
-    public ExampleBuilder addTrait(String name, String value) {
-        super.addTrait(name, value);
-        return this;
-    }
-
-    /**
-     * Add a field.
-     */
-    @Override
-    public ExampleBuilder addField(String name, String language, String text) {
-        super.addField(name, language, text);
-        return this;
-    }
+//    /**
+//     * Add a note via nested builder configuration.
+//     */
+//    @Override
+//    public ExampleBuilder addNote(String type, String language, String text) {
+//        super.addNote(type, language, text);
+//        return this;
+//    }
+//
+//    /**
+//     * Add a note via nested builder configuration.
+//     */
+//    @Override
+//    public ExampleBuilder addNote(Consumer<NoteBuilder> config, String type) {
+//        super.addNote(config, type);
+//        return this;
+//    }
+//
+//    /**
+//     * Add a trait.
+//     */
+//    @Override
+//    public ExampleBuilder addTrait(String name, String value) {
+//        super.addTrait(name, value);
+//        return this;
+//    }
+//
+//    /**
+//     * Add a field.
+//     */
+//    @Override
+//    public ExampleBuilder addField(String name, String language, String text) {
+//        super.addField(name, language, text);
+//        return this;
+//    }
 
     /**
      * Build the example.

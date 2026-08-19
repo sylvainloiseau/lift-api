@@ -23,10 +23,16 @@ public abstract sealed class AbstractNotable
             FXCollections.observableHashMap()
         );
 
+        // TODO : another problem of map whose keys can turn out of sync with
+        // its values.
     @Override
     public void addNote(LiftNote n) throws DuplicateTypeException {
         LiftHeaderRangeElement type = n.getType();
         if (notesProperty.containsKey(type.getId())) {
+            System.out.println("----------------------");
+            System.out.println(notesProperty.toString());
+            System.out.println(type.getId());
+            System.out.println("----------------------");
             throw new IllegalStateException(
                 "Duplicate Note type: " +
                     type.getId() +

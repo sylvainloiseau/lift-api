@@ -11,9 +11,9 @@ public class LiftEntryTest {
     @Test
     public void testGetCreationDate() {
         LiftDictionary lf = Utils.loadDictionaryForTest("lift/tiny.xml");
-        Optional<String> dateCreated = lf.liftDictionaryComponents.getAllEntries().get(0).getDateCreated();
+        Optional<String> dateCreated = lf.getLiftDictionaryRegistry().getEntries().get(0).getDateCreated();
         assertTrue(dateCreated.isPresent());
-        assertEquals("2015-06-19T08:46:53Z", dateCreated.get()); 
+        assertEquals("2015-06-19T08:46:53Z", dateCreated.get());
     }
 
 }

@@ -25,7 +25,7 @@ public class TraitBuilder extends AbstractLiftElementBuilder<LiftTrait, HasTrait
      * @param value the trait value
      */
     protected TraitBuilder(LiftDictionary dictionary, HasTrait parent, String type, String value) {
-        super(new LiftTrait(dictionary.getHeader().getFieldsAndTraitsDefinitions(type)), dictionary, parent);
+        super(new LiftTrait(dictionary.getHeader().getOrCreateTraitsDefinitions(type)), dictionary, parent);
         if (type == null || value == null) {
             throw new IllegalArgumentException("Trait name and value cannot be null");
         }

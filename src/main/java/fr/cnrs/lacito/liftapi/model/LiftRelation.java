@@ -10,8 +10,6 @@ public final class LiftRelation
     implements HasType, HasRefId
 {
 
-    /** Relation type (e.g. lexical-relation value from header ranges). Mutable for UI editing. */
-
     protected Optional<String> refId = Optional.empty();
 
     protected HasRelations parent;
@@ -27,6 +25,7 @@ public final class LiftRelation
     }
 
     private final ObjectProperty<LiftHeaderRangeElement> typeProperty;
+
     private final ObjectProperty<AbstractIdentifiable> refObjectProperty;
 
     public LiftRelation(LiftHeaderRangeElement type) {

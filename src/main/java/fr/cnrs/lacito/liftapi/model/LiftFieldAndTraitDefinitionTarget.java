@@ -23,14 +23,14 @@ public enum LiftFieldAndTraitDefinitionTarget {
     RANGE("range"),
     RANGE_ELEMENT("range-element");
 
-    private final String liftValue;
+    private final String str;
 
-    LiftFieldAndTraitDefinitionTarget(String liftValue) {
-        this.liftValue = liftValue;
+    LiftFieldAndTraitDefinitionTarget(String str) {
+        this.str = str;
     }
 
-    public String toLiftValue() {
-        return liftValue;
+    public String toStringValue() {
+        return str;
     }
 
     public static LiftFieldAndTraitDefinitionTarget fromClassName(
@@ -54,9 +54,7 @@ public enum LiftFieldAndTraitDefinitionTarget {
         };
     }
 
-    public static LiftFieldAndTraitDefinitionTarget fromType(
-        AbstractLiftRoot o
-    ) {
+    public static LiftFieldAndTraitDefinitionTarget fromType(AbstractLiftRoot o) {
         return switch (o) {
             case LiftEntry _ -> ENTRY;
             case LiftSense _ -> SENSE;
@@ -75,22 +73,40 @@ public enum LiftFieldAndTraitDefinitionTarget {
         };
     }
 
+    public static LiftFieldAndTraitDefinitionTarget fromString(String str) {
+        return switch (str.toLowerCase()) {
+            case "entry" -> ENTRY;
+            case "sense" -> SENSE;
+            case "example" -> EXAMPLE;
+            case "variant" -> VARIANT;
+            case "pronunciation" -> PRONUNCIATION;
+            case "note" -> NOTE;
+            case "etymology" -> ETYMOLOGY;
+            case "relation" -> RELATION;
+            case "reversal" -> REVERSAL;
+            case "headerRange" -> RANGE;
+            case "headerRangeElement" -> RANGE_ELEMENT;
+            default -> throw new IllegalArgumentException(
+                "Unexpected string: " + str
+            );
+        };
+    }
+
     public static Optional<LiftFieldAndTraitDefinitionTarget> fromLiftValue(
         String token
     ) {
         if (token == null) return Optional.empty();
         String t = token.trim().toLowerCase();
         for (LiftFieldAndTraitDefinitionTarget v : values()) {
-            if (v.liftValue.equals(t)) return Optional.of(v);
+            if (v.str.equals(t)) return Optional.of(v);
         }
         return Optional.empty();
     }
 
     /**
-     * Parse a space-separated {@code @class} attribute value into a set of targets.
-     * Unknown tokens are silently ignored.
+     * Parse a space-separated ({@code @class} attribute) value into a set of targets.
      */
-    public static Set<LiftFieldAndTraitDefinitionTarget> parseClassAttribute(
+    public static Set<LiftFieldAndTraitDefinitionTarget> parseTargetString(
         String classAttr
     ) {
         Set<LiftFieldAndTraitDefinitionTarget> result = EnumSet.noneOf(
@@ -99,20 +115,9 @@ public enum LiftFieldAndTraitDefinitionTarget {
 
         if (classAttr == null || classAttr.isBlank()) return result;
         for (String token : classAttr.trim().split("\\s+")) {
-            fromLiftValue(token).ifPresent(result::add);
+            result.add(fromString(token));
         }
         return result;
     }
 
-    /**
-     * Serialize a set of targets back to a space-separated string for the {@code @class} attribute.
-     */
-    public static String toClassAttribute(
-        Set<LiftFieldAndTraitDefinitionTarget> targets
-    ) {
-        if (targets == null || targets.isEmpty()) return "";
-        StringJoiner sj = new StringJoiner(" ");
-        for (LiftFieldAndTraitDefinitionTarget t : targets) sj.add(t.liftValue);
-        return sj.toString();
-    }
 }

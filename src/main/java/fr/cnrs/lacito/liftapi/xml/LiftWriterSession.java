@@ -225,7 +225,7 @@ public class LiftWriterSession implements AutoCloseable {
         out.writeStartElement(LiftVocabulary.HEADER_RANGE_ELEMENT_LOCAL_NAME);
         out.writeAttribute(LiftVocabulary.ID_ATTRIBUTE, el.getId());
         if (el.getParentId().isPresent()) {
-            out.writeAttribute("parent", el.getParentId().get());
+            out.writeAttribute("parent", el.getParentId().get().getId());
         }
         if (el.getGuid().isPresent()) {
             out.writeAttribute(
@@ -359,7 +359,7 @@ public class LiftWriterSession implements AutoCloseable {
         w.writeStartElement(LiftVocabulary.HEADER_RANGE_ELEMENT_LOCAL_NAME);
         w.writeAttribute(LiftVocabulary.ID_ATTRIBUTE, el.getId());
         if (el.getParentId().isPresent()) {
-            w.writeAttribute("parent", el.getParentId().get());
+            w.writeAttribute("parent", el.getParentId().get().getId());
         }
         if (el.getGuid().isPresent()) {
             w.writeAttribute(LiftVocabulary.GUID_ATTRIBUTE, el.getGuid().get());
@@ -385,8 +385,8 @@ public class LiftWriterSession implements AutoCloseable {
             LiftVocabulary.HEADER_FIELD_DEFINITION_LOCAL_NAME
         );
         out.writeAttribute(LiftVocabulary.GUID_ATTRIBUTE, f.getName());
-        if (f.getFClass().isPresent()) {
-            out.writeAttribute("class", f.getFClass().get());
+        if (f.getTargets().size() > 0) {
+            out.writeAttribute("class", f.getTargetAsString());
         }
         if (f.getTypeStr().isPresent()) {
             out.writeAttribute("type", f.getTypeStr().get());
@@ -610,7 +610,7 @@ public class LiftWriterSession implements AutoCloseable {
         ex.getTranslations().forEach(
             biunchecked((type, mt) -> {
                 out.writeStartElement(LiftVocabulary.TRANSLATION_LOCAL_NAME);
-                out.writeAttribute(LiftVocabulary.TYPE_ATTRIBUTE, type);
+                out.writeAttribute(LiftVocabulary.TYPE_ATTRIBUTE, type.getId());
                 MultiTextWriters.writeMultiText(out, mt);
                 out.writeEndElement();
             })

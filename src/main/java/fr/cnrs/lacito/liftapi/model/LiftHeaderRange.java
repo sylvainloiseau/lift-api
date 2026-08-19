@@ -80,6 +80,13 @@ public final class LiftHeaderRange extends AbstractExtensibleWithField {
         return rangeElements.get(id);
     }
 
+    public LiftHeaderRangeElement getOrCreateRangeElement(String id) {
+        if (!hasRangeElements(id)) {
+            return createRangeElement(id);
+        }
+        return rangeElements.get(id);
+    }
+
     public boolean hasRangeElements(String id) {
         return rangeElements.containsKey(id);
     }
@@ -92,10 +99,6 @@ public final class LiftHeaderRange extends AbstractExtensibleWithField {
         LiftHeaderRangeElement e = new LiftHeaderRangeElement(id, this);
         rangeElements.put(id, e);
         return e;
-    }
-
-    public void addRangeElement(String id) {
-        rangeElements.put(id, new LiftHeaderRangeElement(id, this));
     }
 
     public void removeRangeElement(String id) {

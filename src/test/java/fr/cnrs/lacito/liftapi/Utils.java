@@ -7,7 +7,7 @@ import java.net.URL;
 
 public class Utils {
 
-    protected static final LiftDictionary loadDictionaryForTest(String file) {
+    public static final LiftDictionary loadDictionaryForTest(String file) {
         URL resourceUrl = Utils.class.getClassLoader().getResource(file);
         if (resourceUrl == null) throw new IllegalStateException(
             "Ressource is null. Check the url of the test document."

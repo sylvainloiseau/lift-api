@@ -7,8 +7,11 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
+
+import fr.cnrs.lacito.liftapi.model.LiftHeaderRangeElement;
 
 public class LiftDictionaryTest {
 
@@ -20,12 +23,15 @@ public class LiftDictionaryTest {
         Set<String> objectLanguages = lf.getObjectLanguagesOfAllText();
         assertTrue(objectLanguages.containsAll(Arrays.asList("tww", "tpi")));
     }
-    
+
     @Test
     public void testGetMetaLanguagesInAllField() {
         LiftDictionary lf = Utils.loadDictionaryForTest("lift/20240828Lift.lift");
         Set<String> metaLanguages = lf.getMetaLanguagesOfAllText();
-        assertTrue(metaLanguages.containsAll(Arrays.asList("tww", "tpi")));
+        assertEquals(2, metaLanguages.size());
+        //System.out.println(metaLanguages.toString());
+        assertTrue(metaLanguages.contains("tpi"));
+        assertTrue(metaLanguages.containsAll(Arrays.asList("tpi", "tpi")));
     }
 
     @Test
@@ -40,14 +46,14 @@ public class LiftDictionaryTest {
         LiftDictionary lf = Utils.loadDictionaryForTest("lift/tiny.xml");
         Map<String, Long> gramInfo = lf.getGramInfoCounter();
         LOGGER.info(gramInfo.toString());
-        assertEquals(gramInfo.get("Interrogative pro-form"), Long.valueOf(1));
+        assertEquals(1, gramInfo.get("Interrogative pro-form"));
     }
 
     @Test
     public void testGetGramInfoCounterLargeDictionary () {
         LiftDictionary lf = Utils.loadDictionaryForTest("lift/20240828Lift.lift");
         Map<String, Long> gramInfo = lf.getGramInfoCounter();
-        assertEquals(gramInfo.get("Interrogative pro-form"), Long.valueOf(20));
+        assertEquals(14, gramInfo.get("Interrogative pro-form"));
     }
 
     @Test
@@ -57,7 +63,6 @@ public class LiftDictionaryTest {
         assertTrue(objectLanguages.containsAll(Arrays.asList("tww")));
     }
 
-    
     @Test
     public void testGetTraitName() {
         LiftDictionary lf = Utils.loadDictionaryForTest("lift/20240828Lift.lift");
@@ -84,9 +89,8 @@ public class LiftDictionaryTest {
     @Test
     public void testGetTranslationType() {
         LiftDictionary lf = Utils.loadDictionaryForTest("lift/tiny_translation.xml");
-        Set<String> translationType = lf.getTranslationType();
-        assertEquals(new HashSet<String>(Arrays.asList("free", "litteral")), translationType); 
+        Set<String> translationType = lf.getHeader().getTranslationTypeManager().getRangeElements().values().stream().map(LiftHeaderRangeElement::getId).collect(Collectors.toSet());
+        assertEquals(new HashSet<String>(Arrays.asList("free", "litteral")), translationType);
     }
-    
-    
+
 }

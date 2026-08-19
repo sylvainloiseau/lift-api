@@ -1,8 +1,12 @@
 package fr.cnrs.lacito.liftapi.builder;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
+import fr.cnrs.lacito.liftapi.LiftVersion;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +17,7 @@ public class BuilderTest {
     @BeforeEach
     public void setUp() {
         this.dictionary = LiftDictionary.makeBuilder()
-            .withLiftVersion("0.13")
+            .withLiftVersion(LiftVersion.V0_13)
             .withProducer("Test Producer")
             .build();
     }
@@ -30,6 +34,7 @@ public class BuilderTest {
                     .withDefinition("en", "A book of words and definitions")
             )
             .build();
+            assertEquals(1, dictionary.getLiftDictionaryRegistry().getEntries().size());
     }
 
     @Test
@@ -72,9 +77,16 @@ public class BuilderTest {
 
     @Test
     public void testBuilderVariant() {
+        LiftEntry entry = dictionary
+            .getComponentBuilder()
+            .entry()
+            .withId("word-001")
+            .withForm("en", "run")
+            .build();
+
         LiftVariant variant = dictionary
             .getComponentBuilder()
-            .variant()
+            .variant(entry)
             .withForm("en", "ran")
             .withForm("fr", "courait")
             .build();
@@ -96,5 +108,89 @@ public class BuilderTest {
             entry.withForm(lang, word);
         }
         entry.build();
+    }
+
+    @Test
+    public void testEtymology() {
+        LiftEntry e = dictionary
+            .getComponentBuilder()
+            .entry("tww", "heifo", "en", "a domesticated canine");
+        dictionary.getComponentBuilder().etymology(e, "source", "Maiden 2004").build();
+        assertEquals(1, e.getEtymologies().size());
+        assertEquals(1, dictionary.getLiftDictionaryRegistry().getEtymologiesReadOnly().size());
+    }
+
+    @Test
+    public void testAddEtymology() {
+        DictionaryObjectBuilderFactory builder = dictionary.getComponentBuilder();
+        LiftEntry entry = builder
+            .entry()
+            .withForm("en", "dictionary")
+            .addSense(s ->
+                s
+                    .withGloss("en", "reference book")
+                    .withDefinition("en", "A book of words and definitions")
+            )
+            .addEtymology(s -> s.addForm("x,", "foo"), "x", "y")
+            .build();
+            assertEquals(1, dictionary.getLiftDictionaryRegistry().getEntries().size());
+            assertEquals(1, entry.getEtymologies().size());
+            assertEquals(1, dictionary.getLiftDictionaryRegistry().getEtymologiesReadOnly().size());
+    }
+
+    @Test
+    public void testAutomaticallyAddTranslationType() {
+        DictionaryObjectBuilderFactory builder = dictionary.getComponentBuilder();
+
+        // No Translation type so far
+        assertEquals(0, dictionary.getHeader().getTranslationTypeManager().getRangeElements().values().size());
+
+        LiftEntry entry = builder
+            .entry()
+            .withForm("en", "dictionary")
+            .addSense(s ->
+                s
+                    .withGloss("en", "reference book")
+                    .withDefinition("en", "A book of words and definitions")
+                    .addExample(e -> e
+                        .withExample("x", "foo")
+                        .addTranslation(
+                            "litteral",
+                            "fr",
+                            "Elle court chaque matin"
+                        )
+                    )
+            )
+            .build();
+            assertEquals(1, dictionary.getLiftDictionaryRegistry().getEntries().size());
+            assertEquals(1, dictionary.getLiftDictionaryRegistry().getSenses().size());
+            assertEquals(1, dictionary.getLiftDictionaryRegistry().getExamples().size());
+            assertEquals(1, dictionary.getHeader().getTranslationTypeManager().getRangeElements().values().size());
+    }
+
+    @Test
+    public void testBuildExampleWithTrait() {
+        DictionaryObjectBuilderFactory builder = dictionary.getComponentBuilder();
+
+        LiftEntry entry = builder
+            .entry()
+            .withForm("en", "dictionary")
+            .addSense(s ->
+                s
+                    .withGloss("en", "reference book")
+                    .withDefinition("en", "A book of words and definitions")
+                    .addExample(e -> e
+                        .withExample("x", "foo")
+                        .addTrait("foo", "bar"))
+            )
+            .build();
+
+            assertEquals(1, dictionary.getLiftDictionaryRegistry().getEntries().size());
+            assertEquals(1, dictionary.getLiftDictionaryRegistry().getTraitsReadOnly().size());
+            assert(
+                dictionary.getHeader().containsFieldsAndTraitsDefinitions("foo")
+            );
+            assertEquals("bar", dictionary.getLiftDictionaryRegistry().getTraitsReadOnly().get(0).getValue());
+
     }
 }

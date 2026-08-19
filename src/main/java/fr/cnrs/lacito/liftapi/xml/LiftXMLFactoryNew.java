@@ -5,8 +5,10 @@ import fr.cnrs.lacito.liftapi.LiftVersion;
 import fr.cnrs.lacito.liftapi.model.*;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.xml.sax.Attributes;
 
@@ -83,7 +85,7 @@ public final class LiftXMLFactoryNew {
         String type = attributes.getValue(LiftVocabulary.LIFT_URI, "type");
         if (type == null) throw new IllegalArgumentException();
         if (!header.getNoteTypeManager().hasRangeElements(type)) {
-            header.getNoteTypeManager().addRangeElement(type);
+            header.getNoteTypeManager().createRangeElement(type);
         }
         LiftHeaderRangeElement element = header.getNoteTypeManager().getRangeElement(type);
         LiftReversal reversal = new LiftReversal(element);
@@ -203,22 +205,7 @@ public final class LiftXMLFactoryNew {
         String name = attributes.getValue(LiftVocabulary.LIFT_URI, "name");
         String value = attributes.getValue(LiftVocabulary.LIFT_URI, "value");
 
-        LiftFieldAndTraitDefinition def = null;
-        if (!header.containsFieldsAndTraitsDefinitions(name)) {
-            def = header.createTraitDefinition(name);
-            // TODO warning. Should new trait type be allowed on the fly?
-        } else {
-            def = header.getFieldsAndTraitsDefinitions(name);
-        }
-
-        // if (!header.hasRanges(name)) {
-        //     header.createRange(name);
-        // }
-        // LiftHeaderRange r = header.getRange(name);
-        // if (!r.hasRangeElements(value)) {
-        //     r.createRangeElement(value);
-        // }
-        // LiftHeaderRangeElement e = r.getRangeElement(value);
+        LiftFieldAndTraitDefinition def = header.getOrCreateTraitsDefinitions(name);
 
         LiftTrait trait = null;
         if (!def.getResolvedRange().isPresent()) {
@@ -272,7 +259,7 @@ public final class LiftXMLFactoryNew {
     public LiftNote createNote(String type, AbstractNotable parent) {
         if (type == null) type = "";
         if (!header.getNoteTypeManager().hasRangeElements(type)) {
-            header.getNoteTypeManager().addRangeElement(type);
+            header.getNoteTypeManager().createRangeElement(type);
         }
         LiftHeaderRangeElement element = header.getNoteTypeManager().getRangeElement(type);
         LiftNote n = new LiftNote(element);
@@ -425,7 +412,7 @@ public final class LiftXMLFactoryNew {
             LiftVocabulary.LIFT_URI,
             "class"
         );
-        if (fieldclass != null) f.setFClass(Optional.of(fieldclass));
+        if (fieldclass != null) f.setTargets(fieldclass);
 
         String type = attributes.getValue(LiftVocabulary.LIFT_URI, "type");
         if (type != null) f.setType(Optional.of(type));
@@ -435,7 +422,7 @@ public final class LiftXMLFactoryNew {
             "option-range"
         );
         //if (optionRange != null) f.setOptionRange(Optional.of(optionRange));
-        if (optionRange != null) header.rangeId2TraitDefinition.computeIfAbsent(optionRange, k -> new ArrayList<>()).add(f);
+        if (optionRange != null) rangeId2TraitDefinitionForDereferencing.computeIfAbsent(optionRange, k -> new ArrayList<>()).add(f);
 
         String writingSystem = attributes.getValue(
             LiftVocabulary.LIFT_URI,
@@ -454,17 +441,21 @@ public final class LiftXMLFactoryNew {
     ) {
         String id = attributes.getValue(LiftVocabulary.LIFT_URI, "id");
         if (id == null) throw new IllegalArgumentException();
-        LiftHeaderRangeElement hre = new LiftHeaderRangeElement(id, parent);
+        // the range-element may have already been created by a reference from another range-element (see parentElementId below)
+        // so we use getOrCreateRangeElement rather that createRangeElement
+        LiftHeaderRangeElement hre = parent.getOrCreateRangeElement(id);
 
-        String otherparent = attributes.getValue(
+        String parentElementId = attributes.getValue(
             LiftVocabulary.LIFT_URI,
             "parent"
         );
-        if (otherparent != null) hre.setOtherParent(otherparent);
+        if (parentElementId != null) {
+            LiftHeaderRangeElement parentElement = parent.getOrCreateRangeElement(parentElementId);
+            hre.setParentElement(parentElement);
+        }
         String guid = attributes.getValue(LiftVocabulary.LIFT_URI, "guid");
         if (guid != null) hre.setGuid(guid);
 
-        parent.addRangeElement(hre);
         return hre;
     }
 
@@ -508,17 +499,27 @@ public final class LiftXMLFactoryNew {
     }
 
     public void endHeader() {
+        dereferenceOptionRangeInFieldAndTraitDefinitions();
+    }
+
+    public Map<String, List<LiftFieldAndTraitDefinition>> rangeId2TraitDefinitionForDereferencing = new HashMap<>();
+
+    private void dereferenceOptionRangeInFieldAndTraitDefinitions() {
         // For each Trait Definition that register a Range,
         // add a reference to the range object to the trait definition object.
-        for (String rangeId : header.rangeId2TraitDefinition.keySet()) {
-            for (LiftFieldAndTraitDefinition def : header.rangeId2TraitDefinition.get(rangeId)) {
-                LiftHeaderRange r = header.getRange(rangeId);
+        for (String rangeId : rangeId2TraitDefinitionForDereferencing.keySet()) {
+            LiftHeaderRange r = header.getRange(rangeId);
+            for (LiftFieldAndTraitDefinition def : rangeId2TraitDefinitionForDereferencing.get(rangeId)) {
                 def.setResolvedRange(Optional.of(r));
             }
         }
     }
 
-	public void endDocument() {
+    public void endDocument() {
+        dereferenceHasRefTargets();
+    }
+
+	private void dereferenceHasRefTargets() {
 	    for (String targetId : registry.refId2Occurrences.keySet()) {
             AbstractIdentifiable target = registry.getEntryOrSenseByLiftId(targetId);
             if (target == null) {

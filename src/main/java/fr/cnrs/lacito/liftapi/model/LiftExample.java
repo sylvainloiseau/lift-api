@@ -13,7 +13,7 @@ public final class LiftExample extends AbstractNotable {
     public static final String DEFAULT_TRANSLATION_TYPE = "";
 
     protected Optional<String> source = Optional.empty();
-    protected final MapProperty<String, MultiText> translationsProperty =
+    protected final MapProperty<LiftHeaderRangeElement, MultiText> translationsProperty =
         new SimpleMapProperty<>(
             this,
             "translations",
@@ -40,7 +40,7 @@ public final class LiftExample extends AbstractNotable {
      * @return return a new empty translation.
      * @throws DuplicateTypeException if the translation type already exists.
      */
-    public MultiText createTranslation(String type)
+    public MultiText createTranslation(LiftHeaderRangeElement type)
         throws DuplicateTypeException {
         if (type == null) throw new IllegalArgumentException(
             "Translation type cannot be null"
@@ -48,7 +48,7 @@ public final class LiftExample extends AbstractNotable {
         if (
             translationsProperty.containsKey(type)
         ) throw new DuplicateTypeException(
-            "A translation of type " + type + "already exist."
+            "A translation of type " + type.getId() + "already exist."
         );
         MultiText newTranslation = new MultiText();
         translationsProperty.put(type, newTranslation);
@@ -64,12 +64,12 @@ public final class LiftExample extends AbstractNotable {
      * @return the translation of the given type.
      * @throws IllegalArgumentException if no translation of this type exists.
      */
-    public MultiText getTranslation(String type) {
+    public MultiText getTranslation(LiftHeaderRangeElement type) {
         if (translationsProperty.containsKey(type)) {
             return translationsProperty.get(type);
         } else {
             throw new IllegalArgumentException(
-                "Unknown translation type: " + type
+                "Unknown translation type: " + type.getId()
             );
         }
     }
@@ -91,11 +91,11 @@ public final class LiftExample extends AbstractNotable {
         return parent;
     }
 
-    public Map<String, MultiText> getTranslations() {
+    public Map<LiftHeaderRangeElement, MultiText> getTranslations() {
         return translationsProperty.get();
     }
 
-    public MapProperty<String, MultiText> translationsProperty() {
+    public MapProperty<LiftHeaderRangeElement, MultiText> translationsProperty() {
         return translationsProperty;
     }
 
@@ -111,7 +111,7 @@ public final class LiftExample extends AbstractNotable {
         return new LiftExample(source);
     }
 
-    public MultiText getOrCreateTranslation(String type) {
+    public MultiText getOrCreateTranslation(LiftHeaderRangeElement type) {
         return translationsProperty.computeIfAbsent(type, t -> new MultiText());
     }
 }

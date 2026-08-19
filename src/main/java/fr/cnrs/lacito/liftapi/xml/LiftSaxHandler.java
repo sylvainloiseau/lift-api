@@ -97,9 +97,9 @@ public final class LiftSaxHandler extends DefaultHandler {
                 String version = attributes.getValue(
                     LiftVocabulary.VERSION_ATTRIBUTE
                 );
-                if (version.equals("13")) {
+                if (version.equals("0.13")) {
                     liftXMLFactory.setLiftVersion(LiftVersion.V0_13);
-                } else if (version.equals("15")) {
+                } else if (version.equals("0.15")) {
                     liftXMLFactory.setLiftVersion(LiftVersion.V0_15);
                 } else {
                     throw new IllegalArgumentException("Cannot read lift dictionary with version " + version + "; supported versions are 13 and 15");
@@ -489,7 +489,7 @@ public final class LiftSaxHandler extends DefaultHandler {
                 // System.out.println(" -> " + typeObject.getId());
                 //if (type == null) type = LiftExample.DEFAULT_TRANSLATION_TYPE; // TODO
                 if (elementStack.peek() instanceof LiftExample e) {
-                    multiTextStack.push(e.createTranslation(typeObject.getId()));
+                    multiTextStack.push(e.createTranslation(typeObject));
                 } else {
                     throw new IllegalStateException();
                 }

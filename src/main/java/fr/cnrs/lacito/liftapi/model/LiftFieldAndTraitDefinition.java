@@ -3,6 +3,7 @@ package fr.cnrs.lacito.liftapi.model;
 import java.util.EnumSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 // between 0.13 and 0.15 : field -> field-definition, field/@tag -> field-definition/@name,
 /**
@@ -133,10 +134,6 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
         LiftFieldAndTraitDefinitionTarget.class
     );
 
-    public Set<LiftFieldAndTraitDefinitionTarget> getTargets() {
-        return targets;
-    }
-
     public LiftFieldAndTraitDefinition(String name, LiftHeader parent) {
         this.name = name;
         this.parent = parent;
@@ -151,25 +148,22 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
         return getMainMultiText();
     }
 
+    public Set<LiftFieldAndTraitDefinitionTarget> getTargets() {
+        return targets;
+    }
+
     /** Raw @class value (for backward compat / serialization). */
-    public Optional<String> getFClass() {
-        return targets.isEmpty()
-            ? Optional.empty()
-            : Optional.of(
-                  LiftFieldAndTraitDefinitionTarget.toClassAttribute(targets)
-              );
+    public String getTargetAsString() {
+        return targets.stream().map(LiftFieldAndTraitDefinitionTarget::toStringValue)
+            .collect(Collectors.joining(" "));
     }
 
-    /** Set from raw @class attribute string (space-separated tokens). */
-    public void setFClass(Optional<String> fClass) {
-        this.targets = fClass
-            .map(LiftFieldAndTraitDefinitionTarget::parseClassAttribute)
-            .orElse(EnumSet.noneOf(LiftFieldAndTraitDefinitionTarget.class));
+    /**
+     * Set targets from a list of space-separated tokens
+    . */
+    public void setTargets(String targetString) {
+        this.targets = LiftFieldAndTraitDefinitionTarget.parseTargetString(targetString);
     }
-
-    // public void setTargets(Set<LiftFieldAndTraitDefinitionTarget> targets) {
-    //     this.targets = targets != null ? targets : EnumSet.noneOf(LiftFieldAndTraitDefinitionTarget.class);
-    // }
 
     public Optional<LiftFieldAndTraitDefinitionType> getType() {
         return definitionType;
@@ -177,13 +171,13 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
 
     /** Raw @type value (for serialization). */
     public Optional<String> getTypeStr() {
-        return definitionType.map(LiftFieldAndTraitDefinitionType::toLiftValue);
+        return definitionType.map(LiftFieldAndTraitDefinitionType::toStringValue);
     }
 
     /** Set from raw @type attribute string, resolving the enum and kind. */
     public void setType(Optional<String> typeStr) {
         this.definitionType = typeStr.flatMap(
-            LiftFieldAndTraitDefinitionType::fromLiftValue
+            LiftFieldAndTraitDefinitionType::fromStringValue
         );
         this.kind = this.definitionType
             .map(LiftFieldAndTraitDefinitionKind::fromType)
@@ -196,5 +190,16 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
 
     public boolean isTraitDefinition() {
         return kind == LiftFieldAndTraitDefinitionKind.TRAIT;
+    }
+
+    @Override
+    public String toString() {
+        return "LiftFieldAndTraitDefinition{" +
+            "name='" + name + '\'' +
+            ", kind=" + kind +
+            ", targets=" + targets.stream().map(LiftFieldAndTraitDefinitionTarget::toStringValue)
+                .collect(Collectors.joining(" ")) +
+            ", definitionType=" + definitionType +
+            '}';
     }
 }

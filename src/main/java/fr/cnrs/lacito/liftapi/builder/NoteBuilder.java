@@ -27,7 +27,7 @@ public class NoteBuilder extends AbstractLiftElementBuilder<LiftNote, HasNote> {
     protected NoteBuilder(LiftDictionary dictionary, HasNote parent, String type) {
         super(LiftNote.create(), dictionary, parent);
         if (!dictionary.getHeader().getNoteTypeManager().hasRangeElements(type)) {
-            dictionary.getHeader().getNoteTypeManager().addRangeElement(type);
+            dictionary.getHeader().getNoteTypeManager().createRangeElement(type);
         }
         LiftHeaderRangeElement e = dictionary.getHeader().getNoteTypeManager().getRangeElement(type);
         element.setType(e);

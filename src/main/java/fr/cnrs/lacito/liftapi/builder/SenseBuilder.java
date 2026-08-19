@@ -122,31 +122,31 @@ public class SenseBuilder extends AbstractLiftElementBuilder<LiftSense, HasSense
     public SenseBuilder addExample(Consumer<ExampleBuilder> config) {
         ExampleBuilder eb = new ExampleBuilder(dictionary, element);
         config.accept(eb);
-        element.addExample(eb.build());
+        eb.build();
         return this;
     }
 
-    /**
-     * Add an example directly.
-     */
-    public SenseBuilder addExample(LiftExample example) {
-        if (example == null) {
-            throw new IllegalArgumentException("Example cannot be null");
-        }
-        element.addExample(example);
-        return this;
-    }
+//    /**
+//     * Add an example directly.
+//     */
+//    public SenseBuilder addExample(LiftExample example) {
+//        if (example == null) {
+//            throw new IllegalArgumentException("Example cannot be null");
+//        }
+//        element.addExample(example);
+//        return this;
+//    }
 
-    /**
-     * Add an illustration.
-     */
-    public SenseBuilder addIllustration(LiftIllustration illustration) {
-        if (illustration == null) {
-            throw new IllegalArgumentException("Illustration cannot be null");
-        }
-        element.addIllustration(illustration);
-        return this;
-    }
+//    /**
+//     * Add an illustration.
+//     */
+//    public SenseBuilder addIllustration(LiftIllustration illustration) {
+//        if (illustration == null) {
+//            throw new IllegalArgumentException("Illustration cannot be null");
+//        }
+//        element.addIllustration(illustration);
+//        return this;
+//    }
 
     /**
      * Add a relation via nested builder configuration.
@@ -154,7 +154,8 @@ public class SenseBuilder extends AbstractLiftElementBuilder<LiftSense, HasSense
     public SenseBuilder addRelation(Consumer<RelationBuilder> config, String type) {
         RelationBuilder rb = new RelationBuilder(dictionary, element, type);
         config.accept(rb);
-        element.addRelation(rb.build());
+        rb.build();
+        //element.addRelation(rb.build());
         return this;
     }
 
@@ -175,56 +176,57 @@ public class SenseBuilder extends AbstractLiftElementBuilder<LiftSense, HasSense
     public SenseBuilder addSubSense(Consumer<SenseBuilder> config) {
         SenseBuilder sb = new SenseBuilder(dictionary, element);
         config.accept(sb);
-        element.addSense(sb.build());
+        sb.build();
+        //element.addSense(sb.build());
         return this;
     }
 
-    /**
-     * Add a sub-sense directly.
-     */
-    public SenseBuilder addSubSense(LiftSense subSense) {
-        if (subSense == null) {
-            throw new IllegalArgumentException("Sub-sense cannot be null");
-        }
-        element.addSense(subSense);
-        return this;
-    }
+//    /**
+//     * Add a sub-sense directly.
+//     */
+//    public SenseBuilder addSubSense(LiftSense subSense) {
+//        if (subSense == null) {
+//            throw new IllegalArgumentException("Sub-sense cannot be null");
+//        }
+//        element.addSense(subSense);
+//        return this;
+//    }
 
-    /**
-     * Add a note via nested builder configuration.
-     */
-    @Override
-    public SenseBuilder addNote(String type, String language, String text) {
-        super.addNote(type, language, text);
-        return this;
-    }
+    // /**
+    //  * Add a note via nested builder configuration.
+    //  */
+    // @Override
+    // public SenseBuilder addNote(String type, String language, String text) {
+    //     super.addNote(type, language, text);
+    //     return this;
+    // }
 
-    /**
-     * Add a note via nested builder configuration.
-     */
-    @Override
-    public SenseBuilder addNote(Consumer<NoteBuilder> config, String type) {
-        super.addNote(config, type);
-        return this;
-    }
+    // /**
+    //  * Add a note via nested builder configuration.
+    //  */
+    // @Override
+    // public SenseBuilder addNote(Consumer<NoteBuilder> config, String type) {
+    //     super.addNote(config, type);
+    //     return this;
+    // }
 
-    /**
-     * Add a trait.
-     */
-    @Override
-    public SenseBuilder addTrait(String name, String value) {
-        super.addTrait(name, value);
-        return this;
-    }
+    // /**
+    //  * Add a trait.
+    //  */
+    // @Override
+    // public SenseBuilder addTrait(String name, String value) {
+    //     super.addTrait(name, value);
+    //     return this;
+    // }
 
-    /**
-     * Add a field.
-     */
-    @Override
-    public SenseBuilder addField(String name, String language, String text) {
-        super.addField(name, language, text);
-        return this;
-    }
+    // /**
+    //  * Add a field.
+    //  */
+    // @Override
+    // public SenseBuilder addField(String name, String language, String text) {
+    //     super.addField(name, language, text);
+    //     return this;
+    // }
 
     /**
      * Build the sense.

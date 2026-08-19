@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import javafx.beans.property.SimpleSetProperty;
 import javafx.collections.FXCollections;
@@ -21,8 +22,6 @@ public final class LiftHeader extends AbstractLiftRoot {
     private static final String ETYMOLOGY_TYPE_RANGE = "etymology-type";
 
     private Map<String, LiftFieldAndTraitDefinition> fieldsAndTraitsDefinition = new HashMap<>();
-
-    public Map<String, List<LiftFieldAndTraitDefinition>> rangeId2TraitDefinition = new HashMap<>();
 
     private final ObservableList<LiftHeaderRange> derivedRangeList =
         FXCollections.observableArrayList();
@@ -144,7 +143,27 @@ public final class LiftHeader extends AbstractLiftRoot {
         return fieldsAndTraitsDefinition.values();
     }
 
+    public List<LiftFieldAndTraitDefinition> getFieldsAndTraitsDefinitionsFor(LiftFieldAndTraitDefinitionTarget target) {
+        return fieldsAndTraitsDefinition.values().stream()
+            .filter(fd -> fd.getTargets().contains(target))
+            .collect(Collectors.toList());
+    }
+
     public LiftFieldAndTraitDefinition getFieldsAndTraitsDefinitions(String id) {
+        return fieldsAndTraitsDefinition.get(id);
+    }
+
+    public LiftFieldAndTraitDefinition getOrCreateTraitsDefinitions(String id) {
+        if (!fieldsAndTraitsDefinition.containsKey(id)) {
+            fieldsAndTraitsDefinition.put(id, createTraitDefinition(id));
+        }
+        return fieldsAndTraitsDefinition.get(id);
+    }
+
+    public LiftFieldAndTraitDefinition getOrCreateFieldDefinitions(String id) {
+        if (!fieldsAndTraitsDefinition.containsKey(id)) {
+            fieldsAndTraitsDefinition.put(id, createFieldDefinition(id));
+        }
         return fieldsAndTraitsDefinition.get(id);
     }
 

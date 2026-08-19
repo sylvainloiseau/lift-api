@@ -96,45 +96,45 @@ public class EtymologyBuilder
         return this;
     }
 
-    /**
-     * Add a note via nested builder configuration.
-     */
-    @Override
-    public EtymologyBuilder addNote(String type, String language, String text) {
-        super.addNote(type, language, text);
-        return this;
-    }
+//    /**
+//     * Add a note via nested builder configuration.
+//     */
+//    @Override
+//    public EtymologyBuilder addNote(String type, String language, String text) {
+//        super.addNote(type, language, text);
+//        return this;
+//    }
 
-    /**
-     * Add a note via nested builder configuration.
-     */
-    @Override
-    public EtymologyBuilder addNote(Consumer<NoteBuilder> config, String type) {
-        super.addNote(config, type);
-        return this;
-    }
+//    /**
+//     * Add a note via nested builder configuration.
+//     */
+//    @Override
+//    public EtymologyBuilder addNote(Consumer<NoteBuilder> config, String type) {
+//        super.addNote(config, type);
+//        return this;
+//    }
+//
+//    /**
+//     * Add a trait.
+//     */
+//    @Override
+//    public EtymologyBuilder addTrait(String name, String value) {
+//        super.addTrait(name, value);
+//        return this;
+//    }
 
-    /**
-     * Add a trait.
-     */
-    @Override
-    public EtymologyBuilder addTrait(String name, String value) {
-        super.addTrait(name, value);
-        return this;
-    }
-
-    /**
-     * Add a field.
-     */
-    @Override
-    public EtymologyBuilder addField(
-        String name,
-        String language,
-        String text
-    ) {
-        super.addField(name, language, text);
-        return this;
-    }
+//    /**
+//     * Add a field.
+//     */
+//    @Override
+//    public EtymologyBuilder addField(
+//        String name,
+//        String language,
+//        String text
+//    ) {
+//        super.addField(name, language, text);
+//        return this;
+//    }
 
     /**
      * Build the etymology.

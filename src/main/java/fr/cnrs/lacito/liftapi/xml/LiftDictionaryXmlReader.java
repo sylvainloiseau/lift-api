@@ -18,9 +18,13 @@ public final class LiftDictionaryXmlReader {
     private static final Logger LOGGER = Logger.getLogger(
         LiftDictionaryXmlReader.class.getName()
     );
+
     private final File f;
+
     private final boolean validate;
+
     private LiftXMLFactoryNew liftFactory;
+
     private final LiftDictionaryRegistry registry;
 
     public LiftDictionaryXmlReader(
