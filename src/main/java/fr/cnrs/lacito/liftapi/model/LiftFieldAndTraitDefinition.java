@@ -84,8 +84,13 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
 
     private Optional<LiftHeaderRange> resolvedRange = Optional.empty();
 
-    public Optional<LiftHeaderRange> getResolvedRange() {
-        return resolvedRange;
+    /**
+     * If the datamodel of this trait definition is {@code option}, {@code
+     * option-collection}, or {@code option-sequence}, the {@code @option-range}
+     * attribute reference a {@link LiftHeaderRange} that enumerates the allowed
+     * values.
+     */
+    public Optional<LiftHeaderRange> getResolvedRange() { return resolvedRange;
     }
 
     public void setResolvedRange(Optional<LiftHeaderRange> resolvedRange) {
@@ -134,9 +139,16 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
         LiftFieldAndTraitDefinitionTarget.class
     );
 
+    /**
+     * Creates a new field or trait definition with the given name and parent header.
+     *
+     * By default, the kind is set to {@link LiftFieldAndTraitDefinitionKind#UNKNOWN}
+     * and the definition type to {@link LiftFieldAndTraitDefinitionType#STRING}.
+     */
     public LiftFieldAndTraitDefinition(String name, LiftHeader parent) {
         this.name = name;
         this.parent = parent;
+        kind = LiftFieldAndTraitDefinitionKind.UNKNOWN;
         definitionType = Optional.of(LiftFieldAndTraitDefinitionType.STRING);
     }
 
@@ -179,9 +191,12 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
         this.definitionType = typeStr.flatMap(
             LiftFieldAndTraitDefinitionType::fromStringValue
         );
-        this.kind = this.definitionType
+        // If the kind is still UNKNOWN, resolve it from the definition type.
+        if (this.kind == LiftFieldAndTraitDefinitionKind.UNKNOWN) {
+            this.kind = this.definitionType
             .map(LiftFieldAndTraitDefinitionKind::fromType)
             .orElse(LiftFieldAndTraitDefinitionKind.UNKNOWN);
+        }
     }
 
     public boolean isFieldDefinition() {

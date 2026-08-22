@@ -89,7 +89,7 @@ public class AbstractPropertyWriters {
 
     private static void writeFieldElement(XMLStreamWriter w, LiftField f) throws Exception {
         w.writeStartElement(LiftVocabulary.FIELD_LOCAL_NAME);
-        w.writeAttribute(LiftVocabulary.TYPE_ATTRIBUTE, f.getName());
+        w.writeAttribute(LiftVocabulary.TYPE_ATTRIBUTE, f.getName().getName());
         writeAbstractExtensibleWithoutField(w, f);
         MultiTextWriters.writeMultiText(w, f.getText());
         w.writeEndElement();

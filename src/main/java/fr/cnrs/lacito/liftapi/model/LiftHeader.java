@@ -40,6 +40,7 @@ public final class LiftHeader extends AbstractLiftRoot {
     private LiftHeaderRange inverseTypesManager;
     private LiftHeaderRange etymologyTypesManager;
     private LiftHeaderRange translationTypesManager;
+    private LiftHeaderRange grammaticalInfoManager;
 
     private final SimpleSetProperty<String> metaLanguages =
         new SimpleSetProperty<>(FXCollections.emptyObservableSet());
@@ -83,6 +84,14 @@ public final class LiftHeader extends AbstractLiftRoot {
         inverseTypesManager = new LiftHeaderRange(INVERSE_TYPE_RANGE, this);
         etymologyTypesManager = new LiftHeaderRange(ETYMOLOGY_TYPE_RANGE, this);
         translationTypesManager = new LiftHeaderRange(TRANSLATION_TYPE_RANGE, this);
+        grammaticalInfoManager = new LiftHeaderRange(GRAMMATICAL_INFO_RANGE, this);
+
+        rangesMap.put(NOTE_TYPE_RANGE, noteTypesManager);
+        rangesMap.put(RELATION_TYPE_RANGE, relationTypesManager);
+        rangesMap.put(INVERSE_TYPE_RANGE, inverseTypesManager);
+        rangesMap.put(ETYMOLOGY_TYPE_RANGE, etymologyTypesManager);
+        rangesMap.put(TRANSLATION_TYPE_RANGE, translationTypesManager);
+        rangesMap.put(GRAMMATICAL_INFO_RANGE, grammaticalInfoManager);
     }
 
     public MultiText getDescription() {
@@ -189,6 +198,12 @@ public final class LiftHeader extends AbstractLiftRoot {
 
     public boolean containsMetaLanguage(String lang) {
         return metaLanguages.contains(lang);
+    }
+
+    // grammatical info types
+
+    public LiftHeaderRange getGrammaticalInfoManager() {
+        return grammaticalInfoManager;
     }
 
     // note types

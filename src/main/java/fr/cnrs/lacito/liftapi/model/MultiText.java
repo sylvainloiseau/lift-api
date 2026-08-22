@@ -1,5 +1,6 @@
 package fr.cnrs.lacito.liftapi.model;
 
+import fr.cnrs.lacito.liftapi.LiftDictionaryLanguagesManager;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -53,6 +54,8 @@ public sealed class MultiText
     > lang2textPropertyMap = new ConcurrentHashMap<>();
     private UUID uuid;
 
+    private LiftDictionaryLanguagesManager languageManager;
+
     public MultiText() {}
 
     public MultiText(LiftDictionaryRegistry registry) {
@@ -88,6 +91,7 @@ public sealed class MultiText
             throw new IllegalArgumentException("No text in language: " + lang);
         }
         lang2FormMap.remove(lang);
+        languageManager.removeLanguageOccurrence(lang);
     }
 
     public Set<String> getLangs() {
@@ -97,10 +101,16 @@ public sealed class MultiText
 
     public void add(Form f) {
         String lang = f.lang;
+        if (!languageManager.hasLanguage(lang)) {
+            throw new IllegalArgumentException(
+                "Language not registered in the dictionary: " + lang
+            );
+        }
         if (lang2FormMap.containsKey(lang)) throw new DuplicateLangException(
             "Duplicate lang: " + lang
         );
         lang2FormMap.put(lang, f);
+        languageManager.addLanguageOccurrence(lang);
     }
 
     @Override
@@ -231,5 +241,18 @@ public sealed class MultiText
 
     public UUID getUUID() {
         return uuid;
+    }
+
+    public void setLanguagesManager(LiftDictionaryLanguagesManager languagesManager) {
+        this.languageManager = languagesManager;
+        for (String lang : lang2FormMap.keySet()) {
+            languageManager.addLanguageOccurrence(lang);
+        }
+    }
+
+    public void unregister() {
+        for (String lang : lang2FormMap.keySet()) {
+            languageManager.removeLanguageOccurrence(lang);
+        }        
     }
 }

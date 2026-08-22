@@ -3,9 +3,8 @@ package fr.cnrs.lacito.liftapi;
 import fr.cnrs.lacito.liftapi.builder.DictionaryObjectBuilderFactory;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
-import fr.cnrs.lacito.liftapi.model.LiftExample;
+import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
 import fr.cnrs.lacito.liftapi.model.LiftHeader;
-import fr.cnrs.lacito.liftapi.model.LiftHeaderRangeElement;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.MultiText;
 import fr.cnrs.lacito.liftapi.model.TextSpan;
@@ -22,31 +21,51 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import javax.xml.stream.XMLStreamException;
 
-/**
- *
- */
+/// The entry point for working with a LIFT dictionary. 
+/// 
+/// - create dictionary from XML ([loadDictionaryFromFile]) or from scratch ([makeBuilder])
+/// - update dictionary with the fluent API ([getComponentBuilder]), delete components ([LiftDictionaryRegistry#removeFromDictionary])
+/// - access dictionary content ([getEntryByForm], [searchInMetaLanguage], [searchInObjectLanguage])
+/// - manage languages ([getObjectLanguageManager], [getMetaLanguageManager])
+
 public final class LiftDictionary {
+
+    // Constants
 
     protected LiftVersion DEFAULT_VERSION = LiftVersion.V0_15;
     protected String DEFAULT_PRODUCER = "fr.cnrs.lacito.liftapi";
+
+    // Utils
 
     private static final Logger LOGGER = Logger.getLogger(
         LiftDictionary.class.getName()
     );
 
-    private final LiftDictionaryLanguagesManager languageManager;
-
-    // public LiftDictionaryComponents getLiftDictionaryComponents() {
-    //     return liftDictionaryComponents;
-    // }
+    // Fields
 
     private final DictionaryObjectBuilderFactory componentBuilder;
+
+    private File source;
+
+    protected final LiftHeader header;
+
+    private LiftDictionaryRegistry registry;
+
+    protected LiftVersion liftVersion = DEFAULT_VERSION;
+
+    protected String liftProducer = DEFAULT_PRODUCER;
+
+    private final LiftDictionaryLanguagesManager objectLanguagesManager =
+        new LiftDictionaryLanguagesManager();
+
+    private final LiftDictionaryLanguagesManager metaLanguagesManager =
+        new LiftDictionaryLanguagesManager();
+
+    // Getters/Setters
 
     public DictionaryObjectBuilderFactory getComponentBuilder() {
         return componentBuilder;
     }
-
-    protected LiftVersion liftVersion = DEFAULT_VERSION;
 
     public LiftVersion getLiftVersion() {
         return liftVersion;
@@ -59,7 +78,21 @@ public final class LiftDictionary {
         this.liftVersion = liftVersion;
     }
 
-    protected String liftProducer = DEFAULT_PRODUCER;
+    public LiftHeader getHeader() {
+        return this.header;
+    }
+
+    public LiftDictionaryRegistry getLiftDictionaryRegistry() {
+        return registry;
+    }
+
+    public LiftDictionaryLanguagesManager getObjectLanguageManager() {
+        return objectLanguagesManager;
+    }
+
+    public LiftDictionaryLanguagesManager getMetaLanguageManager() {
+        return metaLanguagesManager;
+    }
 
     public String getLiftProducer() {
         return liftProducer;
@@ -72,11 +105,7 @@ public final class LiftDictionary {
         this.liftProducer = liftProducer;
     }
 
-    private File source;
-
-    protected final LiftHeader header;
-
-    private LiftDictionaryRegistry registry;
+    // Static methods for instantiation
 
     public static final LiftDictionary loadDictionaryFromFile(File f)
         throws LiftDocumentLoadingException {
@@ -107,6 +136,24 @@ public final class LiftDictionary {
     public static final LiftDictionaryBuilder makeBuilder() {
         return new LiftDictionaryBuilder();
     }
+
+    // Constructors
+
+    protected LiftDictionary() {
+        this(new LiftDictionaryRegistry(), new LiftHeader());
+    }
+
+    protected LiftDictionary(
+        LiftDictionaryRegistry registry,
+        LiftHeader header
+    ) {
+        this.registry = registry;
+        registry.setLanguagesManager(objectLanguagesManager, metaLanguagesManager);
+        this.header = header;
+        this.componentBuilder = new DictionaryObjectBuilderFactory(this);
+    }
+
+    // Public methods
 
     /**
      * Save the dictionary at the location it was read.
@@ -143,42 +190,7 @@ public final class LiftDictionary {
         }
     }
 
-    protected LiftDictionary() {
-        registry = new LiftDictionaryRegistry();
-        languageManager = new LiftDictionaryLanguagesManager(registry);
-        componentBuilder = new DictionaryObjectBuilderFactory(this);
-        header = new LiftHeader();
-    }
-
-    protected LiftDictionary(
-        LiftDictionaryRegistry registry,
-        LiftHeader header
-    ) {
-        this.registry = registry;
-        languageManager = new LiftDictionaryLanguagesManager(registry);
-        this.componentBuilder = new DictionaryObjectBuilderFactory(this);
-        this.header = header;
-    }
-
-    public LiftHeader getHeader() {
-        return this.header;
-    }
-
-    public LiftDictionaryRegistry getLiftDictionaryRegistry() {
-        return registry;
-    }
-
-    public LiftDictionaryLanguagesManager getLanguageManager() {
-        return languageManager;
-    }
-
-    public void addIds() {
-        // TODO
-    }
-
-    public void fillLexicalEntryOrderNumber() {
-        // TODO
-    }
+    // Utility methods
 
     @Deprecated
     public int entryCount() {
@@ -201,7 +213,7 @@ public final class LiftDictionary {
             .collect(
                 Collectors.groupingBy(
                     x ->
-                        x.getGrammaticalInfo().orElseThrow().getGramInfoValue(),
+                        x.getGrammaticalInfo().orElseThrow().getGramInfoValue().getId(),
                     Collectors.counting()
                 )
             );
@@ -212,24 +224,10 @@ public final class LiftDictionary {
         Set<String> gramInfoSet = new HashSet<>();
         for (LiftSense s : this.registry.getSenses()) {
             s.getGrammaticalInfo().ifPresent(gi ->
-                gramInfoSet.add(gi.getGramInfoValue())
+                gramInfoSet.add(gi.getGramInfoValue().getId())
             );
         }
         return gramInfoSet;
-    }
-
-    public Set<String> getObjectLanguagesOfAllText() {
-        return getLanguagesInAllField(
-            this.registry.getObjectTextReadOnly()
-            //this.liftDictionaryComponents.getAllObjectLanguagesMultiText()
-        );
-    }
-
-    public Set<String> getMetaLanguagesOfAllText() {
-        return getLanguagesInAllField(
-            this.registry.getMetaTextReadOnly()
-            //this.liftDictionaryComponents.getAllMetaLanguagesMultiText()
-        );
     }
 
     public Set<String> getTraitName() {
@@ -239,7 +237,7 @@ public final class LiftDictionary {
             .collect(Collectors.toSet());
     }
 
-    public Set<String> getFieldType() {
+    public Set<LiftFieldAndTraitDefinition> getFieldType() {
         return this.registry.getFieldsReadOnly()
             .stream()
             .map(t -> t.getName())
@@ -279,24 +277,9 @@ public final class LiftDictionary {
         return langs;
     }
 
-    private Set<String> getLanguagesInAllField(List<MultiText> multiTexts) {
-        Set<String> languages = new HashSet<>();
-        for (MultiText m : multiTexts) {
-            languages.addAll(m.getLangs());
-        }
-        return languages;
-    }
-
     // access to content of the dictionary
 
     public List<LiftEntry> getEntryByForm(String lang, String form) {
-        // System.out.println(registry.entriesById.values().size());
-        // for (LiftEntry entry : registry.entriesById.values()) {
-        //     for (String l : entry.getForms().getLangs()) {
-        //         System.out.println(l);
-        //         System.out.println(entry.getForms().getForm(l).get().toString());
-        //     }
-        // }
         return registry.entriesById
             .values()
             .stream()
@@ -337,44 +320,4 @@ public final class LiftDictionary {
             .toList();
     }
 
-    //    public void removeEntry(LiftEntry entry) {
-    //        removeMultitext(entry.getForms());
-    //        removeMultitext(entry.getCitations());
-    //        for (LiftAnnotation a : entry.getAnnotations()) {
-    //            removeAnnotation(a);
-    //        }
-    //        for (LiftField f : entry.getFields()) {
-    //            removeField(f);
-    //        }
-    //        for (LiftEtymology e : entry.getEtymologies()) {
-    //            removeEtymology(e);
-    //        }
-    //        for (LiftNote n : entry.getNotes()) {
-    //            removeNote(n);
-    //        }
-    //        for (LiftPronunciation p : entry.getPronunciations()) {
-    //            removePronunciation(p);
-    //        }
-    //        for (LiftRelation r : entry.getRelations()) {
-    //            removeRelation(r);
-    //        }
-    //        for (LiftSense s : entry.getSenses()) {
-    //            removeSense(s);
-    //        }
-    //        for (LiftTrait t : entry.getTraits()) {
-    //            removeTrait(t);
-    //        }
-    //        for (LiftVariant v : entry.getVariants()) {
-    //            removeVariant(v);
-    //        }
-    //        this.liftDictionaryComponents.getEntryById((entry.getId()).
-    //            .stream()
-    //            .filter(s -> s != entry);
-    //    }
-
-    // public void removeSense(LiftEntry parent, LiftSense sense) {}
-
-    // public void removeExample(LiftSense parent, LiftExample example) {}
-    // //public void removeMedia
-    // //public void removeMedia
 }

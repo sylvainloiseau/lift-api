@@ -1,3 +1,16 @@
+- in the builder: element should not be in super constructor since it prevents checking argument or computing value before creating the element
+- mode : strict vs discoverable
+    - on field and trait creation; cf. code on both class on setParent :
+        on Field:
+        // TODO : in Factory or builder rather? depending on the mode (strict vs discoverable) ?
+        LiftFieldAndTraitDefinitionTarget target = LiftFieldAndTraitDefinitionTarget.fromType((AbstractLiftRoot) parent);
+        if (!nameProperty.get().getTargets().contains(target)) throw new IllegalArgumentException("Parent is not of the expected type");
+
+        on Trait:
+        // // TODO : in Factory or builder rather? depending on the mode (strict vs discoverable) ?
+        // LiftFieldAndTraitDefinitionTarget target = LiftFieldAndTraitDefinitionTarget.fromType((AbstractLiftRoot) parent);
+        // if (!definitionProperty.get().getTargets().contains(target)) throw new IllegalArgumentException("Parent is not of the expected type");
+    
 - duplicate between PostUnmarshalling and LiftDictionaryFeatureManager... ?
 - when removing an object with unregister(), it is not nessesary to call detach() on all descendants.
 - in AbstractNotable, the map String->Note can loose sync with the note type id. Should be a map LiftHeaderRangeElement->Note. Idem from translation.

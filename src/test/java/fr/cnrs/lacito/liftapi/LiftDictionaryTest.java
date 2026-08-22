@@ -20,14 +20,14 @@ public class LiftDictionaryTest {
     @Test
     public void testObjectLanguagesInAllFields () {
         LiftDictionary lf = Utils.loadDictionaryForTest("lift/tinywithseveralObjectLanguageInVariousPlaces.xml");
-        Set<String> objectLanguages = lf.getObjectLanguagesOfAllText();
+        Set<String> objectLanguages = lf.getObjectLanguageManager().getLanguages();
         assertTrue(objectLanguages.containsAll(Arrays.asList("tww", "tpi")));
     }
 
     @Test
     public void testGetMetaLanguagesInAllField() {
         LiftDictionary lf = Utils.loadDictionaryForTest("lift/20240828Lift.lift");
-        Set<String> metaLanguages = lf.getMetaLanguagesOfAllText();
+        Set<String> metaLanguages = lf.getMetaLanguageManager().getLanguages();
         assertEquals(2, metaLanguages.size());
         //System.out.println(metaLanguages.toString());
         assertTrue(metaLanguages.contains("tpi"));
@@ -59,7 +59,7 @@ public class LiftDictionaryTest {
     @Test
     public void testObjectLanguagesInForm () {
         LiftDictionary lf = Utils.loadDictionaryForTest("lift/tiny.xml");
-        Set<String> objectLanguages = lf.getObjectLanguagesInLexicalUnit();
+        Set<String> objectLanguages = lf.getObjectLanguageManager().getLanguages();
         assertTrue(objectLanguages.containsAll(Arrays.asList("tww")));
     }
 

@@ -1,7 +1,6 @@
 package fr.cnrs.lacito.liftapi.builder;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
-import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.HasField;
 import fr.cnrs.lacito.liftapi.model.LiftField;
@@ -24,7 +23,7 @@ public class FieldBuilder extends AbstractLiftElementBuilder<LiftField, HasField
       * @param name
      */
     protected FieldBuilder(LiftDictionary dictionary, HasField field, String name) {
-        super(LiftField.create(name), dictionary, field);
+        super(LiftField.create(dictionary.getHeader().getOrCreateFieldDefinitions(name)), dictionary, field);
         if (name == null) {
             throw new IllegalArgumentException("Field name cannot be null");
         }

@@ -1,13 +1,11 @@
 package fr.cnrs.lacito.liftapi.builder;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
-import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.HasSense;
+import fr.cnrs.lacito.liftapi.model.LiftHeaderRangeElement;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
-import fr.cnrs.lacito.liftapi.model.LiftExample;
 import fr.cnrs.lacito.liftapi.model.LiftRelation;
-import fr.cnrs.lacito.liftapi.model.LiftIllustration;
 import java.util.function.Consumer;
 
 /**
@@ -100,9 +98,11 @@ public class SenseBuilder extends AbstractLiftElementBuilder<LiftSense, HasSense
      * Set the part of speech.
      */
     public SenseBuilder withPartOfSpeech(String pos) {
-        if (pos != null) {
-            element.setGrammaticalInfo(pos);
+        if (pos == null) {
+            throw new IllegalArgumentException("Part of speech cannot be null");
         }
+        LiftHeaderRangeElement gramInfo = dictionary.getHeader().getGrammaticalInfoManager().getOrCreateRangeElement(pos);
+        element.setGrammaticalInfo(gramInfo);
         return this;
     }
 

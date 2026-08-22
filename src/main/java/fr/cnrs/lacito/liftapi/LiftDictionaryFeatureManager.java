@@ -3,6 +3,7 @@ package fr.cnrs.lacito.liftapi;
 import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
 import fr.cnrs.lacito.liftapi.model.LiftField;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinitionTarget;
+import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -24,12 +25,14 @@ public class LiftDictionaryFeatureManager {
     private final Map<String, Integer> annotationNameCount = new HashMap<>();
     private final Map<String, Set<String>> traitValue = new HashMap<>();
 
-    private final Map<LiftFieldAndTraitDefinitionTarget, Set<String>> fields =
+    private final Map<LiftFieldAndTraitDefinitionTarget, Set<LiftFieldAndTraitDefinition>> fields =
         new HashMap<>();
+
     private final Map<
         LiftFieldAndTraitDefinitionTarget,
         Map<String, Set<String>>
     > traits = new HashMap<>();
+
     private final Map<
         LiftFieldAndTraitDefinitionTarget,
         Map<String, Set<String>>
@@ -46,7 +49,7 @@ public class LiftDictionaryFeatureManager {
     }
 
     public void attachTargetOnField(
-        String fieldName,
+        LiftFieldAndTraitDefinition fieldName,
         LiftFieldAndTraitDefinitionTarget target
     ) {
         fields.compute(target, (k, v) -> {
@@ -68,7 +71,7 @@ public class LiftDictionaryFeatureManager {
                 LiftFieldAndTraitDefinitionTarget.fromType(f.getParent());
             fields.compute(key, (k, v) -> {
                 if (v == null) {
-                    v = new TreeSet<>();
+                    v = new TreeSet<LiftFieldAndTraitDefinition>();
                 }
                 v.add(f.getName());
                 return v;
@@ -76,7 +79,7 @@ public class LiftDictionaryFeatureManager {
         }
     }
 
-    public Set<String> getFieldNameForTarget(
+    public Set<LiftFieldAndTraitDefinition> getFieldNameForTarget(
         LiftFieldAndTraitDefinitionTarget k
     ) {
         return fields.get(k);

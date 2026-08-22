@@ -4,10 +4,7 @@ import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftObject;
-import fr.cnrs.lacito.liftapi.model.LiftPronunciation;
 import fr.cnrs.lacito.liftapi.model.LiftRelation;
-import fr.cnrs.lacito.liftapi.model.LiftSense;
-import fr.cnrs.lacito.liftapi.model.LiftVariant;
 import java.util.function.Consumer;
 
 /**

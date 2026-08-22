@@ -4,6 +4,7 @@ import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.LiftVersion;
 import fr.cnrs.lacito.liftapi.model.*;
 
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -187,8 +188,8 @@ public final class LiftXMLFactoryNew {
         if (type == null) throw new IllegalArgumentException(
             "Attribute type on field element cannot be null"
         );
-        //LiftFieldAndTraitDefinition def = header.getFieldsAndTraitsDefinitions(type);
-        LiftField f = new LiftField(type);
+        LiftFieldAndTraitDefinition def = header.getOrCreateFieldDefinitions(type);
+        LiftField f = new LiftField(def);
         // populateWithAttribute(f, attributes);
         parent.addField(f);
         return f;
@@ -207,29 +208,32 @@ public final class LiftXMLFactoryNew {
 
         LiftFieldAndTraitDefinition def = header.getOrCreateTraitsDefinitions(name);
 
-        LiftTrait trait = null;
-        if (!def.getResolvedRange().isPresent()) {
-            trait = new LiftTrait(def, value);
-        } else if (def.getDefinitionType().get() == LiftFieldAndTraitDefinitionType.OPTION) {
-            LiftHeaderRange r = def.getResolvedRange().get();
-            if (!r.hasRangeElements(value)) {
-                r.createRangeElement(value);
+        LiftTrait trait = switch (def.getDefinitionType().get()) {
+            case INTEGER -> {
+                Integer v = Integer.valueOf(value);
+                yield new LiftTrait(def, v);
             }
-            LiftHeaderRangeElement e = r.getRangeElement(value);
-            trait = new LiftTrait(def, e);
-        } else if (def.getDefinitionType().get() == LiftFieldAndTraitDefinitionType.OPTION_COLLECTION) {
-            List<LiftHeaderRangeElement> elements = parseRangeElement(def, value);
-            trait = new LiftTrait(def, new HashSet(elements));
-        } else if (def.getDefinitionType().get() == LiftFieldAndTraitDefinitionType.OPTION_SEQUENCE) {
-            List<LiftHeaderRangeElement> elements = parseRangeElement(def, value);
-            trait = new LiftTrait(def, elements);
-        // (ISO 8601)
-        } else if (def.getDefinitionType().get() == LiftFieldAndTraitDefinitionType.DATETIME) {
+            case DATETIME -> {
+                ZonedDateTime instant = ZonedDateTime.parse(value);
+                yield new LiftTrait(def, instant);
+            }
+            case STRING -> new LiftTrait(def, value);
+            case OPTION -> {
+                LiftHeaderRange r = def.getResolvedRange().get();
+                LiftHeaderRangeElement e = r.getOrCreateRangeElement(value);
+                yield new LiftTrait(def, e);
+            }
+            case OPTION_COLLECTION -> {
+                List<LiftHeaderRangeElement> elements = parseRangeElement(def, value);
+                yield new LiftTrait(def, new HashSet(elements));
+            }
+            case OPTION_SEQUENCE ->{
+                List<LiftHeaderRangeElement> elements = parseRangeElement(def, value);
+                yield new LiftTrait(def, elements);
+            }
+            default -> throw new IllegalArgumentException("Unknown definition type: " + def.getDefinitionType().get());
+        };
 
-        } else if (def.getDefinitionType().get() == LiftFieldAndTraitDefinitionType.INTEGER) {
-            Integer v = Integer.valueOf(value);
-            trait = new LiftTrait(def, v);
-        }
         parent.addTrait(trait);
         return trait;
     }
@@ -238,12 +242,7 @@ public final class LiftXMLFactoryNew {
         LiftHeaderRange r = def.getResolvedRange().get();
         List<LiftHeaderRangeElement> values = new ArrayList<>();
         for (String v : list.trim().split("\\s+")) {
-            LiftHeaderRangeElement e = null;
-            if (!r.hasRangeElements(v)) {
-                e = r.createRangeElement(v);
-            } else {
-                e = r.getRangeElement(v);
-            }
+            LiftHeaderRangeElement e = r.getOrCreateRangeElement(v);
             values.add(e);
         }
         return values;
@@ -421,7 +420,8 @@ public final class LiftXMLFactoryNew {
             LiftVocabulary.LIFT_URI,
             "option-range"
         );
-        //if (optionRange != null) f.setOptionRange(Optional.of(optionRange));
+
+        // wait until the end of the header to safely point from the FieldAndTraitDefinition to the Range object.
         if (optionRange != null) rangeId2TraitDefinitionForDereferencing.computeIfAbsent(optionRange, k -> new ArrayList<>()).add(f);
 
         String writingSystem = attributes.getValue(
@@ -457,16 +457,6 @@ public final class LiftXMLFactoryNew {
         if (guid != null) hre.setGuid(guid);
 
         return hre;
-    }
-
-
-    public LiftField createField(
-        String type,
-        AbstractExtensibleWithField parent
-    ) {
-        LiftField f = new LiftField(type);
-        parent.addField(f);
-        return f;
     }
 
     public LiftAnnotation createAnnotation(String name, HasAnnotation parent) {
@@ -531,5 +521,11 @@ public final class LiftXMLFactoryNew {
                 source.setRefObject(target);
             }
         }
+	}
+
+	public void setGrammaticalInfo(LiftSense s, String value) {
+	  if (value == null) throw new IllegalArgumentException("Grammatical info code cannot be null");
+	  LiftHeaderRangeElement gramInfo = header.getGrammaticalInfoManager().getOrCreateRangeElement(value);
+	  s.setGrammaticalInfo(gramInfo);
 	}
 }

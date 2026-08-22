@@ -2,6 +2,7 @@ package fr.cnrs.lacito.liftapi.model;
 
 import javafx.beans.property.ReadOnlyStringProperty;
 import javafx.beans.property.ReadOnlyStringWrapper;
+import javafx.beans.property.SimpleObjectProperty;
 
 /**
  * A field is a generalised element to allow an application to store information in a LIFT file that
@@ -15,17 +16,18 @@ public final class LiftField extends AbstractExtensibleWithoutField {
 
     protected AbstractExtensibleWithField parent;
 
-    private final ReadOnlyStringWrapper nameProperty;
+    private final SimpleObjectProperty<LiftFieldAndTraitDefinition> nameProperty;
 
-    public LiftField(String name) {
-        this.nameProperty = new ReadOnlyStringWrapper(
+    public LiftField(LiftFieldAndTraitDefinition name) {
+        if (name == null) throw new IllegalArgumentException("Name is null");
+        this.nameProperty = new SimpleObjectProperty<>(
             this,
             "name",
             name
         );
     }
 
-    public String getName() {
+    public LiftFieldAndTraitDefinition getName() {
         return nameProperty.get();
     }
 
@@ -34,6 +36,7 @@ public final class LiftField extends AbstractExtensibleWithoutField {
     }
 
     protected void setParent(AbstractExtensibleWithField parent) {
+        if (parent == null) throw new IllegalArgumentException("Parent is null");
         this.parent = parent;
     }
 
@@ -41,11 +44,11 @@ public final class LiftField extends AbstractExtensibleWithoutField {
         return getMainMultiText();
     }
 
-    public ReadOnlyStringProperty nameProperty() {
-        return nameProperty.getReadOnlyProperty();
+    public SimpleObjectProperty<LiftFieldAndTraitDefinition> nameProperty() {
+        return this.nameProperty;
     }
 
-    public static LiftField create(String name) {
+    public static LiftField create(LiftFieldAndTraitDefinition name) {
         return new LiftField(name);
     }
 

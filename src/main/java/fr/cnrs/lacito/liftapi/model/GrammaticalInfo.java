@@ -6,15 +6,20 @@ import java.util.ArrayList;
 public final class GrammaticalInfo
     implements HasTrait {
 
-    protected String value;
+    protected LiftHeaderRangeElement value;
+
     protected final List<LiftTrait> traits = new ArrayList<>();
 
-    protected GrammaticalInfo(String v) {
+    protected GrammaticalInfo(LiftHeaderRangeElement v) {
         this.value = v;
     }
 
-    public String getGramInfoValue() {
+    public LiftHeaderRangeElement getGramInfoValue() {
         return this.value;
+    }
+
+    public String getValue() {
+        return value.getId();
     }
 
     @Override
@@ -23,10 +28,7 @@ public final class GrammaticalInfo
         t.setParent(this);
     }
 
-    public String getValue() {
-        return value;
-    }
-
+    @Override
     public List<LiftTrait> getTraits() {
         return traits;
     }

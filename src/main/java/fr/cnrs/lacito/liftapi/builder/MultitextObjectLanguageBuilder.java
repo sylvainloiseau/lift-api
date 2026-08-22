@@ -26,7 +26,7 @@ public final class MultitextObjectLanguageBuilder extends MultiTextBuilder {
         // );
 
         MultiTextObjectLanguage e = (MultiTextObjectLanguage) element;
-        registry.registerObjectLanguage(e);
+        registry.registerObjectMultiText(e);
         return e;
     }
 }

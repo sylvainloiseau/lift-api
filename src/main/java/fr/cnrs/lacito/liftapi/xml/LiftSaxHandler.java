@@ -321,9 +321,7 @@ public final class LiftSaxHandler extends DefaultHandler {
             case LiftVocabulary.GRAM_INFO_LOCAL_NAME:
                 inGrammaticalInfo = true;
                 if (elementStack.peek() instanceof LiftSense s) {
-                    s.setGrammaticalInfo(
-                        attributes.getValue(LiftVocabulary.LIFT_URI, "value")
-                    );
+                    liftXMLFactory.setGrammaticalInfo(s, attributes.getValue(LiftVocabulary.LIFT_URI, "value"));
                 } else {
                     throw new IllegalStateException(
                         "LiftSense expected. Found: " +

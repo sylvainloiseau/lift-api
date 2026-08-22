@@ -17,7 +17,6 @@ import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftEtymology;
 import fr.cnrs.lacito.liftapi.model.LiftExample;
 import fr.cnrs.lacito.liftapi.model.LiftField;
-import fr.cnrs.lacito.liftapi.model.LiftHeader;
 import fr.cnrs.lacito.liftapi.model.LiftIllustration;
 import fr.cnrs.lacito.liftapi.model.LiftMedia;
 import fr.cnrs.lacito.liftapi.model.LiftNote;
@@ -28,14 +27,10 @@ import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
 import fr.cnrs.lacito.liftapi.model.MultiText;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
-import org.xml.sax.EntityResolver;
 
 import javafx.collections.FXCollections;
 import javafx.collections.MapChangeListener;
@@ -47,7 +42,7 @@ public class LiftDictionaryRegistry {
     private final LiftDictionaryFeatureManager counter;
     private final LiftDictionaryUUIDManager uuidManager =
         new LiftDictionaryUUIDManager();
-
+        
     /**
      * Map from IDs (of referenced object) to objects pointing at them in the dictionary
      */
@@ -97,6 +92,9 @@ public class LiftDictionaryRegistry {
         FXCollections.observableHashMap();
     protected final ObservableMap<UUID, MultiText> metaTextById =
         FXCollections.observableHashMap();
+
+    private LiftDictionaryLanguagesManager objectLanguagesManager;
+    private LiftDictionaryLanguagesManager metaLanguagesManager;
 
     public AbstractIdentifiable getEntryOrSenseByLiftId(String liftId) {
         if (entriesByLiftId.containsKey(liftId)) {
@@ -466,7 +464,7 @@ public class LiftDictionaryRegistry {
      * API, intended for unmarshalling efficiently
      * the dictionary. The high-level (fluent) API, using {@link
      * LiftDictionary#getComponentBuilder()}, should be preferred in all other
-     * situation.
+     * situations.
      *
      * This method is intended for nodes that has been created manually, via the
      * constructors for {@link LiftEntry}, {@link LiftSense}, etc.
@@ -475,7 +473,61 @@ public class LiftDictionaryRegistry {
      * LiftElement#addSense}) will also be added to the dictionary.
      */
     public void addToDictionaryLowLevel(AbstractLiftRoot node) {
-        // add to register
+        
+        // 1/ Check that the languages present in multitexts are registered in the dictionary
+        // if not, add them to the dictionary (to the languages manager)
+        if (! (node instanceof LiftTrait)) {
+            if (node instanceof LiftEntry || node instanceof LiftExample || node instanceof LiftVariant
+                || node instanceof LiftReversal || node instanceof LiftPronunciation || node instanceof LiftEtymology
+            ) {
+                for (Form f : node.getMainMultiText().getForms()) {
+                    String lang = f.getLang();
+                    if (!objectLanguagesManager.hasLanguage(lang)) {
+                        objectLanguagesManager.addLanguage(lang);
+                    }
+                }
+            } else if (node instanceof LiftSense || node instanceof LiftRelation
+                || node instanceof LiftNote || node instanceof LiftMedia
+                || node instanceof LiftIllustration || node instanceof LiftField
+                || node instanceof LiftAnnotation
+            ) {
+                for (Form f : node.getMainMultiText().getForms()) {
+                    String lang = f.getLang();
+                    if (!metaLanguagesManager.hasLanguage(lang)) {
+                        metaLanguagesManager.addLanguage(lang);
+                    }
+                }
+            }
+            for (Form f : node.getMainMultiText().getForms()) {
+                String lang = f.getLang();
+                if (!objectLanguagesManager.hasLanguage(lang)) {
+                    objectLanguagesManager.addLanguage(lang);
+                }
+            }
+        }
+        // Sense et Exemple contain a second MultiText.
+        if (node instanceof LiftSense s) {
+            for (Form f : s.getDefinition().getForms()) {
+                String lang = f.getLang();
+                if (!metaLanguagesManager.hasLanguage(lang)) {
+                    metaLanguagesManager.addLanguage(lang);
+                }
+            }
+        } else if (node instanceof LiftExample e) {
+            e.getTranslations()
+                .values()
+                .forEach(x -> {
+                    for (Form f : x.getForms()) {
+                        String lang = f.getLang();
+                        if (!metaLanguagesManager.hasLanguage(lang)) {
+                            metaLanguagesManager.addLanguage(lang);
+                        }
+                    }
+                });
+        }
+
+        // 2. Add the node to the register.
+        // register the node and it(s) multiText(s) in the registry
         register(node);
 
         // recursively add its descendants
@@ -483,52 +535,52 @@ public class LiftDictionaryRegistry {
             case LiftEntry e -> {
                 e.getVariants().forEach(x -> addToDictionaryLowLevel(x));
                 e.getEtymologies().forEach(x -> addToDictionaryLowLevel(x));
-                registerObjectLanguage(node.getMainMultiText());
+                //registerObjectMultiText(node.getMainMultiText());
             }
             case LiftSense s -> {
                 s.getExamples().forEach(x -> addToDictionaryLowLevel(x));
                 s.getIllustrations().forEach(x -> addToDictionaryLowLevel(x));
                 s.getReversals().forEach(x -> addToDictionaryLowLevel(x));
-                registerMetaLanguage(node.getMainMultiText());
-                registerMetaLanguage(s.getDefinition());
+                //registerMetaMultiText(node.getMainMultiText());
+                //registerMetaMultiText(s.getDefinition());
             }
             case LiftExample e -> {
-                registerObjectLanguage(e.getExample());
-                e.getTranslations()
-                    .values()
-                    .forEach(x -> registerMetaLanguage(x));
+                // registerObjectMultiText(e.getExample());
+                // e.getTranslations()
+                //     .values()
+                //     .forEach(x -> registerMetaMultiText(x));
             }
             case LiftVariant v -> {
-                registerObjectLanguage(v.getForms());
+                // registerObjectMultiText(v.getForms());
             }
             case LiftTrait _ -> {
             }
             case LiftReversal v -> {
-                registerObjectLanguage(v.getForms());
+                // registerObjectMultiText(v.getForms());
             }
             case LiftRelation r -> {
-                registerMetaLanguage(r.getUsage());
+                // registerMetaMultiText(r.getUsage());
             }
             case LiftPronunciation p -> {
-                registerObjectLanguage(p.getPronunciation());
+                // registerObjectMultiText(p.getPronunciation());
             }
             case LiftNote n -> {
-                registerMetaLanguage(n.getText());
+                // registerMetaMultiText(n.getText());
             }
             case LiftMedia m -> {
-                registerMetaLanguage(m.getLabel());
+                // registerMetaMultiText(m.getLabel());
             }
             case LiftIllustration i -> {
-                registerMetaLanguage(i.getLabel());
+                // registerMetaMultiText(i.getLabel());
             }
             case LiftField f -> {
-                registerMetaLanguage(f.getText());
+                // registerMetaMultiText(f.getText());
             }
             case LiftEtymology e -> {
-                registerObjectLanguage(e.getForms());
+                // registerObjectMultiText(e.getForms());
             }
             case LiftAnnotation a -> {
-                registerMetaLanguage(a.getText());
+                // registerMetaMultiText(a.getText());
             }
             default -> throw new IllegalStateException(
                 "Unknown type: " + node.getClass()
@@ -617,40 +669,92 @@ public class LiftDictionaryRegistry {
                 sensesByLiftId.put(s.getId().get(), s);
                 senseLiftId2Uuid.put(s.getId().get(), s.getUUID());
             }
-            case LiftExample o -> examplesById.put(o.getUUID(), o);
+            case LiftExample o -> { examplesById.put(o.getUUID(), o) ; }
             case LiftVariant o -> { variantsById.put(o.getUUID(), o); }
-            case LiftTrait o -> traitsById.put(o.getUUID(), o);
-            case LiftReversal o -> reversalsById.put(o.getUUID(), o);
+            case LiftTrait o -> { traitsById.put(o.getUUID(), o); }
+            case LiftReversal o -> { reversalsById.put(o.getUUID(), o); }
             case LiftRelation o -> { relationsById.put(o.getUUID(), o); }
-            case LiftPronunciation o -> pronunciationsById.put(o.getUUID(), o);
-            case LiftNote o -> notesById.put(o.getUUID(), o);
-            case LiftMedia o -> mediasById.put(o.getUUID(), o);
-            case LiftIllustration o -> illustrationsById.put(o.getUUID(), o);
-            case LiftField o -> fieldsById.put(o.getUUID(), o);
-            case LiftEtymology o -> etymologiesById.put(o.getUUID(), o);
-            case LiftAnnotation o -> annotationsById.put(o.getUUID(), o);
+            case LiftPronunciation o -> { pronunciationsById.put(o.getUUID(), o); }
+            case LiftNote o -> { notesById.put(o.getUUID(), o); }
+            case LiftMedia o -> { mediasById.put(o.getUUID(), o); }
+            case LiftIllustration o -> { illustrationsById.put(o.getUUID(), o); }
+            case LiftField o -> { fieldsById.put(o.getUUID(), o); }
+            case LiftEtymology o -> { etymologiesById.put(o.getUUID(), o); }
+            case LiftAnnotation o -> { annotationsById.put(o.getUUID(), o); }
+            default -> throw new IllegalStateException(
+                "Unknown type: " + node.getClass()
+            );
+        }
+        switch (node) {
+            case LiftEntry e -> {
+                registerObjectMultiText(e.getMainMultiText());
+            }
+            case LiftSense s -> {
+                registerMetaMultiText(s.getMainMultiText());
+                registerMetaMultiText(s.getDefinition());
+            }
+            case LiftExample e -> {
+                registerObjectMultiText(e.getExample());
+                e.getTranslations()
+                    .values()
+                    .forEach(x -> registerMetaMultiText(x));
+            }
+            case LiftVariant v -> {
+                registerObjectMultiText(v.getForms());
+            }
+            case LiftTrait _ -> {
+            }
+            case LiftReversal v -> {
+                registerObjectMultiText(v.getForms());
+            }
+            case LiftRelation r -> {
+                registerMetaMultiText(r.getUsage());
+            }
+            case LiftPronunciation p -> {
+                registerObjectMultiText(p.getPronunciation());
+            }
+            case LiftNote n -> {
+                registerMetaMultiText(n.getText());
+            }
+            case LiftMedia m -> {
+                registerMetaMultiText(m.getLabel());
+            }
+            case LiftIllustration i -> {
+                registerMetaMultiText(i.getLabel());
+            }
+            case LiftField f -> {
+                registerMetaMultiText(f.getText());
+            }
+            case LiftEtymology e -> {
+                registerObjectMultiText(e.getForms());
+            }
+            case LiftAnnotation a -> {
+                registerMetaMultiText(a.getText());
+            }
             default -> throw new IllegalStateException(
                 "Unknown type: " + node.getClass()
             );
         }
     }
 
-    public void registerObjectLanguage(MultiText element) {
+    public void registerObjectMultiText(MultiText element) {
         if (element.getUUID() != null) {
             throw new IllegalArgumentException("UUID already set");
         }
         UUID uuid = getNewUUID();
         element.setUUID(uuid);
         objectTextById.put(uuid, element);
+        element.setLanguagesManager(objectLanguagesManager);
     }
 
-    public void registerMetaLanguage(MultiText element) {
+    public void registerMetaMultiText(MultiText element) {
         if (element.getUUID() != null) {
             throw new IllegalArgumentException("UUID already set");
         }
         UUID uuid = getNewUUID();
         element.setUUID(uuid);
         metaTextById.put(uuid, element);
+        element.setLanguagesManager(metaLanguagesManager);
     }
 
     /**
@@ -697,14 +801,67 @@ public class LiftDictionaryRegistry {
                 }
             }
         }
+
+        switch (node) {
+            case LiftEntry e -> {
+                unregisterObjectMultiText(e.getMainMultiText());
+            }
+            case LiftSense s -> {
+                unregisterMetaMultiText(s.getMainMultiText());
+                unregisterMetaMultiText(s.getDefinition());
+            }
+            case LiftExample e -> {
+                unregisterObjectMultiText(e.getExample());
+                e.getTranslations()
+                    .values()
+                    .forEach(x -> unregisterMetaMultiText(x));
+            }
+            case LiftVariant v -> {
+                unregisterObjectMultiText(v.getForms());
+            }
+            case LiftTrait _ -> {
+            }
+            case LiftReversal v -> {
+                unregisterObjectMultiText(v.getForms());
+            }
+            case LiftRelation r -> {
+                unregisterMetaMultiText(r.getUsage());
+            }
+            case LiftPronunciation p -> {
+                unregisterObjectMultiText(p.getPronunciation());
+            }
+            case LiftNote n -> {
+                unregisterMetaMultiText(n.getText());
+            }
+            case LiftMedia m -> {
+                unregisterMetaMultiText(m.getLabel());
+            }
+            case LiftIllustration i -> {
+                unregisterMetaMultiText(i.getLabel());
+            }
+            case LiftField f -> {
+                unregisterMetaMultiText(f.getText());
+            }
+            case LiftEtymology e -> {
+                unregisterObjectMultiText(e.getForms());
+            }
+            case LiftAnnotation a -> {
+                unregisterMetaMultiText(a.getText());
+            }
+            default -> throw new IllegalStateException(
+                "Unknown type: " + node.getClass()
+            );
+        }
     }
 
     protected void unregisterObjectMultiText(MultiText node) {
         objectTextById.remove(node.getUUID());
+        node.unregister();
     }
 
     protected void unregisterMetaMultiText(MultiText node) {
         metaTextById.remove(node.getUUID());
+        node.unregister();
     }
 
     /**
@@ -847,6 +1004,12 @@ public class LiftDictionaryRegistry {
 
     public int nEntries() {
         return entriesById.values().size();
+    }
+
+    protected void setLanguagesManager(LiftDictionaryLanguagesManager objectLanguagesManager,
+            LiftDictionaryLanguagesManager metaLanguagesManager) {
+        this.objectLanguagesManager = objectLanguagesManager;
+        this.metaLanguagesManager = metaLanguagesManager;
     }
 
 }

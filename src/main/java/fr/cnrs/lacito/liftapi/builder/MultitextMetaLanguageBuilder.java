@@ -25,7 +25,7 @@ public final class MultitextMetaLanguageBuilder extends MultiTextBuilder {
         //UUID uuid = registry.getNewUUID();
         //this.element.setUUID(uuid);
         MultiTextMetaLanguage e = (MultiTextMetaLanguage) element;
-        registry.registerMetaLanguage(e);
+        registry.registerMetaMultiText(e);
         return e;
     }
 }
