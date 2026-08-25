@@ -3,6 +3,7 @@ package fr.cnrs.lacito.liftapi.builder;
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.model.HasAnnotation;
 import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
+import fr.cnrs.lacito.liftapi.model.LiftHeaderRangeElement;
 
 /**
  * Builder for creating LiftAnnotation instances with a fluent API.
@@ -18,6 +19,8 @@ import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
  */
 public class AnnotationBuilder extends AbstractLiftElementBuilder<LiftAnnotation, HasAnnotation> {
 
+    private String name;
+
     /**
      * Create an annotation builder.
      */
@@ -29,18 +32,19 @@ public class AnnotationBuilder extends AbstractLiftElementBuilder<LiftAnnotation
      * Create an annotation builder with the given name.
      */
     protected AnnotationBuilder(LiftDictionary dictionary, HasAnnotation parent, String name) {
-        super(LiftAnnotation.create(name), dictionary, parent);
+        super(new LiftAnnotation(), dictionary, parent);
+        this.withName(name);
+    }
+
+    public AnnotationBuilder withName(String name) {
         if (name == null) {
             throw new IllegalArgumentException("Annotation name cannot be null");
         }
-    }
-
-    /**
-     * Set the annotation ID.
-     */
-    @Override
-    public AnnotationBuilder withId(String id) {
-        super.withId(id);
+        if (!dictionary.getHeader().getAnnotationTypeManager().hasRangeElements(name)) {
+            dictionary.getHeader().getAnnotationTypeManager().createRangeElement(name);
+        }
+        LiftHeaderRangeElement e = dictionary.getHeader().getAnnotationTypeManager().getRangeElement(name);
+        element.setName(e);
         return this;
     }
 
@@ -90,19 +94,5 @@ public class AnnotationBuilder extends AbstractLiftElementBuilder<LiftAnnotation
     public LiftAnnotation build() {
         super.register();
         return element;
-    }
-
-    /**
-     * Static helper to create an annotation quickly.
-     */
-    public static LiftAnnotation createAnnotation(String name) {
-        return LiftAnnotation.create(name);
-    }
-
-    /**
-     * Static helper to create an annotation with name and value quickly.
-     */
-    public static LiftAnnotation createAnnotation(String name, String value) {
-        return LiftAnnotation.create(name, value);
     }
 }

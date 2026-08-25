@@ -25,7 +25,7 @@ public abstract sealed class AbstractLiftRoot implements LiftObject
         LiftReversal
 {
 
-    private final MultiText mainMultiText = new MultiText();
+    private final MultiText mainMultiText = new MultiText(this);
     protected final Map<String, String> otherXmlAttributes = new HashMap<>();
     private UUID uuid;
 
@@ -57,7 +57,7 @@ public abstract sealed class AbstractLiftRoot implements LiftObject
     }
 
     /**
-     * Detach this node from its parent.
+     * Detach this node from its parent: remove the link parent -> self, and set the parent of this node to null.
      */
     public void detach() {
         switch (this) {
@@ -67,44 +67,69 @@ public abstract sealed class AbstractLiftRoot implements LiftObject
             case LiftSense s -> {
                 HasSense p = s.getParent();
                 p.getSenses().removeIf(x -> x == s);
+                s.setParent(null);
             }
-            case LiftExample o -> o.getParent()
+            case LiftExample o -> {o.getParent()
                 .getExamples()
                 .removeIf(x -> x == o);
-            case LiftVariant o -> o.getParent()
+                o.setParent(null);
+            }
+            case LiftVariant o -> { o.getParent()
                 .getVariants()
                 .removeIf(x -> x == o);
-            case LiftTrait o -> o.getParent()
+                o.setParent(null);
+            }
+            case LiftTrait o -> { o.getParent()
                 .getTraits()
                 .removeIf(x -> x == o);
-            case LiftReversal o -> o.getParent()
+                o.setParent(null);
+            }
+            case LiftReversal o -> { o.getParent()
                 .getReversals()
                 .removeIf(x -> x == o);
-            case LiftRelation o -> {
-                HasRelations r = o.getParent();
-                r.getRelations().removeIf(x -> x == this);
+                o.setParent(null);
             }
-            case LiftPronunciation o -> o.getParent()
+            case LiftRelation o -> {
+                o.getParent()
+                .getRelations().
+                removeIf(x -> x == this);
+                o.setParent(null);
+            }
+            case LiftPronunciation o -> { o.getParent()
                 .getPronunciations()
                 .removeIf(x -> x == this);
-            case LiftNote o -> o.getParent()
+                o.setParent(null);
+            }
+            case LiftNote o -> { o.getParent()
                 .getNotes()
-                .remove(o.getType());
-            case LiftMedia o -> o.getParent()
+                .remove(o.getType().getId());
+                o.setParent(null);
+            }
+            case LiftMedia o -> { o.getParent()
                 .getMedias()
                 .removeIf(x -> x == this);
-            case LiftIllustration o -> o.getParent()
+                o.setParent(null);
+            }
+            case LiftIllustration o -> { o.getParent()
                 .getIllustrations()
                 .removeIf(x -> x == this);
-            case LiftField o -> o.getParent()
+                o.setParent(null);
+            }
+            case LiftField o -> { o.getParent()
                 .getFields()
-                .removeIf(x -> x == this);
-            case LiftEtymology o -> o.getParent()
+                .remove(o.getType().getName());
+                o.setParent(null);
+            }
+            case LiftEtymology o -> { o.getParent()
                 .getEtymologies()
                 .removeIf(x -> x == this);
-            case LiftAnnotation o -> o.getParent()
+                o.setParent(null);
+            }
+            case LiftAnnotation o -> { o.getParent()
                 .getAnnotations()
                 .removeIf(x -> x == this);
+                o.setParent(null);
+            }
             default -> throw new IllegalStateException(
                 "Unknown type: " + this.getClass()
             );

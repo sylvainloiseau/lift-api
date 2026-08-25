@@ -18,7 +18,7 @@ import fr.cnrs.lacito.liftapi.model.MultiText;
  *       .build();
  * </pre>
  */
-public abstract sealed class MultiTextBuilder permits MultitextMetaLanguageBuilder, MultitextObjectLanguageBuilder {
+public abstract class MultiTextBuilder {
 
     protected MultiText element;
     protected final LiftDictionaryRegistry registry;

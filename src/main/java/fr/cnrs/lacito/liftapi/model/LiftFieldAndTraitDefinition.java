@@ -73,7 +73,7 @@ repeated.
  Where no range is linked the name is informal or resolved by its use in a field-definition. (12)
  *
  * @see LiftFieldAndTraitDefinitionKind
- * @see LiftFieldAndTraitDefinitionType
+ * @see LiftFieldAndTraitDefinitionDataModel
  * @see LiftFieldAndTraitDefinitionTarget
  */
 public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
@@ -107,7 +107,7 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
         this.writingSystem = writingSystem;
     }
 
-    MultiText label = new MultiText();
+    MultiText label = new MultiText(this);
 
     public MultiText getLabel() {
         return label;
@@ -124,14 +124,14 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
         return kind;
     }
 
-    private Optional<LiftFieldAndTraitDefinitionType> definitionType =
+    private Optional<LiftFieldAndTraitDefinitionDataModel> definitionType =
         Optional.empty();
 
-    public Optional<LiftFieldAndTraitDefinitionType> getDefinitionType() {
+    public Optional<LiftFieldAndTraitDefinitionDataModel> getDataModel() {
         return definitionType;
     }
 
-    public void setDefinitionType(Optional<LiftFieldAndTraitDefinitionType> definitionType) {
+    public void setDefinitionType(Optional<LiftFieldAndTraitDefinitionDataModel> definitionType) {
         this.definitionType = definitionType;
     }
 
@@ -143,13 +143,13 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
      * Creates a new field or trait definition with the given name and parent header.
      *
      * By default, the kind is set to {@link LiftFieldAndTraitDefinitionKind#UNKNOWN}
-     * and the definition type to {@link LiftFieldAndTraitDefinitionType#STRING}.
+     * and the definition type to {@link LiftFieldAndTraitDefinitionDataModel#STRING}.
      */
     public LiftFieldAndTraitDefinition(String name, LiftHeader parent) {
         this.name = name;
         this.parent = parent;
         kind = LiftFieldAndTraitDefinitionKind.UNKNOWN;
-        definitionType = Optional.of(LiftFieldAndTraitDefinitionType.STRING);
+        definitionType = Optional.of(LiftFieldAndTraitDefinitionDataModel.STRING);
     }
 
     public String getName() {
@@ -177,19 +177,19 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
         this.targets = LiftFieldAndTraitDefinitionTarget.parseTargetString(targetString);
     }
 
-    public Optional<LiftFieldAndTraitDefinitionType> getType() {
+    public Optional<LiftFieldAndTraitDefinitionDataModel> getType() {
         return definitionType;
     }
 
     /** Raw @type value (for serialization). */
     public Optional<String> getTypeStr() {
-        return definitionType.map(LiftFieldAndTraitDefinitionType::toStringValue);
+        return definitionType.map(LiftFieldAndTraitDefinitionDataModel::toStringValue);
     }
 
     /** Set from raw @type attribute string, resolving the enum and kind. */
     public void setType(Optional<String> typeStr) {
         this.definitionType = typeStr.flatMap(
-            LiftFieldAndTraitDefinitionType::fromStringValue
+            LiftFieldAndTraitDefinitionDataModel::fromStringValue
         );
         // If the kind is still UNKNOWN, resolve it from the definition type.
         if (this.kind == LiftFieldAndTraitDefinitionKind.UNKNOWN) {

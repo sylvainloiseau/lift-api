@@ -1,7 +1,5 @@
 package fr.cnrs.lacito.liftapi.model;
 
-import javafx.beans.property.ReadOnlyStringProperty;
-import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.beans.property.SimpleObjectProperty;
 
 /**
@@ -27,7 +25,7 @@ public final class LiftField extends AbstractExtensibleWithoutField {
         );
     }
 
-    public LiftFieldAndTraitDefinition getName() {
+    public LiftFieldAndTraitDefinition getType() {
         return nameProperty.get();
     }
 

@@ -15,7 +15,7 @@ public final class LiftEntry
 
     protected Optional<String> dateDeleted = Optional.empty();
 
-    protected final MultiText citations = new MultiText();
+    protected final MultiText citations = new MultiText(this);
 
     protected final ListProperty<LiftPronunciation> pronunciationsProperty =
         new SimpleListProperty<>(
@@ -153,4 +153,22 @@ public final class LiftEntry
     public void setOrder(String order2) {
         this.order = Optional.of(order2);
     }
+
+    // @Override
+    // public void removeSense(LiftSense sense) {
+    //     sensesProperty.get().removeIf(x -> x == sense);
+    // }
+
+    // @Override
+    // public LiftSense removeSenseAt(int index) {
+    //     if (index < 0 || index > sensesProperty.get().size()) throw new IllegalArgumentException("Index is larger than array");
+    //     LiftSense sense = sensesProperty.get().remove(index);
+    //     return sense;
+    // }
+
+    // @Override
+    // public void addSenseAt(LiftSense sense, int index) {
+    //     if (index < 0 || index > sensesProperty.get().size()) throw new IllegalArgumentException("Index is larger than array");
+    //     sensesProperty.get().add(index, sense);
+    // }
 }

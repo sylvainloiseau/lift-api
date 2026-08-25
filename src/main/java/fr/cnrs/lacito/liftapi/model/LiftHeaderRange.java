@@ -21,13 +21,13 @@ public final class LiftHeaderRange extends AbstractExtensibleWithField {
 
     Optional<String> guid = Optional.empty();
 
-    MultiText label = new MultiText();
+    MultiText label = new MultiText(this);
 
     public MultiText getLabel() {
         return label;
     }
 
-    MultiText abbrev = new MultiText();
+    MultiText abbrev = new MultiText(this);
 
     public MultiText getAbbrev() {
         return abbrev;

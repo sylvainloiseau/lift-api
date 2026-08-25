@@ -1,8 +1,11 @@
 package fr.cnrs.lacito.liftapi.xml;
 
+import fr.cnrs.lacito.liftapi.LiftDictionary;
+import fr.cnrs.lacito.liftapi.LiftDictionaryLanguagesManager;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.LiftVersion;
 import fr.cnrs.lacito.liftapi.model.*;
+import javafx.collections.ObservableList;
 
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -11,41 +14,33 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
 import org.xml.sax.Attributes;
 
 public final class LiftXMLFactoryNew {
 
-    private LiftVersion liftVersion;
-
-    public LiftVersion getLiftVersion() {
-        return liftVersion;
-    }
-
     public void setLiftVersion(LiftVersion liftVersion) {
-        this.liftVersion = liftVersion;
-    }
-
-    private String liftProducer;
-
-    public String getLiftProducer() {
-        return liftProducer;
+        this.dictionary.setLiftVersion(liftVersion);
     }
 
     public void setLiftProducer(String liftProducer) {
-        this.liftProducer = liftProducer;
+        this.dictionary.setLiftProducer(liftProducer);
     }
 
-    protected LiftHeader header = new LiftHeader();
-
+    protected LiftHeader header;
     private LiftDictionaryRegistry registry;
+    private LiftDictionary dictionary;
 
-    public LiftXMLFactoryNew(LiftDictionaryRegistry registry) {
-        this.registry = registry;
+    public LiftXMLFactoryNew(LiftDictionary dictionary) {
+        this.dictionary = dictionary;
+        this.header = dictionary.getHeader();
+        this.registry = dictionary.getLiftDictionaryRegistry();
     }
 
-    public LiftHeader createHeader() {
-        this.header = new LiftHeader();
-        return this.header;
+    // TODO all these methods should be turned protected
+    public LiftHeader getHeader() {
+        return this.dictionary.getHeader();
     }
 
     public void addEntryToDictionary(LiftEntry entry) {
@@ -208,7 +203,7 @@ public final class LiftXMLFactoryNew {
 
         LiftFieldAndTraitDefinition def = header.getOrCreateTraitsDefinitions(name);
 
-        LiftTrait trait = switch (def.getDefinitionType().get()) {
+        LiftTrait trait = switch (def.getDataModel().get()) {
             case INTEGER -> {
                 Integer v = Integer.valueOf(value);
                 yield new LiftTrait(def, v);
@@ -231,7 +226,7 @@ public final class LiftXMLFactoryNew {
                 List<LiftHeaderRangeElement> elements = parseRangeElement(def, value);
                 yield new LiftTrait(def, elements);
             }
-            default -> throw new IllegalArgumentException("Unknown definition type: " + def.getDefinitionType().get());
+            default -> throw new IllegalArgumentException("Unknown definition type: " + def.getDataModel().get());
         };
 
         parent.addTrait(trait);
@@ -277,16 +272,30 @@ public final class LiftXMLFactoryNew {
         return m;
     }
 
+    public LiftAnnotation createAnnotation(String name, HasAnnotation parent) {
+        if (name == null) throw new IllegalArgumentException(
+            "Attribute name on annotation element cannot be null"
+        );
+
+        if (!header.getAnnotationTypeManager().hasRangeElements(name)) {
+            header.getAnnotationTypeManager().createRangeElement(name);
+        }
+        LiftHeaderRangeElement element = header.getAnnotationTypeManager().getRangeElement(name);
+
+        LiftAnnotation a = new LiftAnnotation(element);
+
+        parent.addAnnotation(a);
+        return a;
+    }
+
     // annotation is not a subclass of the AbstractX hierarchy and cannot benefit from populate...
     public LiftAnnotation createAnnotation(
         Attributes attributes,
         HasAnnotation parent
     ) {
         String name = attributes.getValue(LiftVocabulary.LIFT_URI, "name");
-        if (name == null) throw new IllegalArgumentException(
-            "Attribute name on annotation element cannot be null"
-        );
-        LiftAnnotation a = new LiftAnnotation(name);
+
+        LiftAnnotation a = createAnnotation(name, parent);
 
         String value = attributes.getValue(LiftVocabulary.LIFT_URI, "value");
         if (value != null) a.setValue(value);
@@ -295,7 +304,6 @@ public final class LiftXMLFactoryNew {
         String when = attributes.getValue(LiftVocabulary.LIFT_URI, "when");
         if (when != null) a.setWhen(when);
 
-        parent.addAnnotation(a);
         return a;
     }
 
@@ -335,11 +343,11 @@ public final class LiftXMLFactoryNew {
                 }
             } else if (name.equals("refid")) {
                 if (liftObject instanceof LiftVariant lv) {
-                    registry.refId2Occurrences
+                    registry.refId2HasRefIdList
                         .computeIfAbsent(value, k -> new ArrayList<>())
                         .add(lv);
                 } else if (liftObject instanceof LiftRelation lr) {
-                    registry.refId2Occurrences
+                    registry.refId2HasRefIdList
                         .computeIfAbsent(value, k -> new ArrayList<>())
                         .add(lr);
                 } else {
@@ -459,12 +467,6 @@ public final class LiftXMLFactoryNew {
         return hre;
     }
 
-    public LiftAnnotation createAnnotation(String name, HasAnnotation parent) {
-        LiftAnnotation a = new LiftAnnotation(name);
-        parent.addAnnotation(a);
-        return a;
-    }
-
     public LiftIllustration createIllustration(
         Attributes attributes,
         LiftSense parent
@@ -476,9 +478,6 @@ public final class LiftXMLFactoryNew {
         return ill;
     }
 
-    public LiftHeader getHeader() {
-        return this.header;
-    }
 
     public TextSpan createTextSpan() {
         return new TextSpan();
@@ -505,19 +504,33 @@ public final class LiftXMLFactoryNew {
         }
     }
 
-    public void endDocument() {
+    protected void endDocument() {
         dereferenceHasRefTargets();
+        createLanguages(registry.getMetaText(), dictionary.getMetaLanguageManager());
+        createLanguages(registry.getObjectText(), dictionary.getObjectLanguageManager());
     }
 
-	private void dereferenceHasRefTargets() {
-	    for (String targetId : registry.refId2Occurrences.keySet()) {
+	private void createLanguages(ObservableList<MultiText> multiTexts, LiftDictionaryLanguagesManager languageManager) {
+        Map<String, Long> languageCounts = multiTexts
+            .stream()
+            .flatMap(x -> x.getForms().stream())
+            .collect(Collectors.groupingBy(x -> x.getLang(), Collectors.counting()));;
+
+        for (String lang : languageCounts.keySet()) {
+            languageManager.addLanguage(lang);
+            languageManager.setLanguageOccurrence(lang, languageCounts.get(lang));
+        }
+    }
+
+    private void dereferenceHasRefTargets() {
+	    for (String targetId : registry.refId2HasRefIdList.keySet()) {
             AbstractIdentifiable target = registry.getEntryOrSenseByLiftId(targetId);
             if (target == null) {
                 throw new IllegalArgumentException(
                     "Reference id " + targetId + " not found in entries or senses."
                 );
             }
-            for (HasRefId source : registry.refId2Occurrences.get(targetId)) {
+            for (HasRefId source : registry.refId2HasRefIdList.get(targetId)) {
                 source.setRefObject(target);
             }
         }

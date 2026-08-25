@@ -15,14 +15,27 @@ import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
 
 /**
- * A trait is a key-value pair. The key doesn't have to be unique on the object that receive the trait.
+ * A trait is a key-value pair. The key doesn't have to be unique on the object that receive the traits:
+ * several traits can have the same key on the same object.
  *
+ * The key is a {@link LiftFieldAndTraitDefinition} (use {@link #geDefinition()} to access it).
+ * The LiffFieldAndTraitDefinition specifies in particular the datamodel of the traits.
+ * The different possible datamodel are the values of
+ * {@link LiftFieldAndTraitDefinitionDataModel} (see {@link LiftFieldAndTraitDefinition#getDataModel()}). See the
+ * documentation of {@link LiftFieldAndTraitDefinitionDataModel} for the various datamodel.
+ * 
+ * According to the datamodel, the string provided to {@link #setValue(String)} is parsed differently. For instance,
+ * if the data model is {@link LiftFieldAndTraitDefinitionDataModel#OPTION_COLLECTION}, the value is interpreted
+ * as a whitespace-separated list of RangeElement id to be fount in the range of {@link LiftFieldAndTraitDefinition#getResolvedRange()}.
  *
- * A trait is simply a reference to a single range-element in a range. It can be used to give the
-dialect for a variant or the status of an entry. The semantics of a trait in a particular context
-are given by the parent object and also by the range and range-element being referred to.
-Where no range is linked the name is informal or resolved by its use in a field-definition. (Lift specification, p. 13)
+ * A Trait can receive annotation, but no notes or fields.
  *
+ * <i>A trait is simply a reference to a single range-element in a range. It can be used to give the
+ * dialect for a variant or the status of an entry. The semantics of a trait in a particular context
+ * are given by the parent object and also by the range and range-element being referred to.
+ * Where no range is linked the name is informal or resolved by its use in a field-definition.
+ * (Lift specification, p. 13)
+ * </i>
  */
 public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
 
@@ -44,44 +57,62 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
 
     public LiftTrait(LiftFieldAndTraitDefinition def) {
         this.definitionProperty = new SimpleObjectProperty<>(this, "definition", def);
-        switch (def.getDefinitionType().get()) {
+        switch (def.getDataModel().get()) {
             case STRING -> this.stringValueProperty = new SimpleStringProperty(this, "value", "");
             case INTEGER -> this.integerProperty = new SimpleIntegerProperty(this, "value", 0);
             case DATETIME -> this.dateTimeProperty = new SimpleObjectProperty<>(this, "value", null);
             case OPTION -> this.rangeElementProperty = new SimpleObjectProperty<>(this, "value", null);
             case OPTION_COLLECTION -> this.rangeElementListProperty = new SimpleListProperty<>(this, "value", null);
             case OPTION_SEQUENCE -> this.rangeElementSetProperty = new SimpleSetProperty<>(this, "value", null);
-            default -> throw new IllegalArgumentException("Unknown definition type: " + def.getDefinitionType().get());
+            default -> throw new IllegalArgumentException("Unknown definition type: " + def.getDataModel().get());
         }
     }
 
     public LiftTrait(LiftFieldAndTraitDefinition def, String value) {
         this(def);
+        if (!def.getDataModel().isEmpty() && def.getDataModel().get() != LiftFieldAndTraitDefinitionDataModel.STRING) {
+            throw new IllegalArgumentException("The Datamodel of this LiftTrait is not compatible with a String value ");
+        }
         this.stringValueProperty = new SimpleStringProperty(this, "value", value);
     }
 
     public LiftTrait(LiftFieldAndTraitDefinition def, ZonedDateTime value) {
         this(def);
+        if (def.getDataModel().isEmpty() || def.getDataModel().get() != LiftFieldAndTraitDefinitionDataModel.DATETIME) {
+            throw new IllegalArgumentException("The Datamodel of this LiftTrait is not compatible with a date times value ");
+        }
         this.dateTimeProperty = new SimpleObjectProperty<>(this, "value", value);
     }
 
     public LiftTrait(LiftFieldAndTraitDefinition def, Integer i) {
         this(def);
+        if (def.getDataModel().isEmpty() || def.getDataModel().get() != LiftFieldAndTraitDefinitionDataModel.INTEGER) {
+            throw new IllegalArgumentException("The Datamodel of this LiftTrait is not compatible with an integer value ");
+        }
         this.integerProperty = new SimpleIntegerProperty(this, "value", i);
     }
 
     public LiftTrait(LiftFieldAndTraitDefinition def, LiftHeaderRangeElement rangeElement) {
         this(def);
+        if (def.getDataModel().isEmpty() || def.getDataModel().get() != LiftFieldAndTraitDefinitionDataModel.OPTION) {
+            throw new IllegalArgumentException("The Datamodel of this LiftTrait is not compatible with a range value ");
+        }
         this.rangeElementProperty = new SimpleObjectProperty<>(this, "value", rangeElement);
     }
 
     public LiftTrait(LiftFieldAndTraitDefinition def, HashSet<LiftHeaderRangeElement> rangeElementSet) {
         this(def);
+        if (def.getDataModel().isEmpty() || def.getDataModel().get() != LiftFieldAndTraitDefinitionDataModel.OPTION_COLLECTION) {
+            throw new IllegalArgumentException("The Datamodel of this LiftTrait is not compatible with a set of range value ");
+        }
         this.rangeElementSetProperty = new SimpleSetProperty<LiftHeaderRangeElement>(this, "value", FXCollections.observableSet(rangeElementSet));
     }
 
     public LiftTrait(LiftFieldAndTraitDefinition def, List<LiftHeaderRangeElement> rangeElementList) {
         this(def);
+        if (def.getDataModel().isEmpty() || def.getDataModel().get() != LiftFieldAndTraitDefinitionDataModel.OPTION_SEQUENCE) {
+            throw new IllegalArgumentException("The Datamodel of this LiftTrait is not compatible with a list of range value ");
+        }
         this.rangeElementListProperty = new SimpleListProperty<LiftHeaderRangeElement>(this, "value", FXCollections.observableList(rangeElementList));
     }
 
@@ -113,22 +144,22 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
 
     public String getValue() {
         return switch (definitionProperty.get().getType().get()) {
-            case LiftFieldAndTraitDefinitionType.DATETIME -> this.dateTimeProperty.get().toString();
-            case LiftFieldAndTraitDefinitionType.STRING -> this.stringValueProperty.get();
-            case LiftFieldAndTraitDefinitionType.OPTION -> this.rangeElementProperty.get().getId();
-            case LiftFieldAndTraitDefinitionType.OPTION_COLLECTION -> {
+            case LiftFieldAndTraitDefinitionDataModel.DATETIME -> this.dateTimeProperty.get().toString();
+            case LiftFieldAndTraitDefinitionDataModel.STRING -> this.stringValueProperty.get();
+            case LiftFieldAndTraitDefinitionDataModel.OPTION -> this.rangeElementProperty.get().getId();
+            case LiftFieldAndTraitDefinitionDataModel.OPTION_COLLECTION -> {
                 throw new UnsupportedOperationException("OPTION_COLLECTION type is not supported for trait value");
                 // this.rangeElementSetProperty.get().stream()
                 //     .map(LiftHeaderRangeElement::getId)
                 //     .collect(Collectors.joining(", "));
             }
-            case LiftFieldAndTraitDefinitionType.OPTION_SEQUENCE -> {
+            case LiftFieldAndTraitDefinitionDataModel.OPTION_SEQUENCE -> {
                 throw new UnsupportedOperationException("OPTION_SEQUENCE type is not supported for trait value");
                 // this.rangeElementListProperty.get().stream()
                 //     .map(LiftHeaderRangeElement::getId)
                 //  .collect(Collectors.joining(", "));
             }
-            case LiftFieldAndTraitDefinitionType.INTEGER -> Integer.toString(this.integerProperty.get());
+            case LiftFieldAndTraitDefinitionDataModel.INTEGER -> Integer.toString(this.integerProperty.get());
             default -> throw new IllegalArgumentException("Illegal trait type: " + definitionProperty.get().getTypeStr());
         };
     }
@@ -141,12 +172,12 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
         if (value == null) value = "";
         //valueProperty.set(value);
         switch (definitionProperty.get().getType().get()) {
-            case LiftFieldAndTraitDefinitionType.DATETIME -> this.dateTimeProperty.set(ZonedDateTime.parse(value, DateTimeFormatter.ISO_ZONED_DATE_TIME));
-            case LiftFieldAndTraitDefinitionType.STRING -> this.stringValueProperty.set(value);
-            case LiftFieldAndTraitDefinitionType.OPTION -> throw new UnsupportedOperationException("OPTION type is not supported for trait value");
-            case LiftFieldAndTraitDefinitionType.OPTION_COLLECTION -> throw new UnsupportedOperationException("OPTION_COLLECTION type is not supported for trait value");
-            case LiftFieldAndTraitDefinitionType.OPTION_SEQUENCE -> throw new UnsupportedOperationException("OPTION_SEQUENCE type is not supported for trait value");
-            case LiftFieldAndTraitDefinitionType.INTEGER -> this.integerProperty.set(Integer.parseInt(value));
+            case LiftFieldAndTraitDefinitionDataModel.DATETIME -> this.dateTimeProperty.set(ZonedDateTime.parse(value, DateTimeFormatter.ISO_ZONED_DATE_TIME));
+            case LiftFieldAndTraitDefinitionDataModel.STRING -> this.stringValueProperty.set(value);
+            case LiftFieldAndTraitDefinitionDataModel.OPTION -> throw new UnsupportedOperationException("OPTION type is not supported for trait value");
+            case LiftFieldAndTraitDefinitionDataModel.OPTION_COLLECTION -> throw new UnsupportedOperationException("OPTION_COLLECTION type is not supported for trait value");
+            case LiftFieldAndTraitDefinitionDataModel.OPTION_SEQUENCE -> throw new UnsupportedOperationException("OPTION_SEQUENCE type is not supported for trait value");
+            case LiftFieldAndTraitDefinitionDataModel.INTEGER -> this.integerProperty.set(Integer.parseInt(value));
             default -> throw new IllegalArgumentException("Illegal trait type: " + definitionProperty.get().getTypeStr());
         }
     }

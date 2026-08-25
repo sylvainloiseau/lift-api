@@ -56,7 +56,7 @@ public class MultiTextTest {
 
         assertEquals(1, annotations.size());
         LiftAnnotation a = annotations.getFirst();
-        assertEquals("source", a.getName());
+        assertEquals("source", a.getType().getId());
         assertEquals("elicitation", a.getValue());
         assertEquals("alice", a.getWho());
         assertEquals("2026-02-22", a.getWhen());

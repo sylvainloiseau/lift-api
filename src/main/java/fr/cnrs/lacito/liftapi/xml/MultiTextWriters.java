@@ -102,8 +102,8 @@ public class MultiTextWriters {
      */
     private static void writeAnnotation(XMLStreamWriter w, LiftAnnotation a) throws Exception {
         w.writeStartElement(LiftVocabulary.ANNOTATION_LOCAL_NAME);
-        if (a.getName() != null) {
-            w.writeAttribute(LiftVocabulary.NAME_ATTRIBUTE, a.getName());
+        if (a.getType() != null) {
+            w.writeAttribute(LiftVocabulary.NAME_ATTRIBUTE, a.getType().getId());
         }
         if (!a.getValue().isEmpty()) {
             w.writeAttribute(LiftVocabulary.VALUE_ATTRIBUTE, a.getValue());

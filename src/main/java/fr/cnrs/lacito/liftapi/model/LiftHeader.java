@@ -2,15 +2,14 @@ package fr.cnrs.lacito.liftapi.model;
 
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import javafx.beans.property.SimpleSetProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.MapChangeListener;
 import javafx.collections.ObservableList;
 import javafx.collections.ObservableMap;
+import javafx.collections.transformation.FilteredList;
 
 public final class LiftHeader extends AbstractLiftRoot {
 
@@ -19,7 +18,9 @@ public final class LiftHeader extends AbstractLiftRoot {
     private static final String GRAMMATICAL_INFO_RANGE = "grammatical-info";
     private static final String RELATION_TYPE_RANGE = "relation-type";
     private static final String INVERSE_TYPE_RANGE = "inverse-type";
+    private static final String ANNOTATION_TYPE_RANGE = "annotation-type";
     private static final String ETYMOLOGY_TYPE_RANGE = "etymology-type";
+    private static final String VARIANT_TYPE_RANGE = "variant-type";
 
     private Map<String, LiftFieldAndTraitDefinition> fieldsAndTraitsDefinition = new HashMap<>();
 
@@ -41,6 +42,8 @@ public final class LiftHeader extends AbstractLiftRoot {
     private LiftHeaderRange etymologyTypesManager;
     private LiftHeaderRange translationTypesManager;
     private LiftHeaderRange grammaticalInfoManager;
+    private LiftHeaderRange annotationTypesManager;
+    private LiftHeaderRange variantTypesManager;
 
     private final SimpleSetProperty<String> metaLanguages =
         new SimpleSetProperty<>(FXCollections.emptyObservableSet());
@@ -84,7 +87,9 @@ public final class LiftHeader extends AbstractLiftRoot {
         inverseTypesManager = new LiftHeaderRange(INVERSE_TYPE_RANGE, this);
         etymologyTypesManager = new LiftHeaderRange(ETYMOLOGY_TYPE_RANGE, this);
         translationTypesManager = new LiftHeaderRange(TRANSLATION_TYPE_RANGE, this);
+        annotationTypesManager = new LiftHeaderRange(TRANSLATION_TYPE_RANGE, this);
         grammaticalInfoManager = new LiftHeaderRange(GRAMMATICAL_INFO_RANGE, this);
+        variantTypesManager = new LiftHeaderRange(TRANSLATION_TYPE_RANGE, this);
 
         rangesMap.put(NOTE_TYPE_RANGE, noteTypesManager);
         rangesMap.put(RELATION_TYPE_RANGE, relationTypesManager);
@@ -92,6 +97,9 @@ public final class LiftHeader extends AbstractLiftRoot {
         rangesMap.put(ETYMOLOGY_TYPE_RANGE, etymologyTypesManager);
         rangesMap.put(TRANSLATION_TYPE_RANGE, translationTypesManager);
         rangesMap.put(GRAMMATICAL_INFO_RANGE, grammaticalInfoManager);
+        rangesMap.put(ANNOTATION_TYPE_RANGE, annotationTypesManager);
+        rangesMap.put(VARIANT_TYPE_RANGE, variantTypesManager);
+        
     }
 
     public MultiText getDescription() {
@@ -152,10 +160,42 @@ public final class LiftHeader extends AbstractLiftRoot {
         return fieldsAndTraitsDefinition.values();
     }
 
-    public List<LiftFieldAndTraitDefinition> getFieldsAndTraitsDefinitionsFor(LiftFieldAndTraitDefinitionTarget target) {
-        return fieldsAndTraitsDefinition.values().stream()
-            .filter(fd -> fd.getTargets().contains(target))
-            .collect(Collectors.toList());
+    public ObservableList<LiftFieldAndTraitDefinition> getFieldsAndTraitsDefinitionsFor(LiftFieldAndTraitDefinitionTarget target) {
+        FilteredList<LiftFieldAndTraitDefinition> filteredList = new FilteredList<>(FXCollections.observableArrayList(fieldsAndTraitsDefinition.values()));
+        filteredList.setPredicate(fd -> fd.getTargets().contains(target) );
+        return filteredList;
+    }
+
+    public ObservableList<LiftFieldAndTraitDefinition> getFieldsDefinitions() {
+        FilteredList<LiftFieldAndTraitDefinition> filteredList = new FilteredList<>(FXCollections.observableArrayList(fieldsAndTraitsDefinition.values()));
+        filteredList.setPredicate(fd -> {
+            return fd.getKind() == LiftFieldAndTraitDefinitionKind.FIELD;
+        });
+        return filteredList;
+    }
+
+    public ObservableList<LiftFieldAndTraitDefinition> getFieldsDefinitionsFor(LiftFieldAndTraitDefinitionTarget target) {
+        FilteredList<LiftFieldAndTraitDefinition> filteredList = new FilteredList<>(getFieldsDefinitions());
+        filteredList.setPredicate(fd -> {
+            return fd.getTargets().contains(target);
+        });
+        return filteredList;
+    }
+
+    public ObservableList<LiftFieldAndTraitDefinition> getTraitsDefinitions() {
+        FilteredList<LiftFieldAndTraitDefinition> filteredList = new FilteredList<>(FXCollections.observableArrayList(fieldsAndTraitsDefinition.values()));
+        filteredList.setPredicate(fd -> {
+            return fd.getKind() == LiftFieldAndTraitDefinitionKind.TRAIT;
+        });
+        return filteredList;
+    }
+
+    public ObservableList<LiftFieldAndTraitDefinition> getTraitsDefinitionsFor(LiftFieldAndTraitDefinitionTarget target) {
+        FilteredList<LiftFieldAndTraitDefinition> filteredList = new FilteredList<>(FXCollections.observableArrayList(getTraitsDefinitions()));
+        filteredList.setPredicate(fd -> {
+            return fd.getTargets().contains(target);
+        });
+        return filteredList;
     }
 
     public LiftFieldAndTraitDefinition getFieldsAndTraitsDefinitions(String id) {
@@ -230,6 +270,12 @@ public final class LiftHeader extends AbstractLiftRoot {
 
     // relation types
 
+    public LiftHeaderRange getVariantTypeManager() {
+        return variantTypesManager;
+    }
+
+    // relation types
+
     public LiftHeaderRange getRelationTypeManager() {
         return relationTypesManager;
     }
@@ -298,6 +344,12 @@ public final class LiftHeader extends AbstractLiftRoot {
 
     public LiftHeaderRange getTranslationTypeManager() {
         return translationTypesManager;
+    }
+
+    // translation types
+
+    public LiftHeaderRange getAnnotationTypeManager() {
+        return annotationTypesManager;
     }
 
     // public SimpleSetProperty<LiftHeaderRangeElement> translationTypesProperty() {

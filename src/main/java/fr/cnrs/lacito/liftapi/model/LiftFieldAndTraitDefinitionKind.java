@@ -19,8 +19,8 @@ public enum LiftFieldAndTraitDefinitionKind {
     TRAIT,
     UNKNOWN;
 
-    public static LiftFieldAndTraitDefinitionKind fromType(LiftFieldAndTraitDefinitionType type) {
+    public static LiftFieldAndTraitDefinitionKind fromType(LiftFieldAndTraitDefinitionDataModel type) {
         if (type == null) return UNKNOWN;
-        return type.describesField() ? FIELD : TRAIT;
+        return type.isApplicableToAField() ? FIELD : TRAIT;
     }
 }

@@ -4,7 +4,6 @@ import fr.cnrs.lacito.liftapi.model.AbstractExtensibleWithoutField;
 import fr.cnrs.lacito.liftapi.model.AbstractIdentifiable;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
 import fr.cnrs.lacito.liftapi.model.DuplicateIdException;
-import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.HasField;
 import fr.cnrs.lacito.liftapi.model.HasNote;
 import fr.cnrs.lacito.liftapi.model.HasPronunciation;
@@ -27,6 +26,8 @@ import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
 import fr.cnrs.lacito.liftapi.model.MultiText;
+
+import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,16 +38,29 @@ import javafx.collections.MapChangeListener;
 import javafx.collections.ObservableList;
 import javafx.collections.ObservableMap;
 
+///
+/// 
+/// Offer two main functionalities:
+/// 
+/// - unmodifiable collections for all the components of a LIFT dictionary [getEntries(), getSenses(), getExamples(), ...]
+/// 
+/// - function for removing components from the dictionary [removeFromDictionary(AbstractLiftRoot node)]
+///   - Adding nodes to dictionary should be made using the ComponentBuilder API (see LiftDictionary#getComponentBuilder())
+/// 
+///
 public class LiftDictionaryRegistry {
 
     private final LiftDictionaryFeatureManager counter;
     private final LiftDictionaryUUIDManager uuidManager =
         new LiftDictionaryUUIDManager();
-        
+
+    private LiftDictionaryLanguagesManager objectLanguagesManager;
+    private LiftDictionaryLanguagesManager metaLanguagesManager;
+
     /**
-     * Map from IDs (of referenced object) to objects pointing at them in the dictionary
+     * Map from IDs (of referenced object) to objects pointing at them in the dictionary.
      */
-    public Map<String, List<HasRefId>> refId2Occurrences = new HashMap<>();
+    public Map<String, List<HasRefId>> refId2HasRefIdList = new HashMap<>();
 
     protected final ObservableMap<String, LiftEntry> entriesByLiftId =
         FXCollections.observableHashMap();
@@ -93,349 +107,207 @@ public class LiftDictionaryRegistry {
     protected final ObservableMap<UUID, MultiText> metaTextById =
         FXCollections.observableHashMap();
 
-    private LiftDictionaryLanguagesManager objectLanguagesManager;
-    private LiftDictionaryLanguagesManager metaLanguagesManager;
-
+    /**
+     * The ID on a {@link HasRefId} component may point towards an entry or a sense.
+     */
     public AbstractIdentifiable getEntryOrSenseByLiftId(String liftId) {
-        if (entriesByLiftId.containsKey(liftId)) {
+        boolean inEntries = entriesByLiftId.containsKey(liftId);
+        boolean inSenses = sensesByLiftId.containsKey(liftId);
+        if (inEntries && inSenses) {
+            throw new IllegalStateException("Cannot have the same liftId for a sense and an entries");
+        }
+        if (inEntries) {
             return entriesByLiftId.get(liftId);
-        } else if (sensesByLiftId.containsKey(liftId)) {
+        } else if (inSenses) {
             return sensesByLiftId.get(liftId);
         } else {
             return null;
         }
     }
 
-    private ObservableList<LiftEntry> entriesReadOnly = FXCollections.observableArrayList();
+    private ObservableList<LiftEntry> entries = FXCollections.observableArrayList();
+    private ObservableList<LiftEntry> entriesReadOnly = FXCollections.unmodifiableObservableList(entries);
 
     public ObservableList<LiftEntry> getEntries() {
         // In the particular case of entries, we
-        // do not use an observable list but register the entry
-        // from the begining in order to keep the order of entries.
-
-        // if (entriesReadOnly == null) {
-        //     entriesReadOnly = FXCollections.observableArrayList(
-        //         entriesById.values()
-        //     );
-        //     entriesById.addListener(
-        //         (MapChangeListener<UUID, LiftEntry>) change -> {
-        //             if (change.wasAdded()) {
-        //                 entriesReadOnly.add(change.getValueAdded());
-        //             } else if (change.wasRemoved()) {
-        //                 entriesReadOnly.remove(change.getValueRemoved());
-        //             }
-        //         }
-        //     );
-        // }
-        return FXCollections.unmodifiableObservableList(entriesReadOnly);
+        // do not use an list listining to the xById map, instead we register the entry
+        // directlyf into the list in order to keep the order of entries.
+        return entriesReadOnly;
     }
 
-    private ObservableList<LiftSense> sensesReadOnly = null;
+    // -----------------------------------------------------------------------
+    // -----------------------------------------------------------------------
+    // -----------------------------------------------------------------------
+
+    Map<Class< ? extends AbstractLiftRoot>, ObservableList<? extends AbstractLiftRoot>> observableList = new HashMap<>();
+    Map<Type, ObservableList<? extends AbstractLiftRoot>> observableListReadOnly = new HashMap<>();
 
     public ObservableList<LiftSense> getSenses() {
-        if (sensesReadOnly == null) {
-            sensesReadOnly = FXCollections.observableArrayList(
-                sensesById.values()
-            );
-            sensesById.addListener(
-                (MapChangeListener<UUID, LiftSense>) change -> {
-                    if (change.wasAdded()) {
-                        sensesReadOnly.add(change.getValueAdded());
-                    } else if (change.wasRemoved()) {
-                        sensesReadOnly.remove(change.getValueRemoved());
-                    }
-                }
-            );
+        if (!observableList.containsKey(LiftSense.class)) {
+            this.<LiftSense>populateObservableList(LiftSense.class, sensesById);
         }
-        return sensesReadOnly;
+        return (ObservableList<LiftSense>) observableListReadOnly.get(LiftSense.class);
     }
-
-    private ObservableList<LiftExample> examplesReadOnly = null;
 
     public ObservableList<LiftExample> getExamples() {
-        if (examplesReadOnly == null) {
-            examplesReadOnly = FXCollections.observableArrayList(
-                examplesById.values()
-            );
-            examplesById.addListener(
-                (MapChangeListener<UUID, LiftExample>) change -> {
-                    if (change.wasAdded()) {
-                        examplesReadOnly.add(change.getValueAdded());
-                    } else if (change.wasRemoved()) {
-                        examplesReadOnly.remove(change.getValueRemoved());
-                    }
-                }
-            );
+        if (!observableList.containsKey(LiftExample.class)) {
+            this.<LiftExample>populateObservableList(LiftExample.class, examplesById);
         }
-        return examplesReadOnly;
+        return (ObservableList<LiftExample>) observableListReadOnly.get(LiftExample.class);
     }
 
-    private ObservableList<LiftVariant> variantsReadOnly = null;
-
-    public ObservableList<LiftVariant> getVariantsReadOnly() {
-        if (variantsReadOnly == null) {
-            variantsReadOnly = FXCollections.observableArrayList(
-                variantsById.values()
-            );
+    public ObservableList<LiftVariant> getVariants() {
+        if (!observableList.containsKey(LiftVariant.class)) {
+            this.<LiftVariant>populateObservableList(LiftVariant.class, variantsById);
         }
-        variantsById.addListener(
-            (MapChangeListener<UUID, LiftVariant>) change -> {
-                if (change.wasAdded()) {
-                    variantsReadOnly.add(change.getValueAdded());
-                } else if (change.wasRemoved()) {
-                    variantsReadOnly.remove(change.getValueRemoved());
-                }
-            }
-        );
-        return variantsReadOnly;
+        return (ObservableList<LiftVariant>) observableListReadOnly.get(LiftVariant.class);
     }
 
-    private ObservableList<LiftTrait> traitsReadOnly = null;
-
-    public ObservableList<LiftTrait> getTraitsReadOnly() {
-        if (traitsReadOnly == null) {
-            traitsReadOnly = FXCollections.observableArrayList(
-                traitsById.values()
-            );
-            traitsById.addListener(
-                (MapChangeListener<UUID, LiftTrait>) change -> {
-                    if (change.wasAdded()) {
-                        traitsReadOnly.add(change.getValueAdded());
-                    } else if (change.wasRemoved()) {
-                        traitsReadOnly.remove(change.getValueRemoved());
-                    }
-                }
-            );
+    public ObservableList<LiftTrait> getTraits() {
+        if (!observableList.containsKey(LiftTrait.class)) {
+            this.<LiftTrait>populateObservableList(LiftTrait.class, traitsById);
         }
-
-        return traitsReadOnly;
+        return (ObservableList<LiftTrait>) observableListReadOnly.get(LiftTrait.class);
     }
 
-    private ObservableList<LiftReversal> reversalsReadOnly = null;
-
-    public ObservableList<LiftReversal> getReversalsReadOnly() {
-        if (reversalsReadOnly == null) {
-            reversalsReadOnly = FXCollections.observableArrayList(
-                reversalsById.values()
-            );
-            reversalsById.addListener(
-                (MapChangeListener<UUID, LiftReversal>) change -> {
-                    if (change.wasAdded()) {
-                        reversalsReadOnly.add(change.getValueAdded());
-                    } else if (change.wasRemoved()) {
-                        reversalsReadOnly.remove(change.getValueRemoved());
-                    }
-                }
-            );
+    public ObservableList<LiftReversal> getReversals() {
+        if (!observableList.containsKey(LiftReversal.class)) {
+            this.<LiftReversal>populateObservableList(LiftReversal.class, reversalsById);
         }
-
-        return reversalsReadOnly;
+        return (ObservableList<LiftReversal>) observableListReadOnly.get(LiftReversal.class);
     }
 
-    private ObservableList<LiftRelation> relationsReadOnly = null;
-
-    public ObservableList<LiftRelation> getRelationsReadOnly() {
-        if (relationsReadOnly == null) {
-            relationsReadOnly = FXCollections.observableArrayList(
-                relationsById.values()
-            );
-            relationsById.addListener(
-                (MapChangeListener<UUID, LiftRelation>) change -> {
-                    if (change.wasAdded()) {
-                        relationsReadOnly.add(change.getValueAdded());
-                    } else if (change.wasRemoved()) {
-                        relationsReadOnly.remove(change.getValueRemoved());
-                    }
-                }
-            );
+    public ObservableList<LiftRelation> getRelations() {
+        if (!observableList.containsKey(LiftRelation.class)) {
+            this.<LiftRelation>populateObservableList(LiftRelation.class, relationsById);
         }
-
-        return relationsReadOnly;
+        return (ObservableList<LiftRelation>) observableListReadOnly.get(LiftRelation.class);
     }
 
-    private ObservableList<LiftPronunciation> pronunciationsReadOnly = null;
-
-    public ObservableList<LiftPronunciation> getPronunciationsReadOnly() {
-        if (pronunciationsReadOnly == null) {
-            pronunciationsReadOnly = FXCollections.observableArrayList(
-                pronunciationsById.values()
-            );
-            pronunciationsById.addListener(
-                (MapChangeListener<UUID, LiftPronunciation>) change -> {
-                    if (change.wasAdded()) {
-                        pronunciationsReadOnly.add(change.getValueAdded());
-                    } else if (change.wasRemoved()) {
-                        pronunciationsReadOnly.remove(change.getValueRemoved());
-                    }
-                }
-            );
+    public ObservableList<LiftPronunciation> getPronunciations() {
+        if (!observableList.containsKey(LiftPronunciation.class)) {
+            this.<LiftPronunciation>populateObservableList(LiftPronunciation.class, pronunciationsById);
         }
-
-        return pronunciationsReadOnly;
+        return (ObservableList<LiftPronunciation>) observableListReadOnly.get(LiftPronunciation.class);
     }
 
-    private ObservableList<LiftNote> notesReadOnly = null;
-
-    public ObservableList<LiftNote> getNotesReadOnly() {
-        if (notesReadOnly == null) {
-            notesReadOnly = FXCollections.observableArrayList(
-                notesById.values()
-            );
-            notesById.addListener(
-                (MapChangeListener<UUID, LiftNote>) change -> {
-                    if (change.wasAdded()) {
-                        notesReadOnly.add(change.getValueAdded());
-                    } else if (change.wasRemoved()) {
-                        notesReadOnly.remove(change.getValueRemoved());
-                    }
-                }
-            );
+    public ObservableList<LiftNote> getNotes() {
+        if (!observableList.containsKey(LiftNote.class)) {
+            this.<LiftNote>populateObservableList(LiftNote.class, notesById);
         }
-
-        return notesReadOnly;
+        return (ObservableList<LiftNote>) observableListReadOnly.get(LiftNote.class);
     }
 
-    private ObservableList<LiftMedia> mediasReadOnly = null;
-
-    public ObservableList<LiftMedia> getMediasReadOnly() {
-        if (mediasReadOnly == null) {
-            mediasReadOnly = FXCollections.observableArrayList(
-                mediasById.values()
-            );
-            mediasById.addListener(
-                (MapChangeListener<UUID, LiftMedia>) change -> {
-                    if (change.wasAdded()) {
-                        mediasReadOnly.add(change.getValueAdded());
-                    } else if (change.wasRemoved()) {
-                        mediasReadOnly.remove(change.getValueRemoved());
-                    }
-                }
-            );
+    public ObservableList<LiftMedia> getMedias() {
+        if (!observableList.containsKey(LiftMedia.class)) {
+            this.<LiftMedia>populateObservableList(LiftMedia.class, mediasById);
         }
-
-        return mediasReadOnly;
+        return (ObservableList<LiftMedia>) observableListReadOnly.get(LiftMedia.class);
     }
 
-    private ObservableList<LiftIllustration> illustrationsReadOnly = null;
-
-    public ObservableList<LiftIllustration> getIllustrationsReadOnly() {
-        if (illustrationsReadOnly == null) {
-            illustrationsReadOnly = FXCollections.observableArrayList(
-                illustrationsById.values()
-            );
-            illustrationsById.addListener(
-                (MapChangeListener<UUID, LiftIllustration>) change -> {
-                    if (change.wasAdded()) {
-                        illustrationsReadOnly.add(change.getValueAdded());
-                    } else if (change.wasRemoved()) {
-                        illustrationsReadOnly.remove(change.getValueRemoved());
-                    }
-                }
-            );
+    public ObservableList<LiftIllustration> getIllustrations() {
+        if (!observableList.containsKey(LiftIllustration.class)) {
+            this.<LiftIllustration>populateObservableList(LiftIllustration.class, illustrationsById);
         }
-
-        return illustrationsReadOnly;
+        return (ObservableList<LiftIllustration>) observableListReadOnly.get(LiftIllustration.class);
     }
 
-    private ObservableList<LiftField> fieldsReadOnly = null;
-
-    public ObservableList<LiftField> getFieldsReadOnly() {
-        if (fieldsReadOnly == null) {
-            fieldsReadOnly = FXCollections.observableArrayList(
-                fieldsById.values()
-            );
-            fieldsById.addListener(
-                (MapChangeListener<UUID, LiftField>) change -> {
-                    if (change.wasAdded()) {
-                        fieldsReadOnly.add(change.getValueAdded());
-                    } else if (change.wasRemoved()) {
-                        fieldsReadOnly.remove(change.getValueRemoved());
-                    }
-                }
-            );
+    public ObservableList<LiftField> getFields() {
+        if (!observableList.containsKey(LiftField.class)) {
+            this.<LiftField>populateObservableList(LiftField.class, fieldsById);
         }
-        return fieldsReadOnly;
+        return (ObservableList<LiftField>) observableListReadOnly.get(LiftField.class);
     }
 
-    private ObservableList<LiftEtymology> etymologiesReadOnly = null;
-
-    public ObservableList<LiftEtymology> getEtymologiesReadOnly() {
-        if (etymologiesReadOnly == null) {
-            etymologiesReadOnly = FXCollections.observableArrayList(
-                etymologiesById.values()
-            );
-            etymologiesById.addListener(
-                (MapChangeListener<UUID, LiftEtymology>) change -> {
-                    if (change.wasAdded()) {
-                        etymologiesReadOnly.add(change.getValueAdded());
-                    } else if (change.wasRemoved()) {
-                        etymologiesReadOnly.remove(change.getValueRemoved());
-                    }
-                }
-            );
+    public ObservableList<LiftEtymology> getEtymologies() {
+        if (!observableList.containsKey(LiftEtymology.class)) {
+            this.<LiftEtymology>populateObservableList(LiftEtymology.class, etymologiesById);
         }
-        return etymologiesReadOnly;
+        return (ObservableList<LiftEtymology>) observableListReadOnly.get(LiftEtymology.class);
     }
 
-    private ObservableList<LiftAnnotation> annotationsReadOnly = null;
-
-    public ObservableList<LiftAnnotation> getAnnotationsReadOnly() {
-        if (annotationsReadOnly == null) {
-            annotationsReadOnly = FXCollections.observableArrayList(
-                annotationsById.values()
-            );
-            annotationsById.addListener(
-                (MapChangeListener<UUID, LiftAnnotation>) change -> {
-                    if (change.wasAdded()) {
-                        annotationsReadOnly.add(change.getValueAdded());
-                    } else if (change.wasRemoved()) {
-                        annotationsReadOnly.remove(change.getValueRemoved());
-                    }
-                }
-            );
+    public ObservableList<LiftAnnotation> getAnnotations() {
+        if (!observableList.containsKey(LiftAnnotation.class)) {
+            this.<LiftAnnotation>populateObservableList(LiftAnnotation.class, annotationsById);
         }
-        return annotationsReadOnly;
+        return (ObservableList<LiftAnnotation>) observableListReadOnly.get(LiftAnnotation.class);
     }
 
+    private ObservableList<MultiText> objectText = null;
     private ObservableList<MultiText> objectTextReadOnly = null;
 
-    public ObservableList<MultiText> getObjectTextReadOnly() {
-        if (objectTextReadOnly == null) {
-            objectTextReadOnly = FXCollections.observableArrayList(
-                objectTextById.values()
+    public ObservableList<MultiText> getObjectText() {
+        if (objectText == null) {
+            objectText = FXCollections.observableList(
+                FXCollections.observableArrayList(
+                    objectTextById.values()
+                )
             );
             objectTextById.addListener(
                 (MapChangeListener<UUID, MultiText>) change -> {
                     if (change.wasAdded()) {
-                        objectTextReadOnly.add(change.getValueAdded());
+                        objectText.add(change.getValueAdded());
                     } else if (change.wasRemoved()) {
-                        objectTextReadOnly.remove(change.getValueRemoved());
+                        objectText.remove(change.getValueRemoved());
                     }
                 }
             );
         }
+        objectTextReadOnly = FXCollections.unmodifiableObservableList(objectText);
         return objectTextReadOnly;
     }
 
+    private ObservableList<MultiText> metaText = null;
     private ObservableList<MultiText> metaTextReadOnly = null;
 
-    public ObservableList<MultiText> getMetaTextReadOnly() {
-        if (metaTextReadOnly == null) {
-            metaTextReadOnly = FXCollections.observableArrayList(
-                metaTextById.values()
+    public ObservableList<MultiText> getMetaText() {
+        if (metaText == null) {
+            metaText = FXCollections.observableList(
+                FXCollections.observableArrayList(
+                    metaTextById.values()
+                )
             );
             metaTextById.addListener(
                 (MapChangeListener<UUID, MultiText>) change -> {
                     if (change.wasAdded()) {
-                        metaTextReadOnly.add(change.getValueAdded());
+                        metaText.add(change.getValueAdded());
                     } else if (change.wasRemoved()) {
-                        metaTextReadOnly.remove(change.getValueRemoved());
+                        metaText.remove(change.getValueRemoved());
                     }
                 }
             );
         }
+        metaTextReadOnly = FXCollections.unmodifiableObservableList(metaText);
         return metaTextReadOnly;
     }
+
+
+
+
+
+
+
+    private <T extends AbstractLiftRoot> void populateObservableList(
+        Class<T> clazz,
+        ObservableMap<UUID, T> map) {
+            ObservableList<T> x = FXCollections.observableList(FXCollections.observableArrayList(map.values()));
+            map.addListener(
+                (MapChangeListener<UUID, T>) change -> {
+                    if (change.wasAdded()) {
+                        x.add(change.getValueAdded());
+                    } else if (change.wasRemoved()) {
+                        x.remove(change.getValueRemoved());
+                    }
+                }
+            );
+            
+            observableList.put(clazz, x);
+            observableListReadOnly.put(clazz, FXCollections.unmodifiableObservableList(x));
+    }
+
+    // -----------------------------------------------------------------------
+    // -----------------------------------------------------------------------
+    // -----------------------------------------------------------------------
 
     public Map<UUID, LiftEntry> getEntriesById() {
         return entriesById;
@@ -459,74 +331,38 @@ public class LiftDictionaryRegistry {
         return counter;
     }
 
+    public void addToDictionaryLowLevel(LiftEntry e, int index) {
+        if (index > entries.size()) throw new IllegalArgumentException("Index is greater than array size (" + index + ", " + entries.size() + ").");
+        addToDictionaryLowLevel(e);
+        // TODO ugly hack...
+        entries.removeLast();
+        entries.add(index, e);
+    }
+
     /**
      * Add a node (and its descendants) to the directory using the low-level
-     * API, intended for unmarshalling efficiently
-     * the dictionary. The high-level (fluent) API, using {@link
-     * LiftDictionary#getComponentBuilder()}, should be preferred in all other
-     * situations.
-     *
-     * This method is intended for nodes that has been created manually, via the
-     * constructors for {@link LiftEntry}, {@link LiftSense}, etc.
+     * API. This interface is intended for :
+     * 
+     * - unmarshalling efficiently the dictionary.
+     * - inserting into the dictionary a node you haven't created (undoing a suppression, moving a node from a parent to another, etc.)
+     * 
+     * If you are creating a node from scratch, the high-level (fluent) API ({@link
+     * LiftDictionary#getComponentBuilder()}) should be preferred.
+     * 
+     * The relation parent / child is not manager here: 
+     * <ul>
+     * <li> if you use addToDictionaryLowLevel
+     * for inserting a LiftExemple into the dictionary, in addition to calling this method,
+     * you still have to set the parent ({@link LiftExample#setParent}) of this
+     * example and add this example to its parent ({@link LiftSense#addExample(LiftExample)}).</li>
+     * <li> In the case of a LiftEntry, though, nothing more need to be done.</li>
+     * </ul>
      *
      * All subnodes of the node (added with addX method, such as {@link
      * LiftElement#addSense}) will also be added to the dictionary.
      */
     public void addToDictionaryLowLevel(AbstractLiftRoot node) {
-        
-        // 1/ Check that the languages present in multitexts are registered in the dictionary
-        // if not, add them to the dictionary (to the languages manager)
-        if (! (node instanceof LiftTrait)) {
-            if (node instanceof LiftEntry || node instanceof LiftExample || node instanceof LiftVariant
-                || node instanceof LiftReversal || node instanceof LiftPronunciation || node instanceof LiftEtymology
-            ) {
-                for (Form f : node.getMainMultiText().getForms()) {
-                    String lang = f.getLang();
-                    if (!objectLanguagesManager.hasLanguage(lang)) {
-                        objectLanguagesManager.addLanguage(lang);
-                    }
-                }
-            } else if (node instanceof LiftSense || node instanceof LiftRelation
-                || node instanceof LiftNote || node instanceof LiftMedia
-                || node instanceof LiftIllustration || node instanceof LiftField
-                || node instanceof LiftAnnotation
-            ) {
-                for (Form f : node.getMainMultiText().getForms()) {
-                    String lang = f.getLang();
-                    if (!metaLanguagesManager.hasLanguage(lang)) {
-                        metaLanguagesManager.addLanguage(lang);
-                    }
-                }
-            }
-            for (Form f : node.getMainMultiText().getForms()) {
-                String lang = f.getLang();
-                if (!objectLanguagesManager.hasLanguage(lang)) {
-                    objectLanguagesManager.addLanguage(lang);
-                }
-            }
-        }
-        // Sense et Exemple contain a second MultiText.
-        if (node instanceof LiftSense s) {
-            for (Form f : s.getDefinition().getForms()) {
-                String lang = f.getLang();
-                if (!metaLanguagesManager.hasLanguage(lang)) {
-                    metaLanguagesManager.addLanguage(lang);
-                }
-            }
-        } else if (node instanceof LiftExample e) {
-            e.getTranslations()
-                .values()
-                .forEach(x -> {
-                    for (Form f : x.getForms()) {
-                        String lang = f.getLang();
-                        if (!metaLanguagesManager.hasLanguage(lang)) {
-                            metaLanguagesManager.addLanguage(lang);
-                        }
-                    }
-                });
-        }
-
-        // 2. Add the node to the register.
+        // 1. Add the node to the register:
         // register the node and it(s) multiText(s) in the registry
         register(node);
 
@@ -591,7 +427,7 @@ public class LiftDictionaryRegistry {
             a.getAnnotations().forEach(x -> addToDictionaryLowLevel(x));
             a.getTraits().forEach(x -> addToDictionaryLowLevel(x));
             if (node instanceof HasField b) {
-                b.getFields().forEach(x -> addToDictionaryLowLevel(x));
+                b.getFields().values().forEach(x -> addToDictionaryLowLevel(x));
             }
         }
 
@@ -658,7 +494,7 @@ public class LiftDictionaryRegistry {
                 }
                 entriesByLiftId.put(e.getId().get(), e);
                 entryLiftId2Uuid.put(e.getId().get(), e.getUUID());
-                entriesReadOnly.add(e);
+                entries.add(e);
             }
             case LiftSense s -> {
                 sensesById.put(s.getUUID(), s);
@@ -758,7 +594,7 @@ public class LiftDictionaryRegistry {
     }
 
     /**
-     * unregister : remove a node from the registry
+     * Remove a node from the registries, remove its UUID.
      */
     protected void unregister(AbstractLiftRoot node) {
         Map<UUID, ? extends AbstractLiftRoot> map = null;
@@ -788,6 +624,8 @@ public class LiftDictionaryRegistry {
         }
         map.remove(node.getUUID());
 
+        node.setUUID(null);
+
         if (node instanceof AbstractIdentifiable identifiable) {
             String liftId = identifiable.getId().get();
             switch (identifiable) {
@@ -800,6 +638,11 @@ public class LiftDictionaryRegistry {
                     senseLiftId2Uuid.remove(liftId);
                 }
             }
+        }
+
+        // TODO inefficient
+        if (node instanceof LiftEntry e) {
+            entries.removeIf(x -> x == e);
         }
 
         switch (node) {
@@ -857,37 +700,33 @@ public class LiftDictionaryRegistry {
     protected void unregisterObjectMultiText(MultiText node) {
         objectTextById.remove(node.getUUID());
         node.unregister();
+        node.setUUID(null);
     }
 
     protected void unregisterMetaMultiText(MultiText node) {
         metaTextById.remove(node.getUUID());
         node.unregister();
+        node.setUUID(null);
     }
 
-    /**
-     * Completely remove a node from the dictionary. The node will not be seen by its parent
-     * (for instance a sense will not be seen anymore by its parent entry), and
-     * all the node's descendants will be removed as well.
-     *
-     * @param entry
-     */
-    public void removeFromDictionary(AbstractLiftRoot node) {
-
-        // manage reference counting
+    protected void unregisterRec(AbstractLiftRoot node) {
+        // 1. First, manage reference counting
         if (node instanceof LiftRelation r) {
             final String target = r
                 .getRefObject().getId()
                 .orElseThrow(() ->
                     new IllegalArgumentException("Reference ID is missing")
                 );
-            refId2Occurrences.get(target).removeIf(o -> o == r);
+            refId2HasRefIdList.get(target).removeIf(o -> o == r);
         } else if (node instanceof LiftVariant a) {
             final String target = a
                 .getRefObject().getId()
                 .orElseThrow(() ->
                     new IllegalArgumentException("Reference ID is missing")
                 );
-            refId2Occurrences.get(target).removeIf(o -> o == a);
+            refId2HasRefIdList.get(target).removeIf(o -> o == a);
+        
+        // 2. check that this node is not refered from another node
         } else if (node instanceof AbstractIdentifiable i) {
             final String refId = i
                 .getId()
@@ -895,8 +734,8 @@ public class LiftDictionaryRegistry {
                     new IllegalArgumentException("Reference ID is missing")
                 );
             if (
-                refId2Occurrences.containsKey(refId) &&
-                refId2Occurrences.get(refId).size() > 0
+                refId2HasRefIdList.containsKey(refId) &&
+                refId2HasRefIdList.get(refId).size() > 0
             ) {
                 throw new IllegalStateException(
                     "Cannot delete this node: it is referenced from other nodes."
@@ -904,23 +743,20 @@ public class LiftDictionaryRegistry {
             }
         }
 
-        // remove from this register
+        // 3. remove this node from the registers
         unregister(node);
 
-        // detach from its parent
-        node.detach();
-
-        // recursively remove its descendants
+        // 4. recursively unregister its descendants and its multitext
         switch (node) {
             case LiftEntry e -> {
-                e.getVariants().forEach(x -> removeFromDictionary(x));
-                e.getEtymologies().forEach(x -> removeFromDictionary(x));
+                e.getVariants().forEach(x -> unregisterRec(x));
+                e.getEtymologies().forEach(x -> unregisterRec(x));
                 unregisterObjectMultiText(node.getMainMultiText());
             }
             case LiftSense s -> {
-                s.getExamples().forEach(x -> removeFromDictionary(x));
-                s.getIllustrations().forEach(x -> removeFromDictionary(x));
-                s.getReversals().forEach(x -> removeFromDictionary(x));
+                s.getExamples().forEach(x -> unregisterRec(x));
+                s.getIllustrations().forEach(x -> unregisterRec(x));
+                s.getReversals().forEach(x -> unregisterRec(x));
                 unregisterMetaMultiText(node.getMainMultiText());
                 unregisterMetaMultiText(s.getDefinition());
             }
@@ -968,34 +804,55 @@ public class LiftDictionaryRegistry {
         }
 
         if (node instanceof AbstractExtensibleWithoutField a) {
-            a.getAnnotations().forEach(x -> removeFromDictionary(x));
-            a.getTraits().forEach(x -> removeFromDictionary(x));
+            a.getAnnotations().forEach(x -> unregisterRec(x));
+            a.getTraits().forEach(x -> unregisterRec(x));
             if (node instanceof HasField b) {
-                b.getFields().forEach(x -> removeFromDictionary(x));
+                b.getFields().values().forEach(x -> unregisterRec(x));
             }
         }
 
         if (node instanceof HasNote n) {
             n.getNotes()
                 .values()
-                .forEach(x -> removeFromDictionary(x));
+                .forEach(x -> unregisterRec(x));
         }
 
         if (node instanceof HasPronunciation n) {
-            n.getPronunciations().forEach(x -> removeFromDictionary(x));
+            n.getPronunciations().forEach(x -> unregisterRec(x));
         }
 
         if (node instanceof HasRelations n) {
-            n.getRelations().forEach(x -> removeFromDictionary(x));
+            n.getRelations().forEach(x -> unregisterRec(x));
         }
 
         if (node instanceof HasReversal r) {
-            r.getReversals().forEach(x -> removeFromDictionary(x));
+            r.getReversals().forEach(x -> unregisterRec(x));
         }
 
         if (node instanceof HasSense s) {
-            s.getSenses().forEach(x -> removeFromDictionary(x));
+            s.getSenses().forEach(x -> unregisterRec(x));
         }
+    }
+    
+    /**
+     * Completely remove a node from the dictionary.
+     * 
+     * The node will not be seen by its parent
+     * (for instance a sense will not be seen anymore by its parent entry).
+     * 
+     * The node (and all its descendants) will be removed from the dictionary registry.
+     * 
+     * The node will keep its reference towards its child, and the child towards the node.
+     * 
+     * This subtree can be registered again in this dictionary or another.
+     *
+     * @param entry
+     */
+    public void removeFromDictionary(AbstractLiftRoot node) {
+        // remove the link parent -> self
+        node.detach();
+
+        unregisterRec(node);
     }
 
     public UUID getNewUUID() {
@@ -1011,5 +868,351 @@ public class LiftDictionaryRegistry {
         this.objectLanguagesManager = objectLanguagesManager;
         this.metaLanguagesManager = metaLanguagesManager;
     }
+
+
+    // Old implementation providing the ObservableList for all object type
+
+    // private ObservableList<LiftSense> senses = null;
+    // private ObservableList<LiftSense> sensesReadOnly = null;
+
+    // public ObservableList<LiftSense> getSenses() {
+    //     if (senses == null) {
+    //         senses = FXCollections.observableList(
+    //             FXCollections.observableArrayList(
+    //                 sensesById.values()
+    //             )
+    //         );
+    //         sensesById.addListener(
+    //             (MapChangeListener<UUID, LiftSense>) change -> {
+    //                 if (change.wasAdded()) {
+    //                     senses.add(change.getValueAdded());
+    //                 } else if (change.wasRemoved()) {
+    //                     senses.remove(change.getValueRemoved());
+    //                 }
+    //             }
+    //         );
+    //     }
+    //     sensesReadOnly = FXCollections.unmodifiableObservableList(senses);
+    //     return sensesReadOnly;
+    // }
+
+    // private ObservableList<LiftExample> examples = null;
+    // private ObservableList<LiftExample> examplesReadOnly = null;
+
+    // public ObservableList<LiftExample> getExamples() {
+    //     if (examples == null) {
+    //         examples = FXCollections.observableList(
+    //             FXCollections.observableArrayList(
+    //                 examplesById.values()
+    //             )
+    //         );
+    //         examplesById.addListener(
+    //             (MapChangeListener<UUID, LiftExample>) change -> {
+    //                 if (change.wasAdded()) {
+    //                     examples.add(change.getValueAdded());
+    //                 } else if (change.wasRemoved()) {
+    //                     examples.remove(change.getValueRemoved());
+    //                 }
+    //             }
+    //         );
+    //     }
+    //     examplesReadOnly = FXCollections.unmodifiableObservableList(examples);
+    //     return examplesReadOnly;
+    // }
+
+
+
+    // private ObservableList<LiftVariant> variantsReadOnly = null;
+
+    // public ObservableList<LiftVariant> getVariants() {
+    //     if (variantsReadOnly == null) {
+    //         variantsReadOnly = FXCollections.observableList(
+    //             FXCollections.observableArrayList(
+    //                 variantsById.values()
+    //             )
+    //         );
+    //     }
+    //     variantsById.addListener(
+    //         (MapChangeListener<UUID, LiftVariant>) change -> {
+    //             if (change.wasAdded()) {
+    //                 variantsReadOnly.add(change.getValueAdded());
+    //             } else if (change.wasRemoved()) {
+    //                 variantsReadOnly.remove(change.getValueRemoved());
+    //             }
+    //         }
+    //     );
+    //     return variantsReadOnly;
+    // }
+
+    // private ObservableList<LiftTrait> traits = null;
+
+    // public ObservableList<LiftTrait> getTraits() {
+    //     if (traits == null) {
+    //         traits = FXCollections.observableList(
+    //             FXCollections.observableArrayList(
+    //                 traitsById.values()
+    //             )
+    //         );
+    //         traitsById.addListener(
+    //             (MapChangeListener<UUID, LiftTrait>) change -> {
+    //                 if (change.wasAdded()) {
+    //                     traits.add(change.getValueAdded());
+    //                 } else if (change.wasRemoved()) {
+    //                     traits.remove(change.getValueRemoved());
+    //                 }
+    //             }
+    //         );
+    //     }
+
+    //     return traits;
+    // }
+
+    // private ObservableList<LiftReversal> reversalsReadOnly = null;
+
+    // public ObservableList<LiftReversal> getReversals() {
+    //     if (reversalsReadOnly == null) {
+    //         reversalsReadOnly = FXCollections.observableList(
+    //             FXCollections.observableArrayList(
+    //                 reversalsById.values()
+    //             )
+    //         );
+    //         reversalsById.addListener(
+    //             (MapChangeListener<UUID, LiftReversal>) change -> {
+    //                 if (change.wasAdded()) {
+    //                     reversalsReadOnly.add(change.getValueAdded());
+    //                 } else if (change.wasRemoved()) {
+    //                     reversalsReadOnly.remove(change.getValueRemoved());
+    //                 }
+    //             }
+    //         );
+    //     }
+
+    //     return reversalsReadOnly;
+    // }
+
+    // private ObservableList<LiftRelation> relationsReadOnly = null;
+
+    // public ObservableList<LiftRelation> getRelations() {
+    //     if (relationsReadOnly == null) {
+    //         relationsReadOnly = FXCollections.observableList(
+    //             FXCollections.observableArrayList(
+    //                 relationsById.values()
+    //             )
+    //         );
+    //         relationsById.addListener(
+    //             (MapChangeListener<UUID, LiftRelation>) change -> {
+    //                 if (change.wasAdded()) {
+    //                     relationsReadOnly.add(change.getValueAdded());
+    //                 } else if (change.wasRemoved()) {
+    //                     relationsReadOnly.remove(change.getValueRemoved());
+    //                 }
+    //             }
+    //         );
+    //     }
+
+    //     return relationsReadOnly;
+    // }
+
+    // private ObservableList<LiftPronunciation> pronunciationsReadOnly = null;
+
+    // public ObservableList<LiftPronunciation> getPronunciations() {
+    //     if (pronunciationsReadOnly == null) {
+    //         pronunciationsReadOnly = FXCollections.observableList(
+    //             FXCollections.observableArrayList(
+    //                 pronunciationsById.values()
+    //             )
+    //         );
+    //         pronunciationsById.addListener(
+    //             (MapChangeListener<UUID, LiftPronunciation>) change -> {
+    //                 if (change.wasAdded()) {
+    //                     pronunciationsReadOnly.add(change.getValueAdded());
+    //                 } else if (change.wasRemoved()) {
+    //                     pronunciationsReadOnly.remove(change.getValueRemoved());
+    //                 }
+    //             }
+    //         );
+    //     }
+
+    //     return pronunciationsReadOnly;
+    // }
+
+    // private ObservableList<LiftNote> notesReadOnly = null;
+
+    // public ObservableList<LiftNote> getNotes() {
+    //     if (notesReadOnly == null) {
+    //         notesReadOnly = FXCollections.observableList(
+    //             FXCollections.observableArrayList(
+    //                 notesById.values()
+    //             )
+    //         );
+    //         notesById.addListener(
+    //             (MapChangeListener<UUID, LiftNote>) change -> {
+    //                 if (change.wasAdded()) {
+    //                     notesReadOnly.add(change.getValueAdded());
+    //                 } else if (change.wasRemoved()) {
+    //                     notesReadOnly.remove(change.getValueRemoved());
+    //                 }
+    //             }
+    //         );
+    //     }
+
+    //     return notesReadOnly;
+    // }
+
+    // private ObservableList<LiftMedia> mediasReadOnly = null;
+
+    // public ObservableList<LiftMedia> getMedias() {
+    //     if (mediasReadOnly == null) {
+    //         mediasReadOnly = FXCollections.observableList(
+    //             FXCollections.observableArrayList(
+    //                 mediasById.values()
+    //             )
+    //         );
+    //         mediasById.addListener(
+    //             (MapChangeListener<UUID, LiftMedia>) change -> {
+    //                 if (change.wasAdded()) {
+    //                     mediasReadOnly.add(change.getValueAdded());
+    //                 } else if (change.wasRemoved()) {
+    //                     mediasReadOnly.remove(change.getValueRemoved());
+    //                 }
+    //             }
+    //         );
+    //     }
+
+    //     return mediasReadOnly;
+    // }
+
+    // private ObservableList<LiftIllustration> illustrationsReadOnly = null;
+
+    // public ObservableList<LiftIllustration> getIllustrations() {
+    //     if (illustrationsReadOnly == null) {
+    //         illustrationsReadOnly = FXCollections.observableList(
+    //             FXCollections.observableArrayList(
+    //                 illustrationsById.values()
+    //             )
+    //         );
+    //         illustrationsById.addListener(
+    //             (MapChangeListener<UUID, LiftIllustration>) change -> {
+    //                 if (change.wasAdded()) {
+    //                     illustrationsReadOnly.add(change.getValueAdded());
+    //                 } else if (change.wasRemoved()) {
+    //                     illustrationsReadOnly.remove(change.getValueRemoved());
+    //                 }
+    //             }
+    //         );
+    //     }
+
+    //     return illustrationsReadOnly;
+    // }
+
+    // private ObservableList<LiftField> fieldsReadOnly = null;
+
+    // public ObservableList<LiftField> getFields() {
+    //     if (fieldsReadOnly == null) {
+    //         fieldsReadOnly = FXCollections.observableList(
+    //             FXCollections.observableArrayList(
+    //                 fieldsById.values()
+    //             )
+    //         );
+    //         fieldsById.addListener(
+    //             (MapChangeListener<UUID, LiftField>) change -> {
+    //                 if (change.wasAdded()) {
+    //                     fieldsReadOnly.add(change.getValueAdded());
+    //                 } else if (change.wasRemoved()) {
+    //                     fieldsReadOnly.remove(change.getValueRemoved());
+    //                 }
+    //             }
+    //         );
+    //     }
+    //     return fieldsReadOnly;
+    // }
+
+    // private ObservableList<LiftEtymology> etymologiesReadOnly = null;
+
+    // public ObservableList<LiftEtymology> getEtymologies() {
+    //     if (etymologiesReadOnly == null) {
+    //         etymologiesReadOnly = FXCollections.observableList(
+    //             FXCollections.observableArrayList(
+    //                 etymologiesById.values()
+    //             )
+    //         );
+    //         etymologiesById.addListener(
+    //             (MapChangeListener<UUID, LiftEtymology>) change -> {
+    //                 if (change.wasAdded()) {
+    //                     etymologiesReadOnly.add(change.getValueAdded());
+    //                 } else if (change.wasRemoved()) {
+    //                     etymologiesReadOnly.remove(change.getValueRemoved());
+    //                 }
+    //             }
+    //         );
+    //     }
+    //     return etymologiesReadOnly;
+    // }
+
+    // private ObservableList<LiftAnnotation> annotationsReadOnly = null;
+
+    // public ObservableList<LiftAnnotation> getAnnotations() {
+    //     if (annotationsReadOnly == null) {
+    //         annotationsReadOnly = FXCollections.observableList(
+    //             FXCollections.observableArrayList(
+    //                 annotationsById.values()
+    //             )
+    //         );
+    //         annotationsById.addListener(
+    //             (MapChangeListener<UUID, LiftAnnotation>) change -> {
+    //                 if (change.wasAdded()) {
+    //                     annotationsReadOnly.add(change.getValueAdded());
+    //                 } else if (change.wasRemoved()) {
+    //                     annotationsReadOnly.remove(change.getValueRemoved());
+    //                 }
+    //             }
+    //         );
+    //     }
+    //     return annotationsReadOnly;
+    // }
+
+    // private ObservableList<MultiText> objectTextReadOnly = null;
+
+    // public ObservableList<MultiText> getObjectText() {
+    //     if (objectTextReadOnly == null) {
+    //         objectTextReadOnly = FXCollections.observableList(
+    //             FXCollections.observableArrayList(
+    //                 objectTextById.values()
+    //             )
+    //         );
+    //         objectTextById.addListener(
+    //             (MapChangeListener<UUID, MultiText>) change -> {
+    //                 if (change.wasAdded()) {
+    //                     objectTextReadOnly.add(change.getValueAdded());
+    //                 } else if (change.wasRemoved()) {
+    //                     objectTextReadOnly.remove(change.getValueRemoved());
+    //                 }
+    //             }
+    //         );
+    //     }
+    //     return objectTextReadOnly;
+    // }
+
+    // private ObservableList<MultiText> metaTextReadOnly = null;
+
+    // public ObservableList<MultiText> getMetaText() {
+    //     if (metaTextReadOnly == null) {
+    //         metaTextReadOnly = FXCollections.observableList(
+    //             FXCollections.observableArrayList(
+    //                 metaTextById.values()
+    //             )
+    //         );
+    //         metaTextById.addListener(
+    //             (MapChangeListener<UUID, MultiText>) change -> {
+    //                 if (change.wasAdded()) {
+    //                     metaTextReadOnly.add(change.getValueAdded());
+    //                 } else if (change.wasRemoved()) {
+    //                     metaTextReadOnly.remove(change.getValueRemoved());
+    //                 }
+    //             }
+    //         );
+    //     }
+    //     return metaTextReadOnly;
+    // }
 
 }

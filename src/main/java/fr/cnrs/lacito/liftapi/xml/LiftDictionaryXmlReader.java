@@ -1,9 +1,7 @@
 package fr.cnrs.lacito.liftapi.xml;
 
-import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
+import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDocumentLoadingException;
-import fr.cnrs.lacito.liftapi.LiftVersion;
-import fr.cnrs.lacito.liftapi.model.LiftHeader;
 import java.io.File;
 import java.io.IOException;
 import java.util.logging.Level;
@@ -25,15 +23,15 @@ public final class LiftDictionaryXmlReader {
 
     private LiftXMLFactoryNew liftFactory;
 
-    private final LiftDictionaryRegistry registry;
+    private final LiftDictionary dictionary;
 
     public LiftDictionaryXmlReader(
         File f,
-        LiftDictionaryRegistry registry,
+        LiftDictionary dictionary,
         boolean validate
     ) {
         this.f = f;
-        this.registry = registry;
+        this.dictionary = dictionary;
         this.validate = validate;
     }
 
@@ -63,7 +61,7 @@ public final class LiftDictionaryXmlReader {
             throw new LiftDocumentLoadingException(e);
         }
 
-        this.liftFactory = new LiftXMLFactoryNew(registry);
+        this.liftFactory = new LiftXMLFactoryNew(dictionary);
         LiftSaxHandler lsh = new LiftSaxHandler(liftFactory);
         try {
             saxParser.parse(f, lsh);
@@ -84,15 +82,4 @@ public final class LiftDictionaryXmlReader {
         }
     }
 
-    public LiftHeader getHeader() {
-        return liftFactory.getHeader();
-    }
-
-    public LiftVersion getLiftVersion() {
-        return liftFactory.getLiftVersion();
-    }
-
-    public String getLiftProducer() {
-        return liftFactory.getLiftProducer();
-    }
 }

@@ -102,11 +102,11 @@ public class DemoTest {
         // 3. Searching the dictionary
         // Extensive tools for accessing dictionary content
         // meta languages (used in all multitext containing descriptive content)
-        dictionary.getMetaLanguagesOfAllText();
+        dictionary.getLiftDictionaryRegistry().getObjectText();
 
         // For all component types, a list can be retrieved:
         dictionary.getLiftDictionaryRegistry().getEntries();
-        dictionary.getLiftDictionaryRegistry().getIllustrationsReadOnly();
+        dictionary.getLiftDictionaryRegistry().getIllustrations();
         // etc.
 
     }

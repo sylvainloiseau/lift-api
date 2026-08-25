@@ -110,7 +110,7 @@ public class FieldBuilder extends AbstractLiftElementBuilder<LiftField, HasField
      */
     @Override
     public LiftField build() {
-        if (element.getName() == null) {
+        if (element.getType() == null) {
             throw new IllegalArgumentException("Field name cannot be null");
         }
         super.register();

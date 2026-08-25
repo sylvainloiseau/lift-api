@@ -15,7 +15,7 @@ public final class LiftHeaderRangeElement extends AbstractExtensibleWithField {
     /** The id of the parent range-element (for hierarchical organisation). */
     private Optional<LiftHeaderRangeElement> parentElement = Optional.empty();
 
-    public Optional<LiftHeaderRangeElement> getParentId() {
+    public Optional<LiftHeaderRangeElement> getParentElement() {
         return parentElement;
     }
 
@@ -25,13 +25,13 @@ public final class LiftHeaderRangeElement extends AbstractExtensibleWithField {
         return guid;
     }
 
-    MultiText label = new MultiText();
+    MultiText label = new MultiText(this);
 
     public MultiText getLabel() {
         return label;
     }
 
-    MultiText abbrev = new MultiText();
+    MultiText abbrev = new MultiText(this);
 
     public MultiText getAbbrev() {
         return abbrev;
@@ -50,7 +50,11 @@ public final class LiftHeaderRangeElement extends AbstractExtensibleWithField {
      * A parent range-element (for hierarchical organisation of range-element).
      */
     public void setParentElement(LiftHeaderRangeElement parent) {
-        this.parentElement = Optional.of(parent);
+        if (parent == null) {
+            this.parentElement = Optional.empty();
+        } else {
+            this.parentElement = Optional.of(parent);
+        }
     }
 
     public void setGuid(String guid) {

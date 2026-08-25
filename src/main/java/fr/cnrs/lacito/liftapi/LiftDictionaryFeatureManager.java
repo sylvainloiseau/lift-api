@@ -66,14 +66,14 @@ public class LiftDictionaryFeatureManager {
     }
 
     private void discoverFields() {
-        for (LiftField f : liftDictionaryRegistry.getFieldsReadOnly()) {
+        for (LiftField f : liftDictionaryRegistry.getFields()) {
             LiftFieldAndTraitDefinitionTarget key =
                 LiftFieldAndTraitDefinitionTarget.fromType(f.getParent());
             fields.compute(key, (k, v) -> {
                 if (v == null) {
                     v = new TreeSet<LiftFieldAndTraitDefinition>();
                 }
-                v.add(f.getName());
+                v.add(f.getType());
                 return v;
             });
         }
@@ -88,7 +88,7 @@ public class LiftDictionaryFeatureManager {
     // getKnownTraitValues
     // TODO bug: when removing a trait, it remove its value
     private void initTraitValue() {
-        for (LiftTrait trait : this.liftDictionaryRegistry.getTraitsReadOnly()) {
+        for (LiftTrait trait : this.liftDictionaryRegistry.getTraits()) {
             traitValue.compute(
                 trait.getDefinition().getName(),
                 key2SetUpdater(trait.getValue())
@@ -96,7 +96,7 @@ public class LiftDictionaryFeatureManager {
         }
 
         // no we are not discovering values on the fly.
-        this.liftDictionaryRegistry.getTraitsReadOnly().addListener(
+        this.liftDictionaryRegistry.getTraits().addListener(
             new ListChangeListener<LiftTrait>() {
                 @Override
                 public void onChanged(Change<? extends LiftTrait> change) {
@@ -130,13 +130,13 @@ public class LiftDictionaryFeatureManager {
 
     // substitute for getKnownAnnotationNames
     private void initAnnotationNameCount() {
-        for (LiftAnnotation annotation : this.liftDictionaryRegistry.getAnnotationsReadOnly()) {
+        for (LiftAnnotation annotation : this.liftDictionaryRegistry.getAnnotations()) {
             annotationNameCount.put(
-                annotation.getName(),
-                annotationNameCount.getOrDefault(annotation.getName(), 0) + 1
+                annotation.getType().getId(),
+                annotationNameCount.getOrDefault(annotation.getType(), 0) + 1
             );
         }
-        this.liftDictionaryRegistry.getAnnotationsReadOnly().addListener(
+        this.liftDictionaryRegistry.getAnnotations().addListener(
             new ListChangeListener<LiftAnnotation>() {
                 @Override
                 public void onChanged(Change<? extends LiftAnnotation> change) {
@@ -144,9 +144,9 @@ public class LiftDictionaryFeatureManager {
                         if (change.wasAdded()) {
                             for (LiftAnnotation annotation : change.getAddedSubList()) {
                                 annotationNameCount.put(
-                                    annotation.getName(),
+                                    annotation.getType().getId(),
                                     annotationNameCount.getOrDefault(
-                                        annotation.getName(),
+                                        annotation.getType(),
                                         0
                                     ) + 1
                                 );
@@ -156,19 +156,19 @@ public class LiftDictionaryFeatureManager {
                             for (LiftAnnotation annotation : change.getRemoved()) {
                                 if (
                                     annotationNameCount.containsKey(
-                                        annotation.getName()
+                                        annotation.getType().getId()
                                     )
                                 ) {
                                     int count = annotationNameCount.get(
-                                        annotation.getName()
+                                        annotation.getType().getId()
                                     );
                                     if (count == 1) {
                                         annotationNameCount.remove(
-                                            annotation.getName()
+                                            annotation.getType().getId()
                                         );
                                     } else {
                                         annotationNameCount.put(
-                                            annotation.getName(),
+                                            annotation.getType().getId(),
                                             count - 1
                                         );
                                     }

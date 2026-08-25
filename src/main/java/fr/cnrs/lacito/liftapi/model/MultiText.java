@@ -36,10 +36,9 @@ import javafx.collections.ObservableMap;
  *
  * @see Form
  */
-public sealed class MultiText
+public final class MultiText
     implements HasAnnotation
-    permits MultiTextMetaLanguage, MultiTextObjectLanguage
-{
+    {
 
     protected LiftDictionaryRegistry registry;
 
@@ -53,13 +52,16 @@ public sealed class MultiText
         StringProperty
     > lang2textPropertyMap = new ConcurrentHashMap<>();
     private UUID uuid;
+    private AbstractLiftRoot parent;
 
     private LiftDictionaryLanguagesManager languageManager;
 
-    public MultiText() {}
+    public MultiText(AbstractLiftRoot parent) {
+        this.parent = parent;
+    }
 
-    public MultiText(LiftDictionaryRegistry registry) {
-        this.registry = registry;
+    public AbstractLiftRoot getParent() {
+        return parent;
     }
 
     public boolean isEmpty() {
@@ -101,7 +103,8 @@ public sealed class MultiText
 
     public void add(Form f) {
         String lang = f.lang;
-        if (!languageManager.hasLanguage(lang)) {
+        // languageManager can be null in low-level operations
+        if (languageManager != null && !languageManager.hasLanguage(lang)) {
             throw new IllegalArgumentException(
                 "Language not registered in the dictionary: " + lang
             );
@@ -110,7 +113,9 @@ public sealed class MultiText
             "Duplicate lang: " + lang
         );
         lang2FormMap.put(lang, f);
-        languageManager.addLanguageOccurrence(lang);
+        if (languageManager != null) {
+            languageManager.addLanguageOccurrence(lang);
+        }
     }
 
     @Override
@@ -243,11 +248,14 @@ public sealed class MultiText
         return uuid;
     }
 
+    /// With the fluent API, this method is called before any Form has been added.
+    /// With the low-level API (for loading from XML), this method is called after
+    // all Forms in the XML document have been added: the LiftFactoryNew take care of computing the numbers of occurrences.
     public void setLanguagesManager(LiftDictionaryLanguagesManager languagesManager) {
         this.languageManager = languagesManager;
-        for (String lang : lang2FormMap.keySet()) {
-            languageManager.addLanguageOccurrence(lang);
-        }
+        // for (String lang : lang2FormMap.keySet()) {
+        //     languageManager.addLanguageOccurrence(lang);
+        // }
     }
 
     public void unregister() {

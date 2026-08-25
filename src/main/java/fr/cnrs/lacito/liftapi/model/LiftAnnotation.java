@@ -1,7 +1,7 @@
 package fr.cnrs.lacito.liftapi.model;
 
-import javafx.beans.property.ReadOnlyStringProperty;
-import javafx.beans.property.ReadOnlyStringWrapper;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 
@@ -16,24 +16,27 @@ import javafx.beans.property.StringProperty;
  *
  * {@see HasAnnotation}.
  */
-public final class LiftAnnotation extends AbstractLiftRoot {
+public final class LiftAnnotation extends AbstractLiftRoot implements HasType {
 
     protected HasAnnotation parent;
 
-    private final ReadOnlyStringWrapper namePropertyWrapper;
+    private final ObjectProperty<LiftHeaderRangeElement> typeProperty = new SimpleObjectProperty<>(
+        this,
+        "type",
+        null
+    );
+
     private final StringProperty valueProperty = new SimpleStringProperty(this, "value", "");;
     private final StringProperty whoProperty = new SimpleStringProperty(this, "who", "");
     private final StringProperty whenProperty = new SimpleStringProperty(this, "when", "");
 
-    /**
-     * Create an annotation. The name is the only mandatory component of an annotation.
-     */
-    public LiftAnnotation(String name) {
-        this.namePropertyWrapper = new ReadOnlyStringWrapper(
-            this,
-            "name",
-            name
-        );
+
+    public LiftAnnotation() {
+
+    }
+
+    public LiftAnnotation(LiftHeaderRangeElement element) {
+        typeProperty.set(element);
     }
 
     protected void setParent(HasAnnotation parent) {
@@ -44,8 +47,9 @@ public final class LiftAnnotation extends AbstractLiftRoot {
         return getMainMultiText();
     }
 
-    public String getName() {
-        return namePropertyWrapper.get();
+    @Override
+    public LiftHeaderRangeElement getType() {
+        return typeProperty.get();
     }
 
     public String getValue() {
@@ -79,8 +83,8 @@ public final class LiftAnnotation extends AbstractLiftRoot {
         this.whenProperty.set(v);
     }
 
-    public ReadOnlyStringProperty nameProperty() {
-        return namePropertyWrapper.getReadOnlyProperty();
+    public ObjectProperty<LiftHeaderRangeElement> nameProperty() {
+        return typeProperty;
     }
 
     public StringProperty valueProperty() {
@@ -95,13 +99,7 @@ public final class LiftAnnotation extends AbstractLiftRoot {
         return whenProperty;
     }
 
-    public static LiftAnnotation create(String name, String value) {
-        LiftAnnotation ann = new LiftAnnotation(name);
-        ann.setValue(value);
-        return ann;
-    }
-
-    public static LiftAnnotation create(String name) {
-        return new LiftAnnotation(name);
+    public void setName(LiftHeaderRangeElement e) {
+        typeProperty.set(e);
     }
 }

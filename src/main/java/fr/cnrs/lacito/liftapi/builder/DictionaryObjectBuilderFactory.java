@@ -8,6 +8,7 @@ import fr.cnrs.lacito.liftapi.model.HasField;
 import fr.cnrs.lacito.liftapi.model.HasNote;
 import fr.cnrs.lacito.liftapi.model.HasPronunciation;
 import fr.cnrs.lacito.liftapi.model.HasRelations;
+import fr.cnrs.lacito.liftapi.model.HasReversal;
 import fr.cnrs.lacito.liftapi.model.HasSense;
 import fr.cnrs.lacito.liftapi.model.HasTrait;
 import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
@@ -163,7 +164,7 @@ public class DictionaryObjectBuilderFactory {
     /**
      * Create a new field builder.
      */
-    public FieldBuilder field(HasField parent,String name) {
+    public FieldBuilder field(HasField parent, String name) {
         return new FieldBuilder(dictionary, parent, name);
     }
 
@@ -229,5 +230,9 @@ public class DictionaryObjectBuilderFactory {
 
     public LiftHeaderRangeBuilder range(String rangeId) {
         return new LiftHeaderRangeBuilder(dictionary, rangeId);
+    }
+
+    public ReversalBuilder reversal(HasReversal parent) {
+        return new ReversalBuilder(dictionary, parent);
     }
 }

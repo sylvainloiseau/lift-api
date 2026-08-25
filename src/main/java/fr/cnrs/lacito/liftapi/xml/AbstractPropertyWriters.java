@@ -35,7 +35,7 @@ public class AbstractPropertyWriters {
     public static void writeAbstractExtensibleWithField(
             XMLStreamWriter w,
             AbstractExtensibleWithField obj) throws Exception {
-        for (LiftField f : obj.getFields()) {
+        for (LiftField f : obj.getFields().values()) {
             writeFieldElement(w, f);
         }
     }
@@ -61,8 +61,8 @@ public class AbstractPropertyWriters {
 
     private static void writeAnnotationElement(XMLStreamWriter w, LiftAnnotation a) throws Exception {
         w.writeStartElement(LiftVocabulary.ANNOTATION_LOCAL_NAME);
-        if (a.getName() != null) {
-            w.writeAttribute(LiftVocabulary.NAME_ATTRIBUTE, a.getName());
+        if (a.getType() != null) {
+            w.writeAttribute(LiftVocabulary.NAME_ATTRIBUTE, a.getType().getId());
         }
         if (!a.getValue().isEmpty()) {
             w.writeAttribute(LiftVocabulary.VALUE_ATTRIBUTE, a.getValue());
@@ -89,7 +89,7 @@ public class AbstractPropertyWriters {
 
     private static void writeFieldElement(XMLStreamWriter w, LiftField f) throws Exception {
         w.writeStartElement(LiftVocabulary.FIELD_LOCAL_NAME);
-        w.writeAttribute(LiftVocabulary.TYPE_ATTRIBUTE, f.getName().getName());
+        w.writeAttribute(LiftVocabulary.TYPE_ATTRIBUTE, f.getType().getName());
         writeAbstractExtensibleWithoutField(w, f);
         MultiTextWriters.writeMultiText(w, f.getText());
         w.writeEndElement();

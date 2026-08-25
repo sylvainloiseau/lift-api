@@ -68,5 +68,11 @@ public class LiftDictionaryLanguagesManager {
         }
     }
 
+    /// Directly set the count of occurrences for a language.
+    /// This is used when loading a dictionary from XML, where we can count the occurrences of each language in the XML and set it directly.
+    public void setLanguageOccurrence(String lang, Long long1) {
+        languageCounts.get().put(lang, long1.intValue());
+    }
+
 
 }

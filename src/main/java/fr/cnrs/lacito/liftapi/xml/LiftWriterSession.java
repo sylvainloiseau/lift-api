@@ -223,8 +223,8 @@ public class LiftWriterSession implements AutoCloseable {
         throws Exception {
         out.writeStartElement(LiftVocabulary.HEADER_RANGE_ELEMENT_LOCAL_NAME);
         out.writeAttribute(LiftVocabulary.ID_ATTRIBUTE, el.getId());
-        if (el.getParentId().isPresent()) {
-            out.writeAttribute("parent", el.getParentId().get().getId());
+        if (el.getParentElement().isPresent()) {
+            out.writeAttribute("parent", el.getParentElement().get().getId());
         }
         if (el.getGuid().isPresent()) {
             out.writeAttribute(
@@ -357,8 +357,8 @@ public class LiftWriterSession implements AutoCloseable {
     ) throws Exception {
         w.writeStartElement(LiftVocabulary.HEADER_RANGE_ELEMENT_LOCAL_NAME);
         w.writeAttribute(LiftVocabulary.ID_ATTRIBUTE, el.getId());
-        if (el.getParentId().isPresent()) {
-            w.writeAttribute("parent", el.getParentId().get().getId());
+        if (el.getParentElement().isPresent()) {
+            w.writeAttribute("parent", el.getParentElement().get().getId());
         }
         if (el.getGuid().isPresent()) {
             w.writeAttribute(LiftVocabulary.GUID_ATTRIBUTE, el.getGuid().get());
@@ -636,8 +636,8 @@ public class LiftWriterSession implements AutoCloseable {
 
     private void writeAnnotation(LiftAnnotation a) throws Exception {
         out.writeStartElement(LiftVocabulary.ANNOTATION_LOCAL_NAME);
-        if (a.getName() != null) {
-            out.writeAttribute(LiftVocabulary.NAME_ATTRIBUTE, a.getName());
+        if (a.getType() != null) {
+            out.writeAttribute(LiftVocabulary.NAME_ATTRIBUTE, a.getType().getId());
         }
         if (!a.getValue().isEmpty()) {
             out.writeAttribute(

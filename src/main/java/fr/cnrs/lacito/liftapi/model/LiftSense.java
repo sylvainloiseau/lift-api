@@ -23,7 +23,7 @@ public final class LiftSense
         return grammaticalInfo;
     }
 
-    protected final MultiText definition = new MultiText();
+    protected final MultiText definition = new MultiText(this);
 
     public MultiText getDefinition() {
         return definition;
@@ -96,7 +96,7 @@ public final class LiftSense
         this.setGrammaticalInfo(new GrammaticalInfo(value));
     }
 
-    protected void setParent(HasSense parent) {
+    public void setParent(HasSense parent) {
         this.parent = parent;
     }
 
@@ -178,4 +178,22 @@ public final class LiftSense
     public static LiftSense create() {
         return new LiftSense();
     }
+
+    // @Override
+    // public void removeSense(LiftSense sense) {
+    //     subSensesProperty.get().removeIf(x -> x == sense);
+    // }
+
+    // @Override
+    // public LiftSense removeSenseAt(int index) {
+    //     if (index < 0 || index > subSensesProperty.get().size()) throw new IllegalArgumentException("Index is larger than array");
+    //     LiftSense sense = subSensesProperty.get().remove(index);
+    //     return sense;
+    // }
+
+    // @Override
+    // public void addSenseAt(LiftSense sense, int index) {
+    //     if (index < 0 || index > subSensesProperty.get().size()) throw new IllegalArgumentException("Index is larger than array");
+    //     subSensesProperty.get().add(index, sense);
+    // }
 }

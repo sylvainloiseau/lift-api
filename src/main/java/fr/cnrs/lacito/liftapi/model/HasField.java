@@ -1,6 +1,6 @@
 package fr.cnrs.lacito.liftapi.model;
 
-import java.util.List;
+import java.util.Map;
 
 /**
  * Interface for lift objects that can receive fields.
@@ -19,5 +19,5 @@ public sealed interface HasField
 
     public LiftField getField(String type);
 
-    public List<LiftField> getFields();
+    public Map<String, LiftField> getFields();
 }

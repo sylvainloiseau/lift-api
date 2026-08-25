@@ -10,10 +10,16 @@ import javafx.collections.FXCollections;
 
 public final class LiftVariant
     extends AbstractExtensibleWithField
-    implements HasPronunciation, HasRelations, HasRefId
+    implements HasType, HasPronunciation, HasRelations, HasRefId
 {
 
     protected Optional<String> refId = Optional.empty();
+
+    private final ObjectProperty<LiftHeaderRangeElement> typeProperty = new SimpleObjectProperty<>(
+        this,
+        "type",
+        null
+    );
 
     protected final ListProperty<LiftPronunciation> pronunciationsProperty =
         new SimpleListProperty<>(
@@ -36,6 +42,16 @@ public final class LiftVariant
     }
 
     public LiftVariant() {}
+
+    @Override
+    public LiftHeaderRangeElement getType() {
+        return typeProperty.get();
+    }
+
+    public void setType(LiftHeaderRangeElement type) {
+        if (type == null) throw new IllegalArgumentException("type cannot be null");
+        this.typeProperty.set(type);
+    }
 
     @Override
     public Optional<String> getRefId() {

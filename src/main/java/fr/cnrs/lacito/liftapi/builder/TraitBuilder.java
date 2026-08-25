@@ -76,9 +76,9 @@ public class TraitBuilder extends AbstractLiftElementBuilder<LiftTrait, HasTrait
             throw new IllegalArgumentException("Annotation name cannot be null");
         }
         if (value == null) {
-            element.getAnnotations().add(AnnotationBuilder.createAnnotation(name));
+            element.getAnnotations().add(new AnnotationBuilder(dictionary, element, name).build());
         } else {
-            element.getAnnotations().add(AnnotationBuilder.createAnnotation(name, value));
+            element.getAnnotations().add(new AnnotationBuilder(dictionary, element, name).withValue(value).build());
         }
         return this;
     }

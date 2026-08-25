@@ -26,6 +26,7 @@ public final class LiftReversal
 {
 
     protected LiftReversal main;
+
     protected final ListProperty<LiftReversal> reversalsProperty =
         new SimpleListProperty<>(
             this,
@@ -45,9 +46,13 @@ public final class LiftReversal
         null
     );
 
+    public LiftReversal() {
+    }
+
     public LiftReversal(LiftHeaderRangeElement type) {
         this.typeProperty.set(type);
     }
+
 
     public void addReversal(LiftReversal reversal) {
         reversalsProperty.add(reversal);
@@ -86,4 +91,5 @@ public final class LiftReversal
     protected void setParent(HasReversal parent) {
         this.parent = parent;
     }
+
 }

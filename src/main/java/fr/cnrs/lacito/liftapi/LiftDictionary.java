@@ -21,13 +21,27 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import javax.xml.stream.XMLStreamException;
 
-/// The entry point for working with a LIFT dictionary. 
+/// The entry point for working with a LIFT dictionary.
 /// 
-/// - create dictionary from XML ([loadDictionaryFromFile]) or from scratch ([makeBuilder])
-/// - update dictionary with the fluent API ([getComponentBuilder]), delete components ([LiftDictionaryRegistry#removeFromDictionary])
-/// - access dictionary content ([getEntryByForm], [searchInMetaLanguage], [searchInObjectLanguage])
+/// Methods are distributed between this class and other classes in the same package
+/// (such as [LiftDictionaryRegistry], [DictionaryObjectBuilderFactory], [LiftDictionaryLanguagesManager], ...)
+/// whose singleton instance is accessible from here through [getLiftDictionaryRegistry], [getComponentBuilder],
+/// [getObjectLanguageManager] and [getMetatLanguageManager], etc.
+/// 
+/// Functionalities include:
+/// 
+/// - create dictionary from an XML document ([loadDictionaryFromFile]) or from scratch ([makeBuilder])
+/// - add components to the dictionary with the fluent API ([getComponentBuilder]), delete components ([LiftDictionaryRegistry#removeFromDictionary])
+/// - lookup into dictionary content ([getEntryByForm], [searchInMetaLanguage], [searchInObjectLanguage])
 /// - manage languages ([getObjectLanguageManager], [getMetaLanguageManager])
-
+///
+/// Internaly, components of the dictionary are linked in two ways:
+/// 
+/// - with links from parent node to child node and from child node to parent
+/// - by managing list and map of components of a given type
+/// 
+/// Creating, adding or removing a component from the dictionary implies taking
+/// care of these two aspects.
 public final class LiftDictionary {
 
     // Constants
@@ -112,18 +126,14 @@ public final class LiftDictionary {
         //long size = f.length();
         //long dictionarySizeUnits = (int) (size / 1024 / 1024);
         // the zero-argument constructor should be called
-        LiftDictionaryRegistry registry = new LiftDictionaryRegistry();
+        LiftDictionary d = new LiftDictionary();
+
         LiftDictionaryXmlReader r = new LiftDictionaryXmlReader(
             f,
-            registry,
+            d,
             false
         );
         r.parse();
-        LiftHeader header = r.getHeader();
-        LiftDictionary d = new LiftDictionary(
-            registry,
-            header
-        );
         d.source = f;
         LOGGER.info(
             "Dictionary created with " +
@@ -140,16 +150,9 @@ public final class LiftDictionary {
     // Constructors
 
     protected LiftDictionary() {
-        this(new LiftDictionaryRegistry(), new LiftHeader());
-    }
-
-    protected LiftDictionary(
-        LiftDictionaryRegistry registry,
-        LiftHeader header
-    ) {
-        this.registry = registry;
+        this.registry = new LiftDictionaryRegistry();
         registry.setLanguagesManager(objectLanguagesManager, metaLanguagesManager);
-        this.header = header;
+        this.header = new LiftHeader();
         this.componentBuilder = new DictionaryObjectBuilderFactory(this);
     }
 
@@ -231,16 +234,16 @@ public final class LiftDictionary {
     }
 
     public Set<String> getTraitName() {
-        return this.registry.getTraitsReadOnly()
+        return this.registry.getTraits()
             .stream()
             .map(t -> t.getDefinition().getName())
             .collect(Collectors.toSet());
     }
 
     public Set<LiftFieldAndTraitDefinition> getFieldType() {
-        return this.registry.getFieldsReadOnly()
+        return this.registry.getFields()
             .stream()
-            .map(t -> t.getName())
+            .map(t -> t.getType())
             .collect(Collectors.toSet());
     }
 
@@ -253,7 +256,7 @@ public final class LiftDictionary {
     // }
 
     public Map<String, Long> getValueCounterForTraitName(String traitName) {
-        return this.registry.getTraitsReadOnly()
+        return this.registry.getTraits()
             .stream()
             .filter(t -> t.getDefinition().getName().equals(traitName))
             .collect(
@@ -263,7 +266,7 @@ public final class LiftDictionary {
 
     public Set<String> getLangInObjectTextSpan() {
         List<MultiText> ms =
-            this.registry.getObjectTextReadOnly();
+            this.registry.getObjectText();
         Set<String> langs = new HashSet<>();
         for (MultiText m : ms) {
             for (Form t : m.getForms()) {

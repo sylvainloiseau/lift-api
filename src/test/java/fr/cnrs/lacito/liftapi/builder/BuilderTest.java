@@ -117,7 +117,7 @@ public class BuilderTest {
             .entry("tww", "heifo", "en", "a domesticated canine");
         dictionary.getComponentBuilder().etymology(e, "source", "Maiden 2004").build();
         assertEquals(1, e.getEtymologies().size());
-        assertEquals(1, dictionary.getLiftDictionaryRegistry().getEtymologiesReadOnly().size());
+        assertEquals(1, dictionary.getLiftDictionaryRegistry().getEtymologies().size());
     }
 
     @Test
@@ -135,7 +135,7 @@ public class BuilderTest {
             .build();
             assertEquals(1, dictionary.getLiftDictionaryRegistry().getEntries().size());
             assertEquals(1, entry.getEtymologies().size());
-            assertEquals(1, dictionary.getLiftDictionaryRegistry().getEtymologiesReadOnly().size());
+            assertEquals(1, dictionary.getLiftDictionaryRegistry().getEtymologies().size());
     }
 
     @Test
@@ -186,11 +186,11 @@ public class BuilderTest {
             .build();
 
             assertEquals(1, dictionary.getLiftDictionaryRegistry().getEntries().size());
-            assertEquals(1, dictionary.getLiftDictionaryRegistry().getTraitsReadOnly().size());
+            assertEquals(1, dictionary.getLiftDictionaryRegistry().getTraits().size());
             assert(
                 dictionary.getHeader().containsFieldsAndTraitsDefinitions("foo")
             );
-            assertEquals("bar", dictionary.getLiftDictionaryRegistry().getTraitsReadOnly().get(0).getValue());
+            assertEquals("bar", dictionary.getLiftDictionaryRegistry().getTraits().get(0).getValue());
 
     }
 }

@@ -1,6 +1,7 @@
 package fr.cnrs.lacito.liftapi.model;
 
-import java.util.List;
+import java.util.Map;
+
 import javafx.beans.property.MapProperty;
 import javafx.beans.property.SimpleMapProperty;
 import javafx.collections.FXCollections;
@@ -32,8 +33,9 @@ public abstract sealed class AbstractExtensibleWithField
         return fieldsProperty.get(type);
     }
 
-    public List<LiftField> getFields() {
-        return fieldsProperty.values().stream().toList();
+    @Override
+    public Map<String, LiftField> getFields() {
+        return fieldsProperty.get();
     }
 
     public MapProperty<String, LiftField> fieldsProperty() {

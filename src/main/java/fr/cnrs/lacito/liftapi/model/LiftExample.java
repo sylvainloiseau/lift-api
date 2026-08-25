@@ -50,12 +50,12 @@ public final class LiftExample extends AbstractNotable {
         ) throw new DuplicateTypeException(
             "A translation of type " + type.getId() + "already exist."
         );
-        MultiText newTranslation = new MultiText();
+        MultiText newTranslation = new MultiText(this);
         translationsProperty.put(type, newTranslation);
         return newTranslation;
     }
 
-    protected void setParent(LiftSense parent) {
+    public void setParent(LiftSense parent) {
         this.parent = parent;
     }
 
@@ -112,6 +112,6 @@ public final class LiftExample extends AbstractNotable {
     }
 
     public MultiText getOrCreateTranslation(LiftHeaderRangeElement type) {
-        return translationsProperty.computeIfAbsent(type, t -> new MultiText());
+        return translationsProperty.computeIfAbsent(type, t -> new MultiText(this));
     }
 }

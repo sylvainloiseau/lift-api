@@ -12,7 +12,7 @@ public final class LiftEtymology
 
     protected final String source;
 
-    protected final MultiText glosses = new MultiText();
+    protected final MultiText glosses = new MultiText(this);
 
     protected LiftEntry parent;
 

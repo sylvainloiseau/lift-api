@@ -351,7 +351,7 @@ public final class LiftSaxHandler extends DefaultHandler {
                 );
                 break;
             case LiftVocabulary.HEADER_LOCAL_NAME:
-                elementStack.push(liftXMLFactory.createHeader());
+                elementStack.push(liftXMLFactory.getHeader());
                 break;
             case LiftVocabulary.HEADER_RANGE_LOCAL_NAME:
                 elementStack.push(
