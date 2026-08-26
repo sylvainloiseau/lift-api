@@ -90,7 +90,8 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
      * attribute reference a {@link LiftHeaderRange} that enumerates the allowed
      * values.
      */
-    public Optional<LiftHeaderRange> getResolvedRange() { return resolvedRange;
+    public Optional<LiftHeaderRange> getResolvedRange() {
+        return resolvedRange;
     }
 
     public void setResolvedRange(Optional<LiftHeaderRange> resolvedRange) {
@@ -187,7 +188,7 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
     }
 
     /** Set from raw @type attribute string, resolving the enum and kind. */
-    public void setType(Optional<String> typeStr) {
+    public void setDataModel(Optional<String> typeStr) {
         this.definitionType = typeStr.flatMap(
             LiftFieldAndTraitDefinitionDataModel::fromStringValue
         );

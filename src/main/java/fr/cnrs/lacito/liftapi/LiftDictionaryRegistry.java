@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import javafx.beans.property.ReadOnlyListWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.MapChangeListener;
 import javafx.collections.ObservableList;
@@ -131,7 +132,7 @@ public class LiftDictionaryRegistry {
     public ObservableList<LiftEntry> getEntries() {
         // In the particular case of entries, we
         // do not use an list listining to the xById map, instead we register the entry
-        // directlyf into the list in order to keep the order of entries.
+        // directlyf into the list in order to keep the orders of the entries in the dictionary.
         return entriesReadOnly;
     }
 
@@ -139,99 +140,135 @@ public class LiftDictionaryRegistry {
     // -----------------------------------------------------------------------
     // -----------------------------------------------------------------------
 
-    Map<Class< ? extends AbstractLiftRoot>, ObservableList<? extends AbstractLiftRoot>> observableList = new HashMap<>();
-    Map<Type, ObservableList<? extends AbstractLiftRoot>> observableListReadOnly = new HashMap<>();
+    Map<
+      Class< ? extends AbstractLiftRoot>,
+      ReadOnlyListWrapper<? extends AbstractLiftRoot>
+    > observableList = new HashMap<>();
 
+    @SuppressWarnings("unchecked")
     public ObservableList<LiftSense> getSenses() {
         if (!observableList.containsKey(LiftSense.class)) {
             this.<LiftSense>populateObservableList(LiftSense.class, sensesById);
         }
-        return (ObservableList<LiftSense>) observableListReadOnly.get(LiftSense.class);
+        return (ObservableList<LiftSense>) observableList.get(LiftSense.class).getReadOnlyProperty();
     }
 
+    @SuppressWarnings("unchecked")
     public ObservableList<LiftExample> getExamples() {
         if (!observableList.containsKey(LiftExample.class)) {
             this.<LiftExample>populateObservableList(LiftExample.class, examplesById);
         }
-        return (ObservableList<LiftExample>) observableListReadOnly.get(LiftExample.class);
+        return (ObservableList<LiftExample>) observableList.get(LiftExample.class).getReadOnlyProperty();
     }
 
+    @SuppressWarnings("unchecked")
     public ObservableList<LiftVariant> getVariants() {
         if (!observableList.containsKey(LiftVariant.class)) {
             this.<LiftVariant>populateObservableList(LiftVariant.class, variantsById);
         }
-        return (ObservableList<LiftVariant>) observableListReadOnly.get(LiftVariant.class);
+        return (ObservableList<LiftVariant>) observableList.get(LiftVariant.class).getReadOnlyProperty();
     }
 
+    @SuppressWarnings("unchecked")
     public ObservableList<LiftTrait> getTraits() {
         if (!observableList.containsKey(LiftTrait.class)) {
             this.<LiftTrait>populateObservableList(LiftTrait.class, traitsById);
         }
-        return (ObservableList<LiftTrait>) observableListReadOnly.get(LiftTrait.class);
+        return (ObservableList<LiftTrait>) observableList.get(LiftTrait.class).getReadOnlyProperty();
     }
 
+    @SuppressWarnings("unchecked")
     public ObservableList<LiftReversal> getReversals() {
         if (!observableList.containsKey(LiftReversal.class)) {
             this.<LiftReversal>populateObservableList(LiftReversal.class, reversalsById);
         }
-        return (ObservableList<LiftReversal>) observableListReadOnly.get(LiftReversal.class);
+        return (ObservableList<LiftReversal>) observableList.get(LiftReversal.class).getReadOnlyProperty();
     }
 
+    @SuppressWarnings("unchecked")
     public ObservableList<LiftRelation> getRelations() {
         if (!observableList.containsKey(LiftRelation.class)) {
             this.<LiftRelation>populateObservableList(LiftRelation.class, relationsById);
         }
-        return (ObservableList<LiftRelation>) observableListReadOnly.get(LiftRelation.class);
+        return (ObservableList<LiftRelation>) observableList.get(LiftRelation.class).getReadOnlyProperty();
     }
 
+    @SuppressWarnings("unchecked")
     public ObservableList<LiftPronunciation> getPronunciations() {
         if (!observableList.containsKey(LiftPronunciation.class)) {
             this.<LiftPronunciation>populateObservableList(LiftPronunciation.class, pronunciationsById);
         }
-        return (ObservableList<LiftPronunciation>) observableListReadOnly.get(LiftPronunciation.class);
+        return (ObservableList<LiftPronunciation>) observableList.get(LiftPronunciation.class).getReadOnlyProperty();
     }
 
+    @SuppressWarnings("unchecked")
     public ObservableList<LiftNote> getNotes() {
         if (!observableList.containsKey(LiftNote.class)) {
             this.<LiftNote>populateObservableList(LiftNote.class, notesById);
         }
-        return (ObservableList<LiftNote>) observableListReadOnly.get(LiftNote.class);
+        return (ObservableList<LiftNote>) observableList.get(LiftNote.class).getReadOnlyProperty();
     }
 
+    @SuppressWarnings("unchecked")
     public ObservableList<LiftMedia> getMedias() {
         if (!observableList.containsKey(LiftMedia.class)) {
             this.<LiftMedia>populateObservableList(LiftMedia.class, mediasById);
         }
-        return (ObservableList<LiftMedia>) observableListReadOnly.get(LiftMedia.class);
+        return (ObservableList<LiftMedia>) observableList.get(LiftMedia.class).getReadOnlyProperty();
     }
 
+    @SuppressWarnings("unchecked")
     public ObservableList<LiftIllustration> getIllustrations() {
         if (!observableList.containsKey(LiftIllustration.class)) {
             this.<LiftIllustration>populateObservableList(LiftIllustration.class, illustrationsById);
         }
-        return (ObservableList<LiftIllustration>) observableListReadOnly.get(LiftIllustration.class);
+        return (ObservableList<LiftIllustration>) observableList.get(LiftIllustration.class).getReadOnlyProperty();
     }
 
+    @SuppressWarnings("unchecked")
     public ObservableList<LiftField> getFields() {
         if (!observableList.containsKey(LiftField.class)) {
             this.<LiftField>populateObservableList(LiftField.class, fieldsById);
         }
-        return (ObservableList<LiftField>) observableListReadOnly.get(LiftField.class);
+        return (ObservableList<LiftField>) observableList.get(LiftField.class).getReadOnlyProperty();
     }
 
+    @SuppressWarnings("unchecked")
     public ObservableList<LiftEtymology> getEtymologies() {
         if (!observableList.containsKey(LiftEtymology.class)) {
             this.<LiftEtymology>populateObservableList(LiftEtymology.class, etymologiesById);
         }
-        return (ObservableList<LiftEtymology>) observableListReadOnly.get(LiftEtymology.class);
+        return (ObservableList<LiftEtymology>) observableList.get(LiftEtymology.class).getReadOnlyProperty();
     }
 
+    @SuppressWarnings("unchecked")
     public ObservableList<LiftAnnotation> getAnnotations() {
         if (!observableList.containsKey(LiftAnnotation.class)) {
             this.<LiftAnnotation>populateObservableList(LiftAnnotation.class, annotationsById);
         }
-        return (ObservableList<LiftAnnotation>) observableListReadOnly.get(LiftAnnotation.class);
+        return (ObservableList<LiftAnnotation>) observableList.get(LiftAnnotation.class).getReadOnlyProperty();
     }
+
+    private <T extends AbstractLiftRoot> void populateObservableList(
+        Class<T> clazz,
+        ObservableMap<UUID, T> map) {
+            ReadOnlyListWrapper<T> x = new ReadOnlyListWrapper<>(FXCollections.observableArrayList(map.values()));
+            map.addListener(
+                (MapChangeListener<UUID, T>) change -> {
+                    if (change.wasAdded()) {
+                        x.add(change.getValueAdded());
+                    } else if (change.wasRemoved()) {
+                        x.remove(change.getValueRemoved());
+                    }
+                }
+            );
+            
+            observableList.put(clazz, x);
+    }
+
+// ---------
+// ---------
+// ---------
 
     private ObservableList<MultiText> objectText = null;
     private ObservableList<MultiText> objectTextReadOnly = null;
@@ -279,30 +316,6 @@ public class LiftDictionaryRegistry {
         }
         metaTextReadOnly = FXCollections.unmodifiableObservableList(metaText);
         return metaTextReadOnly;
-    }
-
-
-
-
-
-
-
-    private <T extends AbstractLiftRoot> void populateObservableList(
-        Class<T> clazz,
-        ObservableMap<UUID, T> map) {
-            ObservableList<T> x = FXCollections.observableList(FXCollections.observableArrayList(map.values()));
-            map.addListener(
-                (MapChangeListener<UUID, T>) change -> {
-                    if (change.wasAdded()) {
-                        x.add(change.getValueAdded());
-                    } else if (change.wasRemoved()) {
-                        x.remove(change.getValueRemoved());
-                    }
-                }
-            );
-            
-            observableList.put(clazz, x);
-            observableListReadOnly.put(clazz, FXCollections.unmodifiableObservableList(x));
     }
 
     // -----------------------------------------------------------------------
@@ -366,61 +379,16 @@ public class LiftDictionaryRegistry {
         // register the node and it(s) multiText(s) in the registry
         register(node);
 
-        // recursively add its descendants
-        switch (node) {
-            case LiftEntry e -> {
-                e.getVariants().forEach(x -> addToDictionaryLowLevel(x));
-                e.getEtymologies().forEach(x -> addToDictionaryLowLevel(x));
-                //registerObjectMultiText(node.getMainMultiText());
-            }
-            case LiftSense s -> {
-                s.getExamples().forEach(x -> addToDictionaryLowLevel(x));
-                s.getIllustrations().forEach(x -> addToDictionaryLowLevel(x));
-                s.getReversals().forEach(x -> addToDictionaryLowLevel(x));
-                //registerMetaMultiText(node.getMainMultiText());
-                //registerMetaMultiText(s.getDefinition());
-            }
-            case LiftExample e -> {
-                // registerObjectMultiText(e.getExample());
-                // e.getTranslations()
-                //     .values()
-                //     .forEach(x -> registerMetaMultiText(x));
-            }
-            case LiftVariant v -> {
-                // registerObjectMultiText(v.getForms());
-            }
-            case LiftTrait _ -> {
-            }
-            case LiftReversal v -> {
-                // registerObjectMultiText(v.getForms());
-            }
-            case LiftRelation r -> {
-                // registerMetaMultiText(r.getUsage());
-            }
-            case LiftPronunciation p -> {
-                // registerObjectMultiText(p.getPronunciation());
-            }
-            case LiftNote n -> {
-                // registerMetaMultiText(n.getText());
-            }
-            case LiftMedia m -> {
-                // registerMetaMultiText(m.getLabel());
-            }
-            case LiftIllustration i -> {
-                // registerMetaMultiText(i.getLabel());
-            }
-            case LiftField f -> {
-                // registerMetaMultiText(f.getText());
-            }
-            case LiftEtymology e -> {
-                // registerObjectMultiText(e.getForms());
-            }
-            case LiftAnnotation a -> {
-                // registerMetaMultiText(a.getText());
-            }
-            default -> throw new IllegalStateException(
-                "Unknown type: " + node.getClass()
-            );
+        // 2. recursively add its descendants
+        if (node instanceof LiftEntry e) {
+            e.getVariants().forEach(x -> addToDictionaryLowLevel(x));
+            e.getEtymologies().forEach(x -> addToDictionaryLowLevel(x));
+        }
+
+        if (node instanceof LiftSense s) {
+            s.getExamples().forEach(x -> addToDictionaryLowLevel(x));
+            s.getIllustrations().forEach(x -> addToDictionaryLowLevel(x));
+            s.getReversals().forEach(x -> addToDictionaryLowLevel(x));
         }
 
         if (node instanceof AbstractExtensibleWithoutField a) {
@@ -458,8 +426,16 @@ public class LiftDictionaryRegistry {
      * Non-recursively add the node. Should not be called directly: use the
      * fluent API instead ({@link LiftDictionary#getComponentBuilder()}).
      *
-     * Register the node in the dictionary; add a LIFT ID to the node if it
-     * doesn't have one.
+     * Register the node in the dictionary :
+     * 
+     * <ul>
+     * <li>Add a UUID to the node</li>
+     * <li>Register the maping (node, UUID) in collections used internally</li>
+     * <li>Add a LIFT ID to the node if it doesn't have one.</li>
+     * </ul>
+     *  
+     * @throws IllegalArgumentException if the node already as an UUID
+     * @throws IllegalArgumentException (TODO) if the node is not a LiftEntry and has no parent
      */
     public void register(AbstractLiftRoot node) {
         if (node.getUUID() != null) {
@@ -470,15 +446,12 @@ public class LiftDictionaryRegistry {
         UUID uuid = getNewUUID();
         node.setUUID(uuid);
 
-        // Test if node has a parent.
-        // and if the parent belongs to the dictionary...
-        //
-        // setParent should be protected for all class (called in the addChild method)
-        //if (!(node instanceof LiftEntry)  && node.getParent() == null) {
-        //    throw new IllegalArgumentException(
-        //        "Node should have a parent"
-        //    );
-        //}
+        // TODO : put getParent in AbstractLiftRoot
+        // if (!(node instanceof LiftEntry)  && node.getParent() == null) {
+        //     throw new IllegalArgumentException(
+        //         "Node should have a parent"
+        //     );
+        // }
 
         switch (node) {
             case LiftEntry e -> {

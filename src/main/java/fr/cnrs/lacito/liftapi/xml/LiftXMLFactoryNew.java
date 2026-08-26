@@ -422,7 +422,7 @@ public final class LiftXMLFactoryNew {
         if (fieldclass != null) f.setTargets(fieldclass);
 
         String type = attributes.getValue(LiftVocabulary.LIFT_URI, "type");
-        if (type != null) f.setType(Optional.of(type));
+        if (type != null) f.setDataModel(Optional.of(type));
 
         String optionRange = attributes.getValue(
             LiftVocabulary.LIFT_URI,

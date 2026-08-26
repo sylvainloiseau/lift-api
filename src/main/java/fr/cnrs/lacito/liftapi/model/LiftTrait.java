@@ -165,7 +165,7 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
     }
 
     public StringProperty valueProperty() {
-        throw new UnsupportedOperationException("valueProperty is not supported for trait type: " + definitionProperty.get().getTypeStr());
+        return stringValueProperty;
     }
 
     public void setValue(String value) {
