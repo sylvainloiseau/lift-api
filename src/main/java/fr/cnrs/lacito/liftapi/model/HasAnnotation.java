@@ -3,7 +3,7 @@ package fr.cnrs.lacito.liftapi.model;
 import java.util.List;
 
 /**
- * Interface for lift objects that can receive annotations.
+ * Interface for LIFT component that can receive annotations.
  *
  */
 public sealed interface HasAnnotation

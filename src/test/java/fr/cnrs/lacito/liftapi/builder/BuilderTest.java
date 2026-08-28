@@ -3,7 +3,6 @@ package fr.cnrs.lacito.liftapi.builder;
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftVersion;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
-import fr.cnrs.lacito.liftapi.model.LiftVariant;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -19,19 +18,21 @@ public class BuilderTest {
         this.dictionary = LiftDictionary.makeBuilder()
             .withLiftVersion(LiftVersion.V0_13)
             .withProducer("Test Producer")
+            .withMetaLanguages("en", "fr")
+            .withObjectLanguages("tww", "tpi")
             .build();
     }
 
     @Test
     public void testBuilderEntry() {
-        DictionaryObjectBuilderFactory builder = dictionary.getComponentBuilder();
-        LiftEntry entry = builder
+        DictionaryComponentBuilderFactory builder = dictionary.getComponentBuilder();
+        builder
             .entry()
-            .withForm("en", "dictionary")
+            .withForm("tww", "nofua")
             .addSense(s ->
                 s
-                    .withGloss("en", "reference book")
-                    .withDefinition("en", "A book of words and definitions")
+                    .withGloss("en", "book")
+                    .withDefinition("en", "Any printed or written material")
             )
             .build();
             assertEquals(1, dictionary.getLiftDictionaryRegistry().getEntries().size());
@@ -39,12 +40,12 @@ public class BuilderTest {
 
     @Test
     public void testBuilderCompleteEntryWithMultipleSenses() {
-        LiftEntry word = dictionary
+        dictionary
             .getComponentBuilder()
             .entry()
             .withId("word-001")
-            .withForm("en", "run")
-            .withForm("fr", "courir")
+            .withForm("tww", "honolu")
+            .withForm("tpi", "ran")
             .addSense(s ->
                 s
                     .withOrder(1)
@@ -56,11 +57,11 @@ public class BuilderTest {
                     .withPartOfSpeech("verb")
                     .addExample(ex ->
                         ex
-                            .withExample("en", "She runs every morning")
+                            .withExample("tww", "mwe molunomwij")
                             .addTranslation(
                                 "litteral",
                                 "fr",
-                                "Elle court chaque matin"
+                                "Il s'enfuit"
                             )
                     )
             )
@@ -70,7 +71,7 @@ public class BuilderTest {
                     .withGloss("en", "to manage or operate")
                     .withPartOfSpeech("verb")
             )
-            .addPronunciation(p -> p.withPronunciation("en", "rʌn"))
+            .addPronunciation(p -> p.withPronunciation("tww", "honolu"))
             .addNote("source", "en", "From Old English 'irnan'")
             .build();
     }
@@ -81,28 +82,32 @@ public class BuilderTest {
             .getComponentBuilder()
             .entry()
             .withId("word-001")
-            .withForm("en", "run")
+            .withForm("tww", "esejle")
             .build();
 
-        LiftVariant variant = dictionary
+        dictionary
             .getComponentBuilder()
             .variant(entry)
-            .withForm("en", "ran")
-            .withForm("fr", "courait")
+            .withRefId(entry.getId().get())
+            .withForm("tww", "eseile")
+            //.withForm("tww", "esijle")
             .build();
     }
 
     @Test
     public void testBuilderQuickEntry() {
-        LiftEntry quick = dictionary
+        dictionary
             .getComponentBuilder()
-            .entry("en", "dog", "en", "a domesticated canine");
+            .entry("tww", "heifo", "en", "dog");
     }
 
     @Test
     public void testBuilderProgrammaticBuildingWithLoops() {
+        dictionary.getObjectLanguageManager().addLanguage("en");
+        dictionary.getObjectLanguageManager().addLanguage("fr");
+        dictionary.getObjectLanguageManager().addLanguage("es");
         EntryBuilder entry = dictionary.getComponentBuilder().entry();
-        String[] languages = { "en", "fr", "es" };
+        String[] languages = {"en", "fr", "es"};
         String word = "run";
         for (String lang : languages) {
             entry.withForm(lang, word);
@@ -122,16 +127,16 @@ public class BuilderTest {
 
     @Test
     public void testAddEtymology() {
-        DictionaryObjectBuilderFactory builder = dictionary.getComponentBuilder();
+        DictionaryComponentBuilderFactory builder = dictionary.getComponentBuilder();
         LiftEntry entry = builder
             .entry()
-            .withForm("en", "dictionary")
+            .withForm("tww", "dictionary")
             .addSense(s ->
                 s
                     .withGloss("en", "reference book")
                     .withDefinition("en", "A book of words and definitions")
             )
-            .addEtymology(s -> s.addForm("x,", "foo"), "x", "y")
+            .addEtymology(s -> s.addForm("tww", "foo"), "x", "y")
             .build();
             assertEquals(1, dictionary.getLiftDictionaryRegistry().getEntries().size());
             assertEquals(1, entry.getEtymologies().size());
@@ -140,24 +145,24 @@ public class BuilderTest {
 
     @Test
     public void testAutomaticallyAddTranslationType() {
-        DictionaryObjectBuilderFactory builder = dictionary.getComponentBuilder();
+        DictionaryComponentBuilderFactory builder = dictionary.getComponentBuilder();
 
         // No Translation type so far
-        assertEquals(0, dictionary.getHeader().getTranslationTypeManager().getRangeElements().values().size());
+        assertEquals(0, dictionary.getHeader().getTranslationTypeManager().getFeatures().values().size());
 
-        LiftEntry entry = builder
+        builder
             .entry()
-            .withForm("en", "dictionary")
+            .withForm("tww", "nofua")
             .addSense(s ->
                 s
-                    .withGloss("en", "reference book")
-                    .withDefinition("en", "A book of words and definitions")
+                    .withGloss("en", "book")
+                    .withDefinition("en", "Any book")
                     .addExample(e -> e
-                        .withExample("x", "foo")
+                        .withExample("tww", "a nofuafo lomwij")
                         .addTranslation(
                             "litteral",
                             "fr",
-                            "Elle court chaque matin"
+                            "J'ai un livre"
                         )
                     )
             )
@@ -165,22 +170,23 @@ public class BuilderTest {
             assertEquals(1, dictionary.getLiftDictionaryRegistry().getEntries().size());
             assertEquals(1, dictionary.getLiftDictionaryRegistry().getSenses().size());
             assertEquals(1, dictionary.getLiftDictionaryRegistry().getExamples().size());
-            assertEquals(1, dictionary.getHeader().getTranslationTypeManager().getRangeElements().values().size());
+            assertEquals(1, dictionary.getHeader().getTranslationTypeManager().getFeatures().values().size());
     }
 
     @Test
     public void testBuildExampleWithTrait() {
-        DictionaryObjectBuilderFactory builder = dictionary.getComponentBuilder();
+        DictionaryComponentBuilderFactory builder = dictionary.getComponentBuilder();
 
-        LiftEntry entry = builder
+        dictionary.getHeader().getOrCreateTraitsDefinitions("foo");
+        builder
             .entry()
-            .withForm("en", "dictionary")
+            .withForm("tww", "nofua")
             .addSense(s ->
                 s
-                    .withGloss("en", "reference book")
-                    .withDefinition("en", "A book of words and definitions")
+                    .withGloss("en", "book")
+                    .withDefinition("en", "Any book")
                     .addExample(e -> e
-                        .withExample("x", "foo")
+                        .withExample("tww", "nofua-fo")
                         .addTrait("foo", "bar"))
             )
             .build();

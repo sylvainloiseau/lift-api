@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.xml.sax.Attributes;
@@ -36,6 +37,9 @@ public final class LiftXMLFactoryNew {
         this.dictionary = dictionary;
         this.header = dictionary.getHeader();
         this.registry = dictionary.getLiftDictionaryRegistry();
+
+        // TODO Ugly hack n°1
+        this.dictionary.turnOffLanguageManager();
     }
 
     // TODO all these methods should be turned protected
@@ -81,9 +85,9 @@ public final class LiftXMLFactoryNew {
         String type = attributes.getValue(LiftVocabulary.LIFT_URI, "type");
         if (type == null) throw new IllegalArgumentException();
         if (!header.getNoteTypeManager().hasRangeElements(type)) {
-            header.getNoteTypeManager().createRangeElement(type);
+            header.getNoteTypeManager().addFeature(type);
         }
-        LiftHeaderRangeElement element = header.getNoteTypeManager().getRangeElement(type);
+        Feature element = header.getNoteTypeManager().getFeature(type);
         LiftReversal reversal = new LiftReversal(element);
         sense.addReversal(reversal);
         return reversal;
@@ -106,9 +110,9 @@ public final class LiftXMLFactoryNew {
         if (source == null) throw new IllegalArgumentException();
 
         if (!header.getEtymologyTypeManager().hasRangeElements(type)) {
-            header.getEtymologyTypeManager().createRangeElement(type);
+            header.getEtymologyTypeManager().addFeature(type);
         }
-        LiftHeaderRangeElement element = header.getEtymologyTypeManager().getRangeElement(type);
+        Feature element = header.getEtymologyTypeManager().getFeature(type);
 
         LiftEtymology etym = new LiftEtymology(element, source);
         populateWithAttribute(etym, attributes);
@@ -146,9 +150,9 @@ public final class LiftXMLFactoryNew {
         );
 
         if (!header.getRelationTypeManager().hasRangeElements(type)) {
-            header.getRelationTypeManager().createRangeElement(type);
+            header.getRelationTypeManager().addFeature(type);
         }
-        LiftHeaderRangeElement element = header.getRelationTypeManager().getRangeElement(type);
+        Feature element = header.getRelationTypeManager().getFeature(type);
 
         LiftRelation relation = new LiftRelation(element);
         populateWithAttribute(relation, attributes);
@@ -190,11 +194,11 @@ public final class LiftXMLFactoryNew {
         return f;
     }
 
-    public LiftHeaderRangeElement getTranslationType(String type) {
+    public Feature getTranslationType(String type) {
         if (!header.getTranslationTypeManager().hasRangeElements(type)) {
-            header.getTranslationTypeManager().createRangeElement(type);
+            header.getTranslationTypeManager().addFeature(type);
         }
-        return header.getTranslationTypeManager().getRangeElement(type);
+        return header.getTranslationTypeManager().getFeature(type);
     }
 
     public LiftTrait createTrait(Attributes attributes, HasTrait parent) {
@@ -214,16 +218,16 @@ public final class LiftXMLFactoryNew {
             }
             case STRING -> new LiftTrait(def, value);
             case OPTION -> {
-                LiftHeaderRange r = def.getResolvedRange().get();
-                LiftHeaderRangeElement e = r.getOrCreateRangeElement(value);
+                FeatureSet r = def.getResolvedRange().get();
+                Feature e = r.getOrCreateRangeElement(value);
                 yield new LiftTrait(def, e);
             }
             case OPTION_COLLECTION -> {
-                List<LiftHeaderRangeElement> elements = parseRangeElement(def, value);
-                yield new LiftTrait(def, new HashSet(elements));
+                List<Feature> elements = parseRangeElement(def, value);
+                yield new LiftTrait(def, new HashSet<>(elements));
             }
             case OPTION_SEQUENCE ->{
-                List<LiftHeaderRangeElement> elements = parseRangeElement(def, value);
+                List<Feature> elements = parseRangeElement(def, value);
                 yield new LiftTrait(def, elements);
             }
             default -> throw new IllegalArgumentException("Unknown definition type: " + def.getDataModel().get());
@@ -233,11 +237,11 @@ public final class LiftXMLFactoryNew {
         return trait;
     }
 
-    private List<LiftHeaderRangeElement> parseRangeElement(LiftFieldAndTraitDefinition def, String list) {
-        LiftHeaderRange r = def.getResolvedRange().get();
-        List<LiftHeaderRangeElement> values = new ArrayList<>();
+    private List<Feature> parseRangeElement(LiftFieldAndTraitDefinition def, String list) {
+        FeatureSet r = def.getResolvedRange().get();
+        List<Feature> values = new ArrayList<>();
         for (String v : list.trim().split("\\s+")) {
-            LiftHeaderRangeElement e = r.getOrCreateRangeElement(v);
+            Feature e = r.getOrCreateRangeElement(v);
             values.add(e);
         }
         return values;
@@ -253,9 +257,9 @@ public final class LiftXMLFactoryNew {
     public LiftNote createNote(String type, AbstractNotable parent) {
         if (type == null) type = "";
         if (!header.getNoteTypeManager().hasRangeElements(type)) {
-            header.getNoteTypeManager().createRangeElement(type);
+            header.getNoteTypeManager().addFeature(type);
         }
-        LiftHeaderRangeElement element = header.getNoteTypeManager().getRangeElement(type);
+        Feature element = header.getNoteTypeManager().getFeature(type);
         LiftNote n = new LiftNote(element);
         parent.addNote(n);
         return n;
@@ -278,9 +282,9 @@ public final class LiftXMLFactoryNew {
         );
 
         if (!header.getAnnotationTypeManager().hasRangeElements(name)) {
-            header.getAnnotationTypeManager().createRangeElement(name);
+            header.getAnnotationTypeManager().addFeature(name);
         }
-        LiftHeaderRangeElement element = header.getAnnotationTypeManager().getRangeElement(name);
+        Feature element = header.getAnnotationTypeManager().getFeature(name);
 
         LiftAnnotation a = new LiftAnnotation(element);
 
@@ -327,31 +331,37 @@ public final class LiftXMLFactoryNew {
                     liftObject.getOtherXmlAttributes().put(name, value);
                 }
             } else if (name.equals("type")) {
-                if (liftObject instanceof LiftEtymology le) {
+                if (liftObject instanceof LiftEtymology _) {
                     // } else if (liftObject instanceof LiftField lf) {
-                } else if (liftObject instanceof LiftRelation lr) {
-                } else if (liftObject instanceof LiftNote ln) {
+                } else if (liftObject instanceof LiftRelation _) {
+                } else if (liftObject instanceof LiftNote _) {
                 } else {
                     liftObject.getOtherXmlAttributes().put(name, value);
                 }
             } else if (name.equals("source")) {
-                if (liftObject instanceof LiftEtymology le) {
+                if (liftObject instanceof LiftEtymology _) {
                 } else if (liftObject instanceof LiftExample le) {
                     le.setSource(value);
                 } else {
                     liftObject.getOtherXmlAttributes().put(name, value);
                 }
-            } else if (name.equals("refid")) {
-                if (liftObject instanceof LiftVariant lv) {
-                    registry.refId2HasRefIdList
-                        .computeIfAbsent(value, k -> new ArrayList<>())
-                        .add(lv);
-                } else if (liftObject instanceof LiftRelation lr) {
-                    registry.refId2HasRefIdList
-                        .computeIfAbsent(value, k -> new ArrayList<>())
-                        .add(lr);
-                } else {
-                    liftObject.getOtherXmlAttributes().put(name, value);
+            } else if (name.equals("ref")) {
+                if (! value.trim().isEmpty()) {
+                    if (liftObject instanceof LiftVariant lv) {
+                        lv.setRefId(value);
+                        // done in register.register()
+                        // registry.refId2HasRefIdList
+                        //     .computeIfAbsent(value, k -> new ArrayList<>())
+                        //     .add(lv);
+                    } else if (liftObject instanceof LiftRelation lr) {
+                        lr.setRefId(value);
+                        // done in register.register()
+                        // registry.refId2HasRefIdList
+                        //     .computeIfAbsent(value, k -> new ArrayList<>())
+                        //     .add(lr);
+                    } else {
+                        liftObject.getOtherXmlAttributes().put(name, value);
+                    }
                 }
             } else if (name.equals("dateDeleted")) {
                 // TODO use LiftVocabulary.DATE_DELETED_ATTRIBUTE
@@ -378,7 +388,7 @@ public final class LiftXMLFactoryNew {
         }
     }
 
-    public LiftHeaderRange createRange(
+    public FeatureSet createRange(
         Attributes attributes,
         LiftHeader parent
     ) {
@@ -386,7 +396,7 @@ public final class LiftXMLFactoryNew {
         if (id == null) throw new IllegalArgumentException(
             "Range ID cannot be null"
         );
-        LiftHeaderRange hr = new LiftHeaderRange(id, parent);
+        FeatureSet hr = new FeatureSet(id, parent);
 
         String href = attributes.getValue(LiftVocabulary.LIFT_URI, "href");
         if (href != null) hr.setHref(href);
@@ -443,23 +453,23 @@ public final class LiftXMLFactoryNew {
         return f;
     }
 
-    public LiftHeaderRangeElement createRangeElement(
+    public Feature createRangeElement(
         Attributes attributes,
-        LiftHeaderRange parent
+        FeatureSet parent
     ) {
         String id = attributes.getValue(LiftVocabulary.LIFT_URI, "id");
         if (id == null) throw new IllegalArgumentException();
         // the range-element may have already been created by a reference from another range-element (see parentElementId below)
         // so we use getOrCreateRangeElement rather that createRangeElement
-        LiftHeaderRangeElement hre = parent.getOrCreateRangeElement(id);
+        Feature hre = parent.getOrCreateRangeElement(id);
 
         String parentElementId = attributes.getValue(
             LiftVocabulary.LIFT_URI,
             "parent"
         );
         if (parentElementId != null) {
-            LiftHeaderRangeElement parentElement = parent.getOrCreateRangeElement(parentElementId);
-            hre.setParentElement(parentElement);
+            Feature parentElement = parent.getOrCreateRangeElement(parentElementId);
+            hre.setSuperordinateFeature(parentElement);
         }
         String guid = attributes.getValue(LiftVocabulary.LIFT_URI, "guid");
         if (guid != null) hre.setGuid(guid);
@@ -497,7 +507,7 @@ public final class LiftXMLFactoryNew {
         // For each Trait Definition that register a Range,
         // add a reference to the range object to the trait definition object.
         for (String rangeId : rangeId2TraitDefinitionForDereferencing.keySet()) {
-            LiftHeaderRange r = header.getRange(rangeId);
+            FeatureSet r = header.getRange(rangeId);
             for (LiftFieldAndTraitDefinition def : rangeId2TraitDefinitionForDereferencing.get(rangeId)) {
                 def.setResolvedRange(Optional.of(r));
             }
@@ -506,19 +516,36 @@ public final class LiftXMLFactoryNew {
 
     protected void endDocument() {
         dereferenceHasRefTargets();
+
+        // TODO Ugly hack n°1
+        this.dictionary.turnOnLanguageManager();
         createLanguages(registry.getMetaText(), dictionary.getMetaLanguageManager());
         createLanguages(registry.getObjectText(), dictionary.getObjectLanguageManager());
     }
 
 	private void createLanguages(ObservableList<MultiText> multiTexts, LiftDictionaryLanguagesManager languageManager) {
-        Map<String, Long> languageCounts = multiTexts
-            .stream()
-            .flatMap(x -> x.getForms().stream())
-            .collect(Collectors.groupingBy(x -> x.getLang(), Collectors.counting()));;
+        // Map<String, Long> languageCounts = multiTexts
+        //     .stream()
+        //     .flatMap(x -> x.getForms().stream())
+        //     .collect(Collectors.groupingBy(x -> x.getLang(), Collectors.counting()));;
 
-        for (String lang : languageCounts.keySet()) {
-            languageManager.addLanguage(lang);
-            languageManager.setLanguageOccurrence(lang, languageCounts.get(lang));
+        // for (String lang : languageCounts.keySet()) {
+        //     languageManager.addLanguage(lang);
+        //     languageManager.setLanguageOccurrence(lang, languageCounts.get(lang));
+        // }
+        Set<String> languages = multiTexts
+             .stream()
+             .flatMap(
+                x -> x.getForms().stream()
+             )
+             .map(y -> y.getLang())
+             .collect(Collectors.toSet());
+
+        for (String lang : languages) {
+             languageManager.addLanguage(lang);
+        }
+        for (MultiText m : multiTexts) {
+            m.setLanguagesManager(languageManager);
         }
     }
 
@@ -538,7 +565,7 @@ public final class LiftXMLFactoryNew {
 
 	public void setGrammaticalInfo(LiftSense s, String value) {
 	  if (value == null) throw new IllegalArgumentException("Grammatical info code cannot be null");
-	  LiftHeaderRangeElement gramInfo = header.getGrammaticalInfoManager().getOrCreateRangeElement(value);
+	  Feature gramInfo = header.getGrammaticalInfoManager().getOrCreateRangeElement(value);
 	  s.setGrammaticalInfo(gramInfo);
 	}
 }

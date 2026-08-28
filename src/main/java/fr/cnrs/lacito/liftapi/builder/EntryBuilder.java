@@ -4,7 +4,6 @@ import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftObject;
-import fr.cnrs.lacito.liftapi.model.LiftRelation;
 import java.util.function.Consumer;
 
 /**
@@ -22,28 +21,10 @@ import java.util.function.Consumer;
  *       .build();
  * </pre>
  */
-public class EntryBuilder extends AbstractLiftElementBuilder<LiftEntry, LiftObject> {
+public final class EntryBuilder extends AbstractLiftElementWithFieldAndNoteAndIdBuilder<LiftEntry, LiftObject> {
 
     protected EntryBuilder(LiftDictionary dictionary, LiftObject parent) {
         super(LiftEntry.create(), dictionary, parent);
-    }
-
-    /**
-     * Set the entry ID.
-     */
-    @Override
-    public EntryBuilder withId(String id) {
-        super.withId(id);
-        return this;
-    }
-
-    /**
-     * Set the entry GUID.
-     */
-    @Override
-    public EntryBuilder withGuid(String guid) {
-        super.withGuid(guid);
-        return this;
     }
 
     /**
@@ -174,8 +155,7 @@ public class EntryBuilder extends AbstractLiftElementBuilder<LiftEntry, LiftObje
                 "Type and targetId cannot be null"
             );
         }
-        LiftRelation relation = new RelationBuilder(this.dictionary, this.element, type).withRefId(targetId).build();
-        //element.addRelation(relation);
+        new RelationBuilder(this.dictionary, this.element, type).withRefId(targetId).build();
         return this;
     }
 
@@ -192,7 +172,7 @@ public class EntryBuilder extends AbstractLiftElementBuilder<LiftEntry, LiftObje
 
     /**
      * Add an etymology via nested builder configuration.
-     * @see DictionaryObjectBuilderFactory#etymology(LiftEntry, String, String)
+     * @see DictionaryComponentBuilderFactory#etymology(LiftEntry, String, String)
      */
     public EntryBuilder addEtymology(Consumer<EtymologyBuilder> config, String type, String source) {
         EtymologyBuilder eb = new EtymologyBuilder(this.dictionary, element, type, source);
@@ -222,39 +202,109 @@ public class EntryBuilder extends AbstractLiftElementBuilder<LiftEntry, LiftObje
         return this;
     }
 
-    /**
-     * Add a note via nested builder configuration.
-     */
+
+    // /**
+    //  * Add a note via nested builder configuration.
+    //  */
+    // @Override
+    // public EntryBuilder addNote(String type, String language, String text) {
+    //     super.addNote(type, language, text);
+    //     return this;
+    // }
+
+    // /**
+    //  * Add a note via nested builder configuration.
+    //  */
+    // @Override
+    // public EntryBuilder addNote(Consumer<NoteBuilder> config, String type) {
+    //     super.addNote(config, type);
+    //     return this;
+    // }
+
+    // /**
+    //  * Add a trait.
+    //  */
+    // @Override
+    // public EntryBuilder addTrait(String name, String value) {
+    //     super.addTrait(name, value);
+    //     return this;
+    // }
+
+    // /**
+    //  * Add a field.
+    //  */
+    // @Override
+    // public EntryBuilder addField(String name, String language, String text) {
+    //     super.addField(name, language, text);
+    //     return this;
+    // }
+
+    // Override Id method (so that the good type is returned)
+
+    @Override
+    public EntryBuilder withId(String id) {
+        super.withGuid(id);
+        return this;
+    }
+
+    @Override
+    public EntryBuilder withGuid(String guid) {
+        super.withGuid(guid);
+        return this;
+    }
+
+    // Override addNote in order to return the good type
+
     @Override
     public EntryBuilder addNote(String type, String language, String text) {
         super.addNote(type, language, text);
         return this;
     }
 
-    /**
-     * Add a note via nested builder configuration.
-     */
     @Override
     public EntryBuilder addNote(Consumer<NoteBuilder> config, String type) {
         super.addNote(config, type);
         return this;
     }
 
-    /**
-     * Add a trait.
-     */
+    // Override WithField so that the correct type is returned
+    
+    @Override
+    public EntryBuilder addField(String name, String language, String text) {
+        super.addField(name, language, text);
+        return this;
+    }
+
+    @Override
+    public EntryBuilder addField(String name, Consumer<FieldBuilder> config) {
+        super.addField(name, config);
+        return this;
+    }
+
+    // Override Trait And Annotation builder in order to return the correct type
+
     @Override
     public EntryBuilder addTrait(String name, String value) {
         super.addTrait(name, value);
         return this;
     }
 
-    /**
-     * Add a field.
-     */
     @Override
-    public EntryBuilder addField(String name, String language, String text) {
-        super.addField(name, language, text);
+    public EntryBuilder addTrait(
+        String name,
+        String value,
+        Consumer<TraitBuilder> config
+    ) {
+        super.addTrait(name, value, config);
+        return this;
+    }
+
+    @Override
+    public EntryBuilder addAnnotation(
+        String name,
+        String value
+    ) {
+        super.addAnnotation(name, value);
         return this;
     }
 

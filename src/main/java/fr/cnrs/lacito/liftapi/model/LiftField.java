@@ -3,10 +3,12 @@ package fr.cnrs.lacito.liftapi.model;
 import javafx.beans.property.SimpleObjectProperty;
 
 /**
+ * A Lift field (not to be confused with {@link LiftTrait}, {@link LiftAnnotation}, {@link LiftNote}; for comparison see {@link LiftTrait}).
+ *
  * A field is a generalised element to allow an application to store information in a LIFT file that
-isn't explicitly described in the LIFT standard. Fields are described as part of the header
-information so that applications can give some descriptive meaning to the information they add
-to a file. (Lift specification, p. 13)
+ * isn't explicitly described in the LIFT standard. Fields are described as part of the header
+ * information so that applications can give some descriptive meaning to the information they add
+ * to a file. (Lift specification, p. 13)
  *
  * {@see HasField}.
  */
@@ -29,6 +31,11 @@ public final class LiftField extends AbstractExtensibleWithoutField {
         return nameProperty.get();
     }
 
+    // TODO duplicate method
+    public SimpleObjectProperty<LiftFieldAndTraitDefinition> nameProperty() {
+        return this.nameProperty;
+    }
+
     public AbstractExtensibleWithField getParent() {
         return parent;
     }
@@ -40,10 +47,6 @@ public final class LiftField extends AbstractExtensibleWithoutField {
 
     public MultiText getText() {
         return getMainMultiText();
-    }
-
-    public SimpleObjectProperty<LiftFieldAndTraitDefinition> nameProperty() {
-        return this.nameProperty;
     }
 
     public static LiftField create(LiftFieldAndTraitDefinition name) {

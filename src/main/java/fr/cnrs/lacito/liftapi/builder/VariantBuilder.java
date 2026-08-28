@@ -1,6 +1,8 @@
 package fr.cnrs.lacito.liftapi.builder;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
+import fr.cnrs.lacito.liftapi.model.AbstractIdentifiable;
+import fr.cnrs.lacito.liftapi.model.Feature;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
@@ -21,29 +23,29 @@ import java.util.function.Consumer;
  *       .build();
  * </pre>
  */
-public class VariantBuilder extends AbstractLiftElementBuilder<LiftVariant, LiftEntry> {
+public class VariantBuilder extends AbstractLiftElementWithFieldBuilder<LiftVariant, LiftEntry> {
 
     protected VariantBuilder(LiftDictionary dictionary, LiftEntry parent) {
-        super(LiftVariant.create(), dictionary, parent);
+        super(new LiftVariant(), dictionary, parent);
     }
 
-    /**
-     * Set the variant ID.
-     */
-    @Override
-    public VariantBuilder withId(String id) {
-        super.withId(id);
-        return this;
-    }
+    // /**
+    //  * Set the variant ID. If the ID is not set, it will be created automatically.
+    //  */
+    // @Override
+    // public VariantBuilder withId(String id) {
+    //     super.withId(id);
+    //     return this;
+    // }
 
-    /**
-     * Set the variant GUID.
-     */
-    @Override
-    public VariantBuilder withGuid(String guid) {
-        super.withGuid(guid);
-        return this;
-    }
+    // /**
+    //  * Set the variant GUID.
+    //  */
+    // @Override
+    // public VariantBuilder withGuid(String guid) {
+    //     super.withGuid(guid);
+    //     return this;
+    // }
 
     /**
      * Add a form in the specified language.
@@ -67,20 +69,19 @@ public class VariantBuilder extends AbstractLiftElementBuilder<LiftVariant, Lift
         return this;
     }
 
+    public VariantBuilder withType(String type) {
+        if (type == null || type.isBlank()) throw new IllegalArgumentException("Type cannot be null or empty.");
+        Feature f = dictionary.getHeader().getVariantTypeManager().getFeature(type);
+        super.withType(f);
+        return this;
+    }
+
     /**
      * Set the reference ID for this variant.
      */
     public VariantBuilder withRefId(String refId) {
-        if (refId != null) {
-            // Use reflection to call protected setRefId method
-            try {
-                java.lang.reflect.Method method = LiftVariant.class.getDeclaredMethod("setRefId", String.class);
-                method.setAccessible(true);
-                method.invoke(element, refId);
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to set refId", e);
-            }
-        }
+        AbstractIdentifiable e = dictionary.getLiftDictionaryRegistry().getEntryOrSenseByLiftId(refId);
+        element.setRefObject(e);
         return this;
     }
 
@@ -126,39 +127,53 @@ public class VariantBuilder extends AbstractLiftElementBuilder<LiftVariant, Lift
         return this;
     }
 
-    /**
-     * Add a note via nested builder configuration.
-     */
+    // /**
+    //  * Add a trait.
+    //  */
+    // @Override
+    // public VariantBuilder addTrait(String name, String value) {
+    //     super.addTrait(name, value);
+    //     return this;
+    // }
+
+    // Override WithField so that the correct type is returned
+    
     @Override
-    public VariantBuilder addNote(String type, String language, String text) {
-        super.addNote(type, language, text);
+    public VariantBuilder addField(String name, String language, String text) {
+        super.addField(name, language, text);
         return this;
     }
 
-    /**
-     * Add a note via nested builder configuration.
-     */
     @Override
-    public VariantBuilder addNote(Consumer<NoteBuilder> config, String type) {
-        super.addNote(config, type);
+    public VariantBuilder addField(String name, Consumer<FieldBuilder> config) {
+        super.addField(name, config);
         return this;
     }
 
-    /**
-     * Add a trait.
-     */
+    // Override Trait And Annotation builder in order to return the correct type
+
     @Override
     public VariantBuilder addTrait(String name, String value) {
         super.addTrait(name, value);
         return this;
     }
 
-    /**
-     * Add a field.
-     */
     @Override
-    public VariantBuilder addField(String name, String language, String text) {
-        super.addField(name, language, text);
+    public VariantBuilder addTrait(
+        String name,
+        String value,
+        Consumer<TraitBuilder> config
+    ) {
+        super.addTrait(name, value, config);
+        return this;
+    }
+
+    @Override
+    public VariantBuilder addAnnotation(
+        String name,
+        String value
+    ) {
+        super.addAnnotation(name, value);
         return this;
     }
 

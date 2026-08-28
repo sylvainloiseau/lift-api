@@ -1,6 +1,6 @@
 package fr.cnrs.lacito.liftapi;
 
-import fr.cnrs.lacito.liftapi.builder.DictionaryObjectBuilderFactory;
+import fr.cnrs.lacito.liftapi.builder.DictionaryComponentBuilderFactory;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import java.io.File;
 import org.junit.jupiter.api.Test;
@@ -29,6 +29,8 @@ public class DemoTest {
         this.dictionary = LiftDictionary.makeBuilder()
             .withLiftVersion(LiftVersion.V0_13)
             .withProducer("Test Producer")
+            .withMetaLanguages("en", "fr")
+            .withObjectLanguages("en", "fr")
             .build();
 
         // 2/ Adding new data with the fluent API
@@ -37,7 +39,7 @@ public class DemoTest {
         // 2.1/ Adding entries, (top-level element)
         // ----------------------------------------------------------------------
         //
-        DictionaryObjectBuilderFactory builder = dictionary.getComponentBuilder();
+        DictionaryComponentBuilderFactory builder = dictionary.getComponentBuilder();
         LiftEntry entry = builder
             .entry()
             .withForm("en", "dictionary")

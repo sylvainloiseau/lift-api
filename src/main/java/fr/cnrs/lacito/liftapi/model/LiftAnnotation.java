@@ -6,21 +6,21 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 
 /**
- * An annotation.
- *
+ * A Lift annotation (not to be confused with {@link LiftTrait}, {@link LiftField}, {@link LiftNote}; for comparison see {@link LiftTrait}).
+ * 
  * Annotations can appear on most lift objects, including
  * {@link LiftTrait}, {@link LiftField} or in the {@link Form}s of a {@link MultiText} object.
  *
  * Since an annotation can itself contains a MultiText object,
  * there is an possibility of unlimited recursive hierarchy of {@link Form} and {@link LiftAnnotation}.
  *
- * {@see HasAnnotation}.
+ * Lift components that can have {@see LiftAnnotation} implement the interface {@see HasAnnotation}.
  */
 public final class LiftAnnotation extends AbstractLiftRoot implements HasType {
 
     protected HasAnnotation parent;
 
-    private final ObjectProperty<LiftHeaderRangeElement> typeProperty = new SimpleObjectProperty<>(
+    private final ObjectProperty<Feature> typeProperty = new SimpleObjectProperty<>(
         this,
         "type",
         null
@@ -35,7 +35,7 @@ public final class LiftAnnotation extends AbstractLiftRoot implements HasType {
 
     }
 
-    public LiftAnnotation(LiftHeaderRangeElement element) {
+    public LiftAnnotation(Feature element) {
         typeProperty.set(element);
     }
 
@@ -48,8 +48,13 @@ public final class LiftAnnotation extends AbstractLiftRoot implements HasType {
     }
 
     @Override
-    public LiftHeaderRangeElement getType() {
+    public Feature getType() {
         return typeProperty.get();
+    }
+
+    @Override
+    public void setType(Feature type) {
+        typeProperty.set(type);
     }
 
     public String getValue() {
@@ -83,7 +88,7 @@ public final class LiftAnnotation extends AbstractLiftRoot implements HasType {
         this.whenProperty.set(v);
     }
 
-    public ObjectProperty<LiftHeaderRangeElement> nameProperty() {
+    public ObjectProperty<Feature> nameProperty() {
         return typeProperty;
     }
 
@@ -99,7 +104,4 @@ public final class LiftAnnotation extends AbstractLiftRoot implements HasType {
         return whenProperty;
     }
 
-    public void setName(LiftHeaderRangeElement e) {
-        typeProperty.set(e);
-    }
 }

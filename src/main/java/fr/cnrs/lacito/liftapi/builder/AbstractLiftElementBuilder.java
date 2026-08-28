@@ -2,18 +2,17 @@ package fr.cnrs.lacito.liftapi.builder;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
-import fr.cnrs.lacito.liftapi.model.AbstractExtensibleWithField;
-import fr.cnrs.lacito.liftapi.model.AbstractExtensibleWithoutField;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
 import fr.cnrs.lacito.liftapi.model.AbstractNotable;
+import fr.cnrs.lacito.liftapi.model.Feature;
+import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.HasAnnotation;
 import fr.cnrs.lacito.liftapi.model.HasField;
-import fr.cnrs.lacito.liftapi.model.HasNote;
 import fr.cnrs.lacito.liftapi.model.HasPronunciation;
 import fr.cnrs.lacito.liftapi.model.HasRelations;
 import fr.cnrs.lacito.liftapi.model.HasSense;
 import fr.cnrs.lacito.liftapi.model.HasTrait;
-import fr.cnrs.lacito.liftapi.model.Identifiable;
+import fr.cnrs.lacito.liftapi.model.HasType;
 import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftEtymology;
@@ -27,11 +26,9 @@ import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
 
-import java.util.function.Consumer;
-
-
 /**
  * Abstract base class for all LIFT element builders.
+ * 
  * Provides common functionality for building LIFT model elements with a fluent API.
  *
  * @param <T> the type of LIFT element being built
@@ -43,6 +40,7 @@ public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot, U e
     protected final LiftDictionaryRegistry registry;
     protected final LiftDictionary dictionary;
     protected final U parent;
+    private boolean registered = false;
 
     protected AbstractLiftElementBuilder(T element, LiftDictionary dictionary, U parent) {
         this.element = element;
@@ -51,213 +49,33 @@ public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot, U e
         this.parent = parent;
     }
 
-    /**
-     * Set the element ID (for identifiable elements).
-     * @throws IllegalArgumentException if the element built is not an instance of Identifiable
-     */
-    public AbstractLiftElementBuilder<T, U> withId(String id) {
-        if (element instanceof Identifiable i) {
-            i.setId(id);
-        } else {
-            throw new IllegalArgumentException(
-                "Cannot set ID on an element of type: " + element.getClass().getName()
-            );
+    public AbstractLiftElementBuilder<T, U> addMultitext(String lang, String text) {
+        if (lang == null || text == null) {
+            throw new IllegalArgumentException("Language and text cannot be null");
         }
+        element.getMainMultiText().add(new Form(lang, text));
         return this;
     }
 
-    /**
-     * Set the element GUID (for identifiable elements).
-     * @throws IllegalArgumentException if the element built is not an instance of Identifiable
-     */
-    public AbstractLiftElementBuilder<T, U> withGuid(String guid) {
-        if (element instanceof Identifiable i) {
-            i.setGuid(guid);
-        } else {
-            throw new IllegalArgumentException(
-                "Cannot set Guid on an element of type: " + element.getClass().getName()
-            );
+    public AbstractLiftElementBuilder<T, U> addMultitext(Form text) {
+        if (text == null) {
+            throw new IllegalArgumentException("Text cannot be null");
         }
+        element.getMainMultiText().add(text);
         return this;
     }
 
-    /**
-     * Set the date created (for extensible elements).
-     *
-     * @throws IllegalArgumentException if the element built is not an instance of AbstractExtensibleWithoutField and cannot receive creation date
-     */
-    public AbstractLiftElementBuilder<T, U> dateCreated(String date) {
-        if (element instanceof AbstractExtensibleWithoutField i) {
-            i.setDateCreated(date);
-        } else {
-            throw new IllegalArgumentException(
-                "Cannot set creation date on an element of type: " + element.getClass().getName()
-            );
-        }
-        return this;
-    }
 
     /**
-     * Set the date modified (for extensible elements).
-     *
-     * @throws IllegalArgumentException if the element built is not an instance of AbstractExtensibleWithoutField and cannot receive modification date
+     * Set the element type (for  components implementing {@link HasType}).
+     * @throws IllegalArgumentException if the element built is not an instance of {@code HasType}
      */
-    public AbstractLiftElementBuilder<T, U> dateModified(String date) {
-        if (element instanceof AbstractExtensibleWithoutField i) {
-            i.setDateModified(date);
+    public AbstractLiftElementBuilder<T, U> withType(Feature type) {
+        if (element instanceof HasType ht) {
+            ht.setType(type);
         } else {
             throw new IllegalArgumentException(
-                "Cannot set modification date on an element of type: " + element.getClass().getName()
-            );
-        }
-        return this;
-    }
-
-    /**
-     * Add a note with type, language, and text.
-     *
-     * @throws IllegalArgumentException if the element built is not an instance of HasNote.
-     */
-    public AbstractLiftElementBuilder<T, U> addNote(
-        String type,
-        String language,
-        String text
-    ) {
-        if (element instanceof HasNote parent) {
-            LiftNote note = new NoteBuilder(dictionary, parent, type).addText(language, text).build();
-            // No : already added by NoteBuilder!
-            //annotable.addNote(note);
-        } else {
-            throw new IllegalArgumentException(
-                "Cannot add LiftNote on an element of type: " + element.getClass().getName()
-            );
-        }
-        return this;
-    }
-
-    /**
-     * Add a note via nested builder configuration.
-     *
-     * @throws IllegalArgumentException if the element built is not an instance of HasNote.
-     */
-    public AbstractLiftElementBuilder<T, U> addNote(Consumer<NoteBuilder> config, String type) {
-        if (element instanceof HasNote parent) {
-            NoteBuilder nb = new NoteBuilder(dictionary, parent, type);
-            config.accept(nb);
-            nb.build();
-            // No : already added by NoteBuilder!
-            // notable.addNote(nb.build());
-        } else {
-            throw new IllegalArgumentException(
-                "Cannot add LiftNote on an element of type: " + element.getClass().getName()
-            );
-        }
-        return this;
-    }
-
-    /**
-     * Add a trait with name and value.
-     *
-     * @throws IllegalArgumentException if the element built is not an instance of HasTrait.
-     */
-    public AbstractLiftElementBuilder<T, U> addTrait(String name, String value) {
-        if (element instanceof HasTrait parent) {
-            new TraitBuilder(dictionary, parent, name, value).build();
-            // LiftTrait trait = new LiftTrait(definition, value);
-            // ((HasTrait) element).addTrait(trait);
-        } else {
-            throw new IllegalArgumentException(
-                "Cannot add LiftTrait on an element of type: " + element.getClass().getName()
-            );
-        }
-        return this;
-    }
-
-    /**
-     * Add a trait with name, value, and annotations.
-     *
-     * @throws IllegalArgumentException if the element built is not an instance of HasTrait.
-     */
-    public AbstractLiftElementBuilder<T, U> addTrait(
-        String name,
-        String value,
-        Consumer<TraitBuilder> config
-    ) {
-        if (element instanceof HasTrait parent) {
-            TraitBuilder tb = new TraitBuilder(dictionary, parent, name, value);
-            config.accept(tb);
-            tb.build();
-            // No : already added by NoteBuilder!
-            //((HasTrait) element).addTrait(tb.build());
-        } else {
-            throw new IllegalArgumentException(
-                "Cannot add LiftTrait on an element of type: " + element.getClass().getName()
-            );
-        }
-        return this;
-    }
-
-    /**
-     * Add a field with name, language, and text.
-     *
-     * @throws IllegalArgumentException if the element built cannot received field.
-     */
-    public AbstractLiftElementBuilder<T, U> addField(
-        String name,
-        String language,
-        String text
-    ) {
-        if (element instanceof AbstractExtensibleWithField parent) {
-            new FieldBuilder(dictionary, parent, name).addText(language, text).build();
-            // LiftField field = LiftField.create(name);
-            // field.addText(new Form(language, text));
-            // ((AbstractExtensibleWithField) element).addField(field);
-        } else {
-            throw new IllegalArgumentException(
-                "Cannot add LiftField on an element of type: " + element.getClass().getName()
-            );
-        }
-        return this;
-    }
-
-    /**
-     * Add a field via nested builder configuration.
-     *
-     * @throws IllegalArgumentException if the element built cannot received field.
-     */
-    public AbstractLiftElementBuilder<T, U> addField(
-        String name,
-        Consumer<FieldBuilder> config
-    ) {
-        if (element instanceof AbstractExtensibleWithField parent) {
-            FieldBuilder fb = new FieldBuilder(dictionary, parent, name);
-            config.accept(fb);
-            fb.build();
-            // No : already added by NoteBuilder!
-            //((AbstractExtensibleWithField) element).addField(fb.build());
-        } else {
-            throw new IllegalArgumentException(
-                "Cannot add LiftField on an element of type: " + element.getClass().getName()
-            );
-        }
-        return this;
-    }
-
-    /**
-     * Add an annotation to the element.
-     * @throws IllegalArgumentException if the element built is not an instance of HasAnnotation
-     */
-    public AbstractLiftElementBuilder<T, U> addAnnotation(
-        String name,
-        String value
-    ) {
-        if (element instanceof HasAnnotation parent) {
-            LiftAnnotation a = new AnnotationBuilder(dictionary, parent, name).withValue(value).build();
-            // LiftAnnotation annotation = LiftAnnotation.create(name, value);
-            // ((HasAnnotation) element).addAnnotation(annotation);
-        } else {
-            throw new IllegalArgumentException(
-                "Cannot add LiftAnnotation on an element of type: " + element.getClass().getName()
+                "Cannot set a type on an component of type: " + element.getClass().getName()
             );
         }
         return this;
@@ -274,6 +92,9 @@ public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot, U e
      * itself).
      */
     protected void register() {
+        if(registered) {
+            throw new IllegalStateException("This builder has already been used.");
+        }
         switch(element){
             case LiftNote note -> {
                 ((AbstractNotable)parent).addNote(note);
@@ -309,5 +130,6 @@ public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot, U e
             default -> {throw new IllegalArgumentException("Unsupported element type: " + element);}
         }
         registry.register(this.element);
+        this.registered = true;
     }
 }

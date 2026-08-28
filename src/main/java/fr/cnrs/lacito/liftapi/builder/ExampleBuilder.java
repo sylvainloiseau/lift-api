@@ -1,9 +1,11 @@
 package fr.cnrs.lacito.liftapi.builder;
 
+import java.util.function.Consumer;
+
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftExample;
-import fr.cnrs.lacito.liftapi.model.LiftHeaderRangeElement;
+import fr.cnrs.lacito.liftapi.model.Feature;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
 
 /**
@@ -18,7 +20,7 @@ import fr.cnrs.lacito.liftapi.model.LiftSense;
  *       .build();
  * </pre>
  */
-public class ExampleBuilder extends AbstractLiftElementBuilder<LiftExample, LiftSense> {
+public final class ExampleBuilder extends AbstractLiftElementWithFieldAndNoteBuilder<LiftExample, LiftSense> {
 
     protected ExampleBuilder(LiftDictionary dictionary, LiftSense parent) {
         super(LiftExample.create(), dictionary, parent);
@@ -29,24 +31,6 @@ public class ExampleBuilder extends AbstractLiftElementBuilder<LiftExample, Lift
      */
     protected ExampleBuilder(LiftDictionary dictionary, LiftSense parent, String source) {
         super(LiftExample.create(source), dictionary, parent);
-    }
-
-    /**
-     * Set the example ID.
-     */
-    @Override
-    public ExampleBuilder withId(String id) {
-        super.withId(id);
-        return this;
-    }
-
-    /**
-     * Set the example GUID.
-     */
-    @Override
-    public ExampleBuilder withGuid(String guid) {
-        super.withGuid(guid);
-        return this;
     }
 
     /**
@@ -97,9 +81,9 @@ public class ExampleBuilder extends AbstractLiftElementBuilder<LiftExample, Lift
             throw new IllegalArgumentException("Type and translation cannot be null");
         }
         if (!dictionary.getHeader().getTranslationTypeManager().hasRangeElements(type)) {
-            dictionary.getHeader().getTranslationTypeManager().createRangeElement(type);
+            dictionary.getHeader().getTranslationTypeManager().addFeature(type);
         }
-        LiftHeaderRangeElement rangeElement = dictionary.getHeader().getTranslationTypeManager().getRangeElement(type);
+        Feature rangeElement = dictionary.getHeader().getTranslationTypeManager().getFeature(type);
         element.getOrCreateTranslation(rangeElement).add(translation);
         return this;
     }
@@ -139,6 +123,61 @@ public class ExampleBuilder extends AbstractLiftElementBuilder<LiftExample, Lift
 //        super.addField(name, language, text);
 //        return this;
 //    }
+
+    // Override addNote in order to return the good type
+
+    @Override
+    public ExampleBuilder addNote(String type, String language, String text) {
+        super.addNote(type, language, text);
+        return this;
+    }
+
+    @Override
+    public ExampleBuilder addNote(Consumer<NoteBuilder> config, String type) {
+        super.addNote(config, type);
+        return this;
+    }
+
+    // Override WithField so that the correct type is returned
+    
+    @Override
+    public ExampleBuilder addField(String name, String language, String text) {
+        super.addField(name, language, text);
+        return this;
+    }
+
+    @Override
+    public ExampleBuilder addField(String name, Consumer<FieldBuilder> config) {
+        super.addField(name, config);
+        return this;
+    }
+
+    // Override Trait And Annotation builder in order to return the correct type
+
+    @Override
+    public ExampleBuilder addTrait(String name, String value) {
+        super.addTrait(name, value);
+        return this;
+    }
+
+    @Override
+    public ExampleBuilder addTrait(
+        String name,
+        String value,
+        Consumer<TraitBuilder> config
+    ) {
+        super.addTrait(name, value, config);
+        return this;
+    }
+
+    @Override
+    public ExampleBuilder addAnnotation(
+        String name,
+        String value
+    ) {
+        super.addAnnotation(name, value);
+        return this;
+    }
 
     /**
      * Build the example.

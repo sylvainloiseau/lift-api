@@ -3,8 +3,7 @@ package fr.cnrs.lacito.liftapi.model;
 import java.util.Optional;
 
 /**
- * For LIFT objects that have a reference towards others LIFT object thanks to
- * an idRef.
+ * Interface for LIFT components that can have a reference towards other lift component.
  */
 public sealed interface HasRefId permits LiftVariant, LiftRelation {
     public Optional<String> getRefId();

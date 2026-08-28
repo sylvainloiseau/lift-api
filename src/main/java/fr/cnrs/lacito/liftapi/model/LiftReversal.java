@@ -40,7 +40,7 @@ public final class LiftReversal
         return parent;
     }
 
-    private final ObjectProperty<LiftHeaderRangeElement> typeProperty = new SimpleObjectProperty<>(
+    private final ObjectProperty<Feature> typeProperty = new SimpleObjectProperty<>(
         this,
         "type",
         null
@@ -49,7 +49,7 @@ public final class LiftReversal
     public LiftReversal() {
     }
 
-    public LiftReversal(LiftHeaderRangeElement type) {
+    public LiftReversal(Feature type) {
         this.typeProperty.set(type);
     }
 
@@ -67,11 +67,13 @@ public final class LiftReversal
         return getMainMultiText();
     }
 
-    public LiftHeaderRangeElement getType() {
+    @Override
+    public Feature getType() {
         return typeProperty.get();
     }
 
-    public void setType(LiftHeaderRangeElement type) {
+    @Override
+    public void setType(Feature type) {
         if (type == null) throw new IllegalArgumentException("type cannot be null");
         this.typeProperty.set(type);
     }
@@ -84,7 +86,7 @@ public final class LiftReversal
         this.main = main;
     }
 
-    public ObjectProperty<LiftHeaderRangeElement> typeProperty() {
+    public ObjectProperty<Feature> typeProperty() {
         return typeProperty;
     }
 

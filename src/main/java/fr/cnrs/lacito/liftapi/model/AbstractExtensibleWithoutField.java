@@ -6,6 +6,9 @@ import javafx.beans.property.ListProperty;
 import javafx.beans.property.SimpleListProperty;
 import javafx.collections.FXCollections;
 
+/**
+ * Superclass of components that can have {@link LiftAnnotation} and {@link LiftTrait}.
+ */
 public abstract sealed class AbstractExtensibleWithoutField
     extends AbstractLiftRoot
     implements ExtensibleWithoutField, HasAnnotation, HasTrait

@@ -6,7 +6,7 @@ import javafx.beans.property.SimpleMapProperty;
 import javafx.collections.FXCollections;
 
 /**
- * Can receive Note (not to be confused with annotation).
+ * Superclass of component that can receive {@link LiftNote} (not to be confused with {@link LiftAnnotation}).
  *
  * @see LiftNote
  */
@@ -27,7 +27,7 @@ public abstract sealed class AbstractNotable
         // its values.
     @Override
     public void addNote(LiftNote n) throws DuplicateTypeException {
-        LiftHeaderRangeElement type = n.getType();
+        Feature type = n.getType();
         if (notesProperty.containsKey(type.getId())) {
             System.out.println("----------------------");
             System.out.println(notesProperty.toString());
@@ -37,7 +37,7 @@ public abstract sealed class AbstractNotable
                 "Duplicate Note type: " +
                     type.getId() +
                     "; Id: " +
-                    ((AbstractIdentifiable) this).getId()
+                    ((AbstractIdentifiable) this).getId().get()
             );
         }
         notesProperty.put(type.getId(), n);

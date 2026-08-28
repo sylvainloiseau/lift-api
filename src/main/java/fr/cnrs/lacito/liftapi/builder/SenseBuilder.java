@@ -3,7 +3,7 @@ package fr.cnrs.lacito.liftapi.builder;
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.HasSense;
-import fr.cnrs.lacito.liftapi.model.LiftHeaderRangeElement;
+import fr.cnrs.lacito.liftapi.model.Feature;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.LiftRelation;
 import java.util.function.Consumer;
@@ -26,28 +26,10 @@ import java.util.function.Consumer;
  *       .build();
  * </pre>
  */
-public class SenseBuilder extends AbstractLiftElementBuilder<LiftSense, HasSense> {
+public final class SenseBuilder extends AbstractLiftElementWithFieldAndNoteAndIdBuilder<LiftSense, HasSense> {
 
     protected SenseBuilder(LiftDictionary dictionary, HasSense parent) {
         super(LiftSense.create(), dictionary, parent);
-    }
-
-    /**
-     * Set the sense ID.
-     */
-    @Override
-    public SenseBuilder withId(String id) {
-        super.withId(id);
-        return this;
-    }
-
-    /**
-     * Set the sense GUID.
-     */
-    @Override
-    public SenseBuilder withGuid(String guid) {
-        super.withGuid(guid);
-        return this;
     }
 
     /**
@@ -101,7 +83,7 @@ public class SenseBuilder extends AbstractLiftElementBuilder<LiftSense, HasSense
         if (pos == null) {
             throw new IllegalArgumentException("Part of speech cannot be null");
         }
-        LiftHeaderRangeElement gramInfo = dictionary.getHeader().getGrammaticalInfoManager().getOrCreateRangeElement(pos);
+        Feature gramInfo = dictionary.getHeader().getGrammaticalInfoManager().getOrCreateRangeElement(pos);
         element.setGrammaticalInfo(gramInfo);
         return this;
     }
@@ -227,6 +209,75 @@ public class SenseBuilder extends AbstractLiftElementBuilder<LiftSense, HasSense
     //     super.addField(name, language, text);
     //     return this;
     // }
+
+    // Override Id method (so that the good type is returned)
+
+    @Override
+    public SenseBuilder withId(String id) {
+        super.withGuid(id);
+        return this;
+    }
+
+    @Override
+    public SenseBuilder withGuid(String guid) {
+        super.withGuid(guid);
+        return this;
+    }
+
+    // Override addNote in order to return the good type
+
+    @Override
+    public SenseBuilder addNote(String type, String language, String text) {
+        super.addNote(type, language, text);
+        return this;
+    }
+
+    @Override
+    public SenseBuilder addNote(Consumer<NoteBuilder> config, String type) {
+        super.addNote(config, type);
+        return this;
+    }
+
+    // Override WithField so that the correct type is returned
+    
+    @Override
+    public SenseBuilder addField(String name, String language, String text) {
+        super.addField(name, language, text);
+        return this;
+    }
+
+    @Override
+    public SenseBuilder addField(String name, Consumer<FieldBuilder> config) {
+        super.addField(name, config);
+        return this;
+    }
+
+    // Override Trait And Annotation builder in order to return the correct type
+
+    @Override
+    public SenseBuilder addTrait(String name, String value) {
+        super.addTrait(name, value);
+        return this;
+    }
+
+    @Override
+    public SenseBuilder addTrait(
+        String name,
+        String value,
+        Consumer<TraitBuilder> config
+    ) {
+        super.addTrait(name, value, config);
+        return this;
+    }
+
+    @Override
+    public SenseBuilder addAnnotation(
+        String name,
+        String value
+    ) {
+        super.addAnnotation(name, value);
+        return this;
+    }
 
     /**
      * Build the sense.

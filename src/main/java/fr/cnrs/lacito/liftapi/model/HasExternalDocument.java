@@ -1,8 +1,8 @@
 package fr.cnrs.lacito.liftapi.model;
 
 /**
- * Reference to an external resource which documents
- * a stated material (sense or pronunciation).
+ * Interface for LIFT components that can have a reference to an 
+ * external files documenting a linguistic material (visual representation of a sense or sound recording of a pronunciation).
  */
 public sealed interface HasExternalDocument
     permits LiftMedia, LiftIllustration

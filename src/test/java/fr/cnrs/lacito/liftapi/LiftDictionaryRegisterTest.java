@@ -3,7 +3,9 @@ package fr.cnrs.lacito.liftapi;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import fr.cnrs.lacito.liftapi.builder.DictionaryObjectBuilderFactory;
+import fr.cnrs.lacito.liftapi.builder.DictionaryComponentBuilderFactory;
+import fr.cnrs.lacito.liftapi.model.LiftEntry;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -16,12 +18,13 @@ public class LiftDictionaryRegisterTest {
         this.dictionary = LiftDictionary.makeBuilder()
             .withLiftVersion(LiftVersion.V0_13)
             .withProducer("Test Producer")
+            .withObjectLanguages("en")
             .build();
     }
 
     @Test
     public void testEntryCount() {
-        DictionaryObjectBuilderFactory builder = dictionary.getComponentBuilder();
+        DictionaryComponentBuilderFactory builder = dictionary.getComponentBuilder();
 
         builder.entry().withForm("en", "dictionary").build();
         // this method should be refactored
@@ -33,7 +36,7 @@ public class LiftDictionaryRegisterTest {
 
     @Test
     public void testRegistryEntryById() {
-        DictionaryObjectBuilderFactory builder = dictionary.getComponentBuilder();
+        DictionaryComponentBuilderFactory builder = dictionary.getComponentBuilder();
         LiftDictionaryRegistry registry =
             dictionary.getLiftDictionaryRegistry();
 
@@ -46,7 +49,7 @@ public class LiftDictionaryRegisterTest {
 
     @Test
     public void testRegistryEntryList() {
-        DictionaryObjectBuilderFactory builder = dictionary.getComponentBuilder();
+        DictionaryComponentBuilderFactory builder = dictionary.getComponentBuilder();
         LiftDictionaryRegistry registry =
             dictionary.getLiftDictionaryRegistry();
 
@@ -61,7 +64,7 @@ public class LiftDictionaryRegisterTest {
 
     @Test
     public void testRegistryThrowsExceptionOnAdd() {
-        DictionaryObjectBuilderFactory builder = dictionary.getComponentBuilder();
+        DictionaryComponentBuilderFactory builder = dictionary.getComponentBuilder();
 
         LiftDictionaryRegistry registry =
             dictionary.getLiftDictionaryRegistry();
@@ -76,5 +79,32 @@ public class LiftDictionaryRegisterTest {
                 .getEntries()
                 .add(builder.entry().withForm("en", "foo").build());
         });
+    }
+
+    @Test
+    public void testReferenceCounting() {
+        dictionary.getHeader().getRelationTypeManager().addFeature("suppletion");
+
+        DictionaryComponentBuilderFactory builder = dictionary.getComponentBuilder();
+
+        LiftEntry e = builder.entry().withForm("en", "dictionary").build();
+        LiftEntry source = builder.entry().withForm("en", "source")
+           .addRelation(
+            r -> r.withRef(e).withType("suppletion")
+        ).build();
+
+        // the "e" entry cannot be removed since it is referenced from the "source" node.
+        LiftDictionaryRegistry registry =
+            dictionary.getLiftDictionaryRegistry();
+        assertThrows(IllegalStateException.class, () -> {
+            registry
+                .removeFromDictionary(e);
+        });
+        
+        // the e entry can now be removed
+        registry
+                .removeFromDictionary(source);
+        registry
+                .removeFromDictionary(e);
     }
 }

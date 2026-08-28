@@ -3,7 +3,7 @@ package fr.cnrs.lacito.liftapi.builder;
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.model.HasAnnotation;
 import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
-import fr.cnrs.lacito.liftapi.model.LiftHeaderRangeElement;
+import fr.cnrs.lacito.liftapi.model.Feature;
 
 /**
  * Builder for creating LiftAnnotation instances with a fluent API.
@@ -19,8 +19,6 @@ import fr.cnrs.lacito.liftapi.model.LiftHeaderRangeElement;
  */
 public class AnnotationBuilder extends AbstractLiftElementBuilder<LiftAnnotation, HasAnnotation> {
 
-    private String name;
-
     /**
      * Create an annotation builder.
      */
@@ -33,27 +31,13 @@ public class AnnotationBuilder extends AbstractLiftElementBuilder<LiftAnnotation
      */
     protected AnnotationBuilder(LiftDictionary dictionary, HasAnnotation parent, String name) {
         super(new LiftAnnotation(), dictionary, parent);
-        this.withName(name);
+        this.withType(name);
     }
 
-    public AnnotationBuilder withName(String name) {
-        if (name == null) {
-            throw new IllegalArgumentException("Annotation name cannot be null");
-        }
-        if (!dictionary.getHeader().getAnnotationTypeManager().hasRangeElements(name)) {
-            dictionary.getHeader().getAnnotationTypeManager().createRangeElement(name);
-        }
-        LiftHeaderRangeElement e = dictionary.getHeader().getAnnotationTypeManager().getRangeElement(name);
-        element.setName(e);
-        return this;
-    }
-
-    /**
-     * Set the annotation GUID.
-     */
-    @Override
-    public AnnotationBuilder withGuid(String guid) {
-        super.withGuid(guid);
+    public AnnotationBuilder withType(String type) {
+        if (type == null || type.isBlank()) throw new IllegalArgumentException("Type cannot be null or empty.");
+        Feature f = dictionary.getHeader().getAnnotationTypeManager().getFeature(type);
+        super.withType(f);
         return this;
     }
 

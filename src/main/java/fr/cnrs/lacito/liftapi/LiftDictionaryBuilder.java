@@ -3,17 +3,21 @@ package fr.cnrs.lacito.liftapi;
 import fr.cnrs.lacito.liftapi.model.Form;
 
 /**
- * This class is a builder for the {@LiftDictionary} class.
+ * This class is a builder for the {@link LiftDictionary} class.
  *
  * It allows to create a dictionary by setting its properties one by one.
  *
  * Usage:
  * <pre>
+ *   // Create a dictionary :
  *   LiftDictionary dictionary = Builders.dictionary()
  *       .withLiftVersion(LiftVersion.V0_13)
- *       .withProducer("MyProducer")
- *       .withDescription("en", "My Dictionary")
+ *       .withProducer("My language documentation project")
+ *       .withMetaLanguages("en")
+ *       .withObjectLanguages("qyz")
+ *       .withDescription("en", "Description of the doculect X (code qyz)")
  *       .build();
+ *  // And then start adding entry:
  *  Builder builder = dictionary.getComponentBuilder();
  *  builder.entry()
  *      .withId("entry1")
@@ -66,4 +70,35 @@ public class LiftDictionaryBuilder {
     public LiftDictionary build() {
         return this.dictionary;
     }
+
+    public LiftDictionaryBuilder withMetaLanguages(String... langs) {
+        for (String lang : langs)
+            this.dictionary.getMetaLanguageManager().addLanguage(lang);
+        return this;
+    }
+
+    public LiftDictionaryBuilder withObjectLanguages(String... langs) {
+        for (String lang : langs)
+            this.dictionary.getObjectLanguageManager().addLanguage(lang);
+        return this;
+    }
+
+    public LiftDictionaryBuilder withPartOfSpeech(String... poss) {
+        for (String pos : poss)
+            this.dictionary.getHeader().getGrammaticalInfoManager().addFeature(pos);
+        return this;
+    }
+
+    public LiftDictionaryBuilder withNoteType(String... noteTypes) {
+        for (String noteType : noteTypes)
+            this.dictionary.getHeader().getNoteTypeManager().addFeature(noteType);
+        return this;
+    }
+
+    public LiftDictionaryBuilder withVariantType(String... variantTypes) {
+        for (String variantType : variantTypes)
+            this.dictionary.getHeader().getVariantTypeManager().addFeature(variantType);
+        return this;
+    }
+
 }

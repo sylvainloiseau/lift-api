@@ -15,10 +15,43 @@ import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
 
 /**
- * A trait is a key-value pair. The key doesn't have to be unique on the object that receive the traits:
- * several traits can have the same key on the same object.
+ * A Lift trait (not to be confused with {@link LiftNote}, {@link LiftAnnotation}, {@link LiftField}).
+ * 
+ * The existence of this variety of components (Note, Annotation, Field, Trait), as well as the fact that some of them
+ * can annotate others, is one of the complex aspects of the Lift data model.
+ * 
+ * <ul>
+ * <li>A <strong>{@link LiftTrait}</strong> is a key-value pair.
+ * <ul>
+ * <li> The key doesn't have to be unique on the object that receive the traits: several traits can have the same key on the same object.</li>
+ * <li> The key indicate wich set of possible values are avaible: the key is a {@link LiftFieldAndTraitDefinition}
+ *   (see {@link LiftTrait#getDefinition()}), which contain a reference to a {@link FeatureSet} taxinomy
+ *   (see {@link LiftFieldAndTraitDefinition#getResolvedRange()}). See below for more details.</li>
+ * </ul>
+ * </li>
+ * <li>A <strong>{@link LiftField}</strong> is a key associated with an open value (text, date, integer).
+ * <ul>
+ * <li> The key has to be unique on the object that receive the field.</li>
+ * <li> The key is a {@link LiftFieldAndTraitDefinition}
+ *   (see {@link LiftField#getType()}), which indicate the data model (text, date, integer)</li>
+ * <li>a (string) value is a multitext.</li>
+ * </ul>
+ * </li>
+ * <li>A <strong>{@link LiftAnnotation}</strong> is a meta-comment about the making of the dictionary.
+ * <ul>
+ * <li> It contains a type (a {@link Feature}), as well as a date and an annotator name, and a free text</li>
+ * <li> The possible type can be managed with the manager ({@link LiftHeader#getAnnotationTypeManager()}).</li>
+ * </ul>
+ * </li>
+ * <li>A <strong>{@link LiftNote}</strong> is a supplementary descriptive material.
+ * <ul>
+ * <li> It contains a type (a {@link Feature}), as well as a MultiText</li>
+ * <li> The possible type can be managed with the manager ({@link LiftHeader#getNoteTypeManager()}).</li>
+ * </ul>
+ * </li>
+ * </ul>
  *
- * The key is a {@link LiftFieldAndTraitDefinition} (use {@link #geDefinition()} to access it).
+ *
  * The LiffFieldAndTraitDefinition specifies in particular the datamodel of the traits.
  * The different possible datamodel are the values of
  * {@link LiftFieldAndTraitDefinitionDataModel} (see {@link LiftFieldAndTraitDefinition#getDataModel()}). See the
@@ -50,9 +83,9 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
 
     private SimpleObjectProperty<ZonedDateTime> dateTimeProperty;
     private StringProperty stringValueProperty;
-    private SimpleObjectProperty<LiftHeaderRangeElement> rangeElementProperty;
-    private SimpleSetProperty<LiftHeaderRangeElement> rangeElementSetProperty;
-    private SimpleListProperty<LiftHeaderRangeElement> rangeElementListProperty;
+    private SimpleObjectProperty<Feature> rangeElementProperty;
+    private SimpleSetProperty<Feature> rangeElementSetProperty;
+    private SimpleListProperty<Feature> rangeElementListProperty;
     private SimpleIntegerProperty integerProperty;
 
     public LiftTrait(LiftFieldAndTraitDefinition def) {
@@ -92,7 +125,7 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
         this.integerProperty = new SimpleIntegerProperty(this, "value", i);
     }
 
-    public LiftTrait(LiftFieldAndTraitDefinition def, LiftHeaderRangeElement rangeElement) {
+    public LiftTrait(LiftFieldAndTraitDefinition def, Feature rangeElement) {
         this(def);
         if (def.getDataModel().isEmpty() || def.getDataModel().get() != LiftFieldAndTraitDefinitionDataModel.OPTION) {
             throw new IllegalArgumentException("The Datamodel of this LiftTrait is not compatible with a range value ");
@@ -100,20 +133,20 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
         this.rangeElementProperty = new SimpleObjectProperty<>(this, "value", rangeElement);
     }
 
-    public LiftTrait(LiftFieldAndTraitDefinition def, HashSet<LiftHeaderRangeElement> rangeElementSet) {
+    public LiftTrait(LiftFieldAndTraitDefinition def, HashSet<Feature> rangeElementSet) {
         this(def);
         if (def.getDataModel().isEmpty() || def.getDataModel().get() != LiftFieldAndTraitDefinitionDataModel.OPTION_COLLECTION) {
             throw new IllegalArgumentException("The Datamodel of this LiftTrait is not compatible with a set of range value ");
         }
-        this.rangeElementSetProperty = new SimpleSetProperty<LiftHeaderRangeElement>(this, "value", FXCollections.observableSet(rangeElementSet));
+        this.rangeElementSetProperty = new SimpleSetProperty<Feature>(this, "value", FXCollections.observableSet(rangeElementSet));
     }
 
-    public LiftTrait(LiftFieldAndTraitDefinition def, List<LiftHeaderRangeElement> rangeElementList) {
+    public LiftTrait(LiftFieldAndTraitDefinition def, List<Feature> rangeElementList) {
         this(def);
         if (def.getDataModel().isEmpty() || def.getDataModel().get() != LiftFieldAndTraitDefinitionDataModel.OPTION_SEQUENCE) {
             throw new IllegalArgumentException("The Datamodel of this LiftTrait is not compatible with a list of range value ");
         }
-        this.rangeElementListProperty = new SimpleListProperty<LiftHeaderRangeElement>(this, "value", FXCollections.observableList(rangeElementList));
+        this.rangeElementListProperty = new SimpleListProperty<Feature>(this, "value", FXCollections.observableList(rangeElementList));
     }
 
     @Override

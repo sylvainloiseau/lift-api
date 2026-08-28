@@ -1,10 +1,12 @@
 package fr.cnrs.lacito.liftapi.builder;
 
+import java.util.function.Consumer;
+
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftEtymology;
-import fr.cnrs.lacito.liftapi.model.LiftHeaderRangeElement;
+import fr.cnrs.lacito.liftapi.model.Feature;
 
 /**
  * Builder for creating LiftEtymology instances with a fluent API.
@@ -18,7 +20,7 @@ import fr.cnrs.lacito.liftapi.model.LiftHeaderRangeElement;
  * </pre>
  */
 public class EtymologyBuilder
-    extends AbstractLiftElementBuilder<LiftEtymology, LiftEntry>
+    extends AbstractLiftElementWithFieldBuilder<LiftEtymology, LiftEntry>
 {
 
     /**
@@ -36,9 +38,9 @@ public class EtymologyBuilder
             throw new IllegalArgumentException("Etymology type cannot be null");
         }
         if (!dictionary.getHeader().getEtymologyTypeManager().hasRangeElements(type)) {
-            dictionary.getHeader().getEtymologyTypeManager().createRangeElement(type);
+            dictionary.getHeader().getEtymologyTypeManager().addFeature(type);
         }
-        LiftHeaderRangeElement e = dictionary.getHeader().getEtymologyTypeManager().getRangeElement(type);
+        Feature e = dictionary.getHeader().getEtymologyTypeManager().getFeature(type);
 
         this.element.setType(e);
         this.element.setSource(source);
@@ -93,6 +95,13 @@ public class EtymologyBuilder
         return this;
     }
 
+    public EtymologyBuilder withType(String type) {
+        if (type == null || type.isBlank()) throw new IllegalArgumentException("Type cannot be null or empty.");
+        Feature f = dictionary.getHeader().getEtymologyTypeManager().getFeature(type);
+        super.withType(f);
+        return this;
+    }
+
 //    /**
 //     * Add a note via nested builder configuration.
 //     */
@@ -132,6 +141,47 @@ public class EtymologyBuilder
 //        super.addField(name, language, text);
 //        return this;
 //    }
+
+    // Override WithField so that the correct type is returned
+    
+    @Override
+    public EtymologyBuilder addField(String name, String language, String text) {
+        super.addField(name, language, text);
+        return this;
+    }
+
+    @Override
+    public EtymologyBuilder addField(String name, Consumer<FieldBuilder> config) {
+        super.addField(name, config);
+        return this;
+    }
+
+    // Override Trait And Annotation builder in order to return the correct type
+
+    @Override
+    public EtymologyBuilder addTrait(String name, String value) {
+        super.addTrait(name, value);
+        return this;
+    }
+
+    @Override
+    public EtymologyBuilder addTrait(
+        String name,
+        String value,
+        Consumer<TraitBuilder> config
+    ) {
+        super.addTrait(name, value, config);
+        return this;
+    }
+
+    @Override
+    public EtymologyBuilder addAnnotation(
+        String name,
+        String value
+    ) {
+        super.addAnnotation(name, value);
+        return this;
+    }
 
     /**
      * Build the etymology.

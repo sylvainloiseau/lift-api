@@ -3,7 +3,7 @@ package fr.cnrs.lacito.liftapi.model;
 import java.util.Map;
 
 /**
- * For objects that can have note.
+ * Interface for LIFT components that can have {@link LiftNote}.
  */
 public sealed interface HasNote extends LiftObject permits AbstractNotable {
     /**

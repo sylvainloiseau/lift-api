@@ -1,6 +1,7 @@
 package fr.cnrs.lacito.liftapi;
 
-import fr.cnrs.lacito.liftapi.builder.DictionaryObjectBuilderFactory;
+import fr.cnrs.lacito.liftapi.builder.DictionaryComponentBuilderFactory;
+import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
@@ -24,16 +25,17 @@ import javax.xml.stream.XMLStreamException;
 /// The entry point for working with a LIFT dictionary.
 /// 
 /// Methods are distributed between this class and other classes in the same package
-/// (such as [LiftDictionaryRegistry], [DictionaryObjectBuilderFactory], [LiftDictionaryLanguagesManager], ...)
-/// whose singleton instance is accessible from here through [getLiftDictionaryRegistry], [getComponentBuilder],
-/// [getObjectLanguageManager] and [getMetatLanguageManager], etc.
+/// (such as [LiftDictionaryRegistry], [DictionaryComponentBuilderFactory], [LiftDictionaryLanguagesManager], ...)
+/// whose singleton instance is accessible from here through [LiftDictionary#getLiftDictionaryRegistry)],
+/// [LiftDictionary#getComponentBuilder()],
+/// [LiftDictionary#getObjectLanguageManager()] and [LiftDictionary#getMetaLanguageManager()], etc.
 /// 
 /// Functionalities include:
 /// 
-/// - create dictionary from an XML document ([loadDictionaryFromFile]) or from scratch ([makeBuilder])
-/// - add components to the dictionary with the fluent API ([getComponentBuilder]), delete components ([LiftDictionaryRegistry#removeFromDictionary])
-/// - lookup into dictionary content ([getEntryByForm], [searchInMetaLanguage], [searchInObjectLanguage])
-/// - manage languages ([getObjectLanguageManager], [getMetaLanguageManager])
+/// - create dictionary from an XML document ([LiftDictionary#loadDictionaryFromFile(File f)]) or from scratch ([LiftDictionary#makeBuilder()])
+/// - add components to the dictionary with the fluent API ([LiftDictionary#getComponentBuilder()]), delete components ([LiftDictionaryRegistry#removeFromDictionary(AbstractLiftRoot node)])
+/// - lookup into dictionary content ([LiftDictionary#getEntryByForm(String lang, String form)], [LiftDictionary#searchInMetaLanguage(String lang, String searched)], [LiftDictionary#searchInObjectLanguage(String lang, String searched)])
+/// - manage languages ([LiftDictionary#getObjectLanguageManager()], [LiftDictionary#getMetaLanguageManager()])
 ///
 /// Internaly, components of the dictionary are linked in two ways:
 /// 
@@ -57,7 +59,7 @@ public final class LiftDictionary {
 
     // Fields
 
-    private final DictionaryObjectBuilderFactory componentBuilder;
+    private final DictionaryComponentBuilderFactory componentBuilder;
 
     private File source;
 
@@ -69,15 +71,25 @@ public final class LiftDictionary {
 
     protected String liftProducer = DEFAULT_PRODUCER;
 
-    private final LiftDictionaryLanguagesManager objectLanguagesManager =
+    private LiftDictionaryLanguagesManager objectLanguagesManager =
         new LiftDictionaryLanguagesManager();
 
-    private final LiftDictionaryLanguagesManager metaLanguagesManager =
+    private LiftDictionaryLanguagesManager metaLanguagesManager =
         new LiftDictionaryLanguagesManager();
+
+    // TODO Ugly hack n°1
+    public void turnOffLanguageManager() {
+        registry.setLanguagesManager(null, null);
+    }
+
+    // TODO Ugly hack n°1
+    public void turnOnLanguageManager() {
+        registry.setLanguagesManager(objectLanguagesManager, metaLanguagesManager);
+    }
 
     // Getters/Setters
 
-    public DictionaryObjectBuilderFactory getComponentBuilder() {
+    public DictionaryComponentBuilderFactory getComponentBuilder() {
         return componentBuilder;
     }
 
@@ -101,11 +113,13 @@ public final class LiftDictionary {
     }
 
     public LiftDictionaryLanguagesManager getObjectLanguageManager() {
-        return objectLanguagesManager;
+        // System.out.println("returning:" + objectLanguagesManager);
+        return this.objectLanguagesManager;
     }
 
     public LiftDictionaryLanguagesManager getMetaLanguageManager() {
-        return metaLanguagesManager;
+        // System.out.println("returning:" + metaLanguagesManager);
+        return this.metaLanguagesManager;
     }
 
     public String getLiftProducer() {
@@ -153,7 +167,7 @@ public final class LiftDictionary {
         this.registry = new LiftDictionaryRegistry();
         registry.setLanguagesManager(objectLanguagesManager, metaLanguagesManager);
         this.header = new LiftHeader();
-        this.componentBuilder = new DictionaryObjectBuilderFactory(this);
+        this.componentBuilder = new DictionaryComponentBuilderFactory(this);
     }
 
     // Public methods

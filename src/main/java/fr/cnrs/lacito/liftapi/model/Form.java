@@ -12,12 +12,13 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 
 /**
- * A textual representation of linguistic material in a given language and in a given writting system.
+ * A transcription of linguistic content in a given language and with a given writting system.
  *
- * lang is read only. In order to change the lang of a Form, you have to create a new one.
+ * The transcription can be composed of attribute-holding chunks (see {@link TextSpan}).
+ * 
+ * The lang cannot be changed after creation. In order to change the lang, you have to create a new {@link Form}.
  *
- * The text can have global annotation (see {@link LiftAnnotation}) and
- * can be composed of attribute-holding chunks (see {@link TextSpan}).
+ * This component can have {@link LiftAnnotation}s.
  */
 public final class Form implements HasAnnotation {
 

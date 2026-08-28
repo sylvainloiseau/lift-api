@@ -24,7 +24,6 @@ public class LatexExporter {
     private static final String STYLESHEET_FILENAME = "";
 
     private File inputFile;
-    private File outFile;
 
     public void transform2Latex(File outfile) {
         InputStream is = null;

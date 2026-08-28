@@ -24,11 +24,11 @@ public final class LiftRelation
         return order;
     }
 
-    private final ObjectProperty<LiftHeaderRangeElement> typeProperty;
+    private final ObjectProperty<Feature> typeProperty;
 
     private final ObjectProperty<AbstractIdentifiable> refObjectProperty;
 
-    public LiftRelation(LiftHeaderRangeElement type) {
+    public LiftRelation(Feature type) {
         this();
         this.typeProperty.set(type);
     }
@@ -43,12 +43,17 @@ public final class LiftRelation
     }
 
     @Override
-    public LiftHeaderRangeElement getType() {
+    public Feature getType() {
         return typeProperty.get();
     }
 
+    public void setRefId(String refId) {
+        this.refId = Optional.of(refId);
+    }
+
     /** Updates the relation type and the bound JavaFX property. */
-    public void setType(LiftHeaderRangeElement newType) {
+    @Override
+    public void setType(Feature newType) {
         typeProperty.set(newType);
     }
 
@@ -79,11 +84,11 @@ public final class LiftRelation
         this.refObjectProperty.set(refObject);
     }
 
-    public ObjectProperty<LiftHeaderRangeElement> typeProperty() {
+    public ObjectProperty<Feature> typeProperty() {
         return typeProperty;
     }
 
-    public static LiftRelation create(LiftHeaderRangeElement type) {
+    public static LiftRelation create(Feature type) {
         return new LiftRelation(type);
     }
 

@@ -3,7 +3,7 @@ package fr.cnrs.lacito.liftapi.model;
 import java.util.Optional;
 
 /**
- * For Lift objects that have ID and GUID.
+ * Superclass of components that have Lift ID and Lift GUID.
  */
 public abstract sealed class AbstractIdentifiable
     extends AbstractNotable

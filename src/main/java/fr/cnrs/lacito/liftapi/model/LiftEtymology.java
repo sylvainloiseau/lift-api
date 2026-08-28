@@ -16,11 +16,11 @@ public final class LiftEtymology
 
     protected LiftEntry parent;
 
-    private final ObjectProperty<LiftHeaderRangeElement> typeProperty;
+    private final ObjectProperty<Feature> typeProperty;
 
     private final ReadOnlyStringWrapper sourcePropertyWrapper;
 
-    public LiftEtymology(LiftHeaderRangeElement type, String source) {
+    public LiftEtymology(Feature type, String source) {
         this.source = source;
         this.typeProperty = new SimpleObjectProperty<>(
             this,
@@ -43,11 +43,13 @@ public final class LiftEtymology
     }
 
     @Override
-    public LiftHeaderRangeElement getType() {
+    public Feature getType() {
         return typeProperty.get();
     }
 
-    public void setType(LiftHeaderRangeElement type) {
+    @Override
+    public void setType(Feature type) {
+        // TODO should check that the type belong to the etymology-type range
         this.typeProperty.set(type);
     }
 
@@ -81,7 +83,7 @@ public final class LiftEtymology
         return glosses;
     }
 
-    public ObjectProperty<LiftHeaderRangeElement> typeProperty() {
+    public ObjectProperty<Feature> typeProperty() {
         return typeProperty;
     }
 
@@ -89,7 +91,7 @@ public final class LiftEtymology
         return sourcePropertyWrapper.getReadOnlyProperty();
     }
 
-    public static LiftEtymology create(LiftHeaderRangeElement type, String source) {
+    public static LiftEtymology create(Feature type, String source) {
         return new LiftEtymology(type, source);
     }
 }

@@ -8,8 +8,8 @@ import fr.cnrs.lacito.liftapi.model.LiftEtymology;
 import fr.cnrs.lacito.liftapi.model.LiftExample;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
 import fr.cnrs.lacito.liftapi.model.LiftHeader;
-import fr.cnrs.lacito.liftapi.model.LiftHeaderRange;
-import fr.cnrs.lacito.liftapi.model.LiftHeaderRangeElement;
+import fr.cnrs.lacito.liftapi.model.FeatureSet;
+import fr.cnrs.lacito.liftapi.model.Feature;
 import fr.cnrs.lacito.liftapi.model.LiftIllustration;
 import fr.cnrs.lacito.liftapi.model.LiftMedia;
 import fr.cnrs.lacito.liftapi.model.LiftPronunciation;
@@ -153,10 +153,10 @@ public class LiftWriterSession implements AutoCloseable {
         }
         out.writeEndElement();
 
-        List<LiftHeaderRange> ranges = header.getRanges();
+        List<FeatureSet> ranges = header.getRanges();
         if (ranges != null && !ranges.isEmpty()) {
             out.writeStartElement(LiftVocabulary.HEADER_RANGES_LOCAL_NAME);
-            for (LiftHeaderRange r : ranges) {
+            for (FeatureSet r : ranges) {
                 writeHeaderRange(r);
             }
             out.writeEndElement();
@@ -177,7 +177,7 @@ public class LiftWriterSession implements AutoCloseable {
         out.writeEndElement();
     }
 
-    private void writeHeaderRange(LiftHeaderRange range) throws Exception {
+    private void writeHeaderRange(FeatureSet range) throws Exception {
         out.writeStartElement(LiftVocabulary.HEADER_RANGE_LOCAL_NAME);
         out.writeAttribute(LiftVocabulary.ID_ATTRIBUTE, range.getId());
         if (range.getGuid().isPresent()) {
@@ -212,19 +212,19 @@ public class LiftWriterSession implements AutoCloseable {
             );
             MultiTextWriters.writeMultiText(out, range.getAbbrev());
             out.writeEndElement();
-            for (LiftHeaderRangeElement e : range.getRangeElements().values()) {
+            for (Feature e : range.getFeatures().values()) {
                 writeHeaderRangeElement(e);
             }
         }
         out.writeEndElement();
     }
 
-    private void writeHeaderRangeElement(LiftHeaderRangeElement el)
+    private void writeHeaderRangeElement(Feature el)
         throws Exception {
         out.writeStartElement(LiftVocabulary.HEADER_RANGE_ELEMENT_LOCAL_NAME);
         out.writeAttribute(LiftVocabulary.ID_ATTRIBUTE, el.getId());
-        if (el.getParentElement().isPresent()) {
-            out.writeAttribute("parent", el.getParentElement().get().getId());
+        if (el.getSuperOrdinateFeature().isPresent()) {
+            out.writeAttribute("parent", el.getSuperOrdinateFeature().get().getId());
         }
         if (el.getGuid().isPresent()) {
             out.writeAttribute(
@@ -260,8 +260,8 @@ public class LiftWriterSession implements AutoCloseable {
             baseDir = new File(".");
         }
 
-        Map<File, List<LiftHeaderRange>> byHref = new LinkedHashMap<>();
-        for (LiftHeaderRange r : header.getRanges()) {
+        Map<File, List<FeatureSet>> byHref = new LinkedHashMap<>();
+        for (FeatureSet r : header.getRanges()) {
             if (!r.getHref().isPresent()) {
                 continue;
             }
@@ -275,7 +275,7 @@ public class LiftWriterSession implements AutoCloseable {
                 .add(r);
         }
 
-        for (Map.Entry<File, List<LiftHeaderRange>> e : byHref.entrySet()) {
+        for (Map.Entry<File, List<FeatureSet>> e : byHref.entrySet()) {
             writeLiftRangesFile(e.getKey(), e.getValue());
         }
         // TODO write Range that are not external
@@ -300,7 +300,7 @@ public class LiftWriterSession implements AutoCloseable {
         return new File(baseDir, href);
     }
 
-    private void writeLiftRangesFile(File file, List<LiftHeaderRange> ranges)
+    private void writeLiftRangesFile(File file, List<FeatureSet> ranges)
         throws Exception {
         try (
             FileOutputStream fos = new FileOutputStream(file);
@@ -312,7 +312,7 @@ public class LiftWriterSession implements AutoCloseable {
             rangesOut.writeCharacters(NEW_LINE);
             rangesOut.writeStartElement(LiftVocabulary.LIFT_RANGES_ROOT);
             rangesOut.writeCharacters(NEW_LINE);
-            for (LiftHeaderRange r : ranges) {
+            for (FeatureSet r : ranges) {
                 writeHeaderRangeToWriter(rangesOut, r);
             }
             rangesOut.writeEndElement();
@@ -323,7 +323,7 @@ public class LiftWriterSession implements AutoCloseable {
 
     private void writeHeaderRangeToWriter(
         XMLStreamWriter w,
-        LiftHeaderRange range
+        FeatureSet range
     ) throws Exception {
         w.writeStartElement(LiftVocabulary.HEADER_RANGE_LOCAL_NAME);
         w.writeAttribute(LiftVocabulary.ID_ATTRIBUTE, range.getId());
@@ -344,7 +344,7 @@ public class LiftWriterSession implements AutoCloseable {
         w.writeStartElement(LiftVocabulary.HEADER_RANGE_ABBREV_LOCAL_NAME);
         MultiTextWriters.writeMultiText(w, range.getAbbrev());
         w.writeEndElement();
-        for (LiftHeaderRangeElement el : range.getRangeElements().values()) {
+        for (Feature el : range.getFeatures().values()) {
             writeHeaderRangeElementToWriter(w, el);
         }
         w.writeEndElement();
@@ -353,12 +353,12 @@ public class LiftWriterSession implements AutoCloseable {
 
     private void writeHeaderRangeElementToWriter(
         XMLStreamWriter w,
-        LiftHeaderRangeElement el
+        Feature el
     ) throws Exception {
         w.writeStartElement(LiftVocabulary.HEADER_RANGE_ELEMENT_LOCAL_NAME);
         w.writeAttribute(LiftVocabulary.ID_ATTRIBUTE, el.getId());
-        if (el.getParentElement().isPresent()) {
-            w.writeAttribute("parent", el.getParentElement().get().getId());
+        if (el.getSuperOrdinateFeature().isPresent()) {
+            w.writeAttribute("parent", el.getSuperOrdinateFeature().get().getId());
         }
         if (el.getGuid().isPresent()) {
             w.writeAttribute(LiftVocabulary.GUID_ATTRIBUTE, el.getGuid().get());
@@ -587,7 +587,7 @@ public class LiftWriterSession implements AutoCloseable {
 
     private void writeGrammaticalInfo(GrammaticalInfo gi) throws Exception {
         out.writeStartElement(LiftVocabulary.GRAM_INFO_LOCAL_NAME);
-        out.writeAttribute(LiftVocabulary.VALUE_ATTRIBUTE, gi.getValue());
+        out.writeAttribute(LiftVocabulary.VALUE_ATTRIBUTE, gi.getGramInfoValue().getId());
         gi.getTraits().forEach(unchecked(this::writeTrait));
         out.writeEndElement();
     }

@@ -3,7 +3,7 @@ package fr.cnrs.lacito.liftapi.model;
 import java.util.Map;
 
 /**
- * Interface for lift objects that can receive fields.
+ * Interface for LIFT components that can receive {@link LiftField}}.
  */
 public sealed interface HasField
     extends ExtensibleWithoutField, LiftObject

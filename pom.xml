@@ -24,11 +24,11 @@
         <javafx.version>25</javafx.version>
     </properties>
     <dependencies>
-        <dependency>
+        <!-- <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>1.18.38</version>
-        </dependency>
+        </dependency> -->
         <dependency>
             <groupId>com.pivovarit</groupId>
             <artifactId>throwing-function</artifactId>
@@ -81,6 +81,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.14.0</version>
+                <!--
                 <configuration>
                     <annotationProcessorPaths>
                         <path>
@@ -90,6 +91,7 @@
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
+                -->
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

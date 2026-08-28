@@ -24,10 +24,10 @@ public final class LiftHeader extends AbstractLiftRoot {
 
     private Map<String, LiftFieldAndTraitDefinition> fieldsAndTraitsDefinition = new HashMap<>();
 
-    private final ObservableList<LiftHeaderRange> derivedRangeList =
+    private final ObservableList<FeatureSet> derivedRangeList =
         FXCollections.observableArrayList();
 
-    private final ObservableMap<String, LiftHeaderRange> rangesMap =
+    private final ObservableMap<String, FeatureSet> rangesMap =
         FXCollections.observableHashMap();
 
     //private LiftHeaderTypeManager noteTypesManager;
@@ -36,29 +36,29 @@ public final class LiftHeader extends AbstractLiftRoot {
     //private LiftHeaderTypeManager etymologyTypesManager;
     //private LiftHeaderTypeManager translationTypesManager;
 
-    private LiftHeaderRange noteTypesManager;
-    private LiftHeaderRange relationTypesManager;
-    private LiftHeaderRange inverseTypesManager;
-    private LiftHeaderRange etymologyTypesManager;
-    private LiftHeaderRange translationTypesManager;
-    private LiftHeaderRange grammaticalInfoManager;
-    private LiftHeaderRange annotationTypesManager;
-    private LiftHeaderRange variantTypesManager;
+    private FeatureSet noteTypesManager;
+    private FeatureSet relationTypesManager;
+    private FeatureSet inverseTypesManager;
+    private FeatureSet etymologyTypesManager;
+    private FeatureSet translationTypesManager;
+    private FeatureSet grammaticalInfoManager;
+    private FeatureSet annotationTypesManager;
+    private FeatureSet variantTypesManager;
 
     private final SimpleSetProperty<String> metaLanguages =
-        new SimpleSetProperty<>(FXCollections.emptyObservableSet());
+        new SimpleSetProperty<>(FXCollections.observableSet());
 
     private final SimpleSetProperty<String> objectLanguages =
-        new SimpleSetProperty<>(FXCollections.emptyObservableSet());
+        new SimpleSetProperty<>(FXCollections.observableSet());
 
     public LiftHeader() {
         rangesMap.addListener(
-            new MapChangeListener<String, LiftHeaderRange>() {
+            new MapChangeListener<String, FeatureSet>() {
                 @Override
                 public void onChanged(
                     MapChangeListener.Change<
                         ? extends String,
-                        ? extends LiftHeaderRange
+                        ? extends FeatureSet
                     > change
                 ) {
                     if (change.wasRemoved()) {
@@ -82,14 +82,14 @@ public final class LiftHeader extends AbstractLiftRoot {
         // translationTypesManager = new LiftHeaderTypeManager(rangesMap.computeIfAbsent(TRANSLATION_TYPE_RANGE, x -> new LiftHeaderRange(TRANSLATION_TYPE_RANGE, this)), null);
         //noteTypesManager = new LiftHeaderTypeManager(NOTE_TYPE_RANGE, rangesMap, this);
 
-        noteTypesManager = new LiftHeaderRange(NOTE_TYPE_RANGE, this);
-        relationTypesManager = new LiftHeaderRange(RELATION_TYPE_RANGE, this);
-        inverseTypesManager = new LiftHeaderRange(INVERSE_TYPE_RANGE, this);
-        etymologyTypesManager = new LiftHeaderRange(ETYMOLOGY_TYPE_RANGE, this);
-        translationTypesManager = new LiftHeaderRange(TRANSLATION_TYPE_RANGE, this);
-        annotationTypesManager = new LiftHeaderRange(TRANSLATION_TYPE_RANGE, this);
-        grammaticalInfoManager = new LiftHeaderRange(GRAMMATICAL_INFO_RANGE, this);
-        variantTypesManager = new LiftHeaderRange(TRANSLATION_TYPE_RANGE, this);
+        noteTypesManager = new FeatureSet(NOTE_TYPE_RANGE, this);
+        relationTypesManager = new FeatureSet(RELATION_TYPE_RANGE, this);
+        inverseTypesManager = new FeatureSet(INVERSE_TYPE_RANGE, this);
+        etymologyTypesManager = new FeatureSet(ETYMOLOGY_TYPE_RANGE, this);
+        translationTypesManager = new FeatureSet(TRANSLATION_TYPE_RANGE, this);
+        annotationTypesManager = new FeatureSet(TRANSLATION_TYPE_RANGE, this);
+        grammaticalInfoManager = new FeatureSet(GRAMMATICAL_INFO_RANGE, this);
+        variantTypesManager = new FeatureSet(TRANSLATION_TYPE_RANGE, this);
 
         rangesMap.put(NOTE_TYPE_RANGE, noteTypesManager);
         rangesMap.put(RELATION_TYPE_RANGE, relationTypesManager);
@@ -110,24 +110,24 @@ public final class LiftHeader extends AbstractLiftRoot {
         return rangesMap.containsKey(id);
     }
 
-    public LiftHeaderRange getRange(String id) {
+    public FeatureSet getRange(String id) {
         if (!rangesMap.containsKey(id)) {
             throw new IllegalArgumentException("Range not found: " + id);
         }
         return rangesMap.get(id);
     }
 
-    public LiftHeaderRange createRange(String id) {
-        LiftHeaderRange r = new LiftHeaderRange(id,this);
+    public FeatureSet createRange(String id) {
+        FeatureSet r = new FeatureSet(id,this);
         rangesMap.put(id, r);
         return r;
     }
 
-    public void addRanges(LiftHeaderRange range) {
+    public void addRanges(FeatureSet range) {
         rangesMap.put(range.getId(), range);
     }
 
-    public ObservableList<LiftHeaderRange> getRanges() {
+    public ObservableList<FeatureSet> getRanges() {
         return derivedRangeList;
     }
 
@@ -216,39 +216,15 @@ public final class LiftHeader extends AbstractLiftRoot {
         return fieldsAndTraitsDefinition.get(id);
     }
 
-    public SimpleSetProperty<String> getObjectLanguages() {
-        return objectLanguages;
-    }
-
-    public void addObjectLanguage(String lang) {
-        objectLanguages.add(lang);
-    }
-
-    public boolean containsObjectLanguage(String lang) {
-        return objectLanguages.contains(lang);
-    }
-
-    public SimpleSetProperty<String> getMetaLanguages() {
-        return metaLanguages;
-    }
-
-    public void addMetaLanguage(String lang) {
-        metaLanguages.add(lang);
-    }
-
-    public boolean containsMetaLanguage(String lang) {
-        return metaLanguages.contains(lang);
-    }
-
     // grammatical info types
 
-    public LiftHeaderRange getGrammaticalInfoManager() {
+    public FeatureSet getGrammaticalInfoManager() {
         return grammaticalInfoManager;
     }
 
     // note types
 
-    public LiftHeaderRange getNoteTypeManager() {
+    public FeatureSet getNoteTypeManager() {
         return noteTypesManager;
     }
 
@@ -270,13 +246,13 @@ public final class LiftHeader extends AbstractLiftRoot {
 
     // relation types
 
-    public LiftHeaderRange getVariantTypeManager() {
+    public FeatureSet getVariantTypeManager() {
         return variantTypesManager;
     }
 
     // relation types
 
-    public LiftHeaderRange getRelationTypeManager() {
+    public FeatureSet getRelationTypeManager() {
         return relationTypesManager;
     }
 
@@ -298,7 +274,7 @@ public final class LiftHeader extends AbstractLiftRoot {
 
     // inverse types
 
-    public LiftHeaderRange getInverseTypeManager() {
+    public FeatureSet getInverseTypeManager() {
         return inverseTypesManager;
     }
 
@@ -320,7 +296,7 @@ public final class LiftHeader extends AbstractLiftRoot {
 
     // etymology types
 
-    public LiftHeaderRange getEtymologyTypeManager() {
+    public FeatureSet getEtymologyTypeManager() {
         return etymologyTypesManager;
     }
 
@@ -342,13 +318,13 @@ public final class LiftHeader extends AbstractLiftRoot {
 
     // translation types
 
-    public LiftHeaderRange getTranslationTypeManager() {
+    public FeatureSet getTranslationTypeManager() {
         return translationTypesManager;
     }
 
     // translation types
 
-    public LiftHeaderRange getAnnotationTypeManager() {
+    public FeatureSet getAnnotationTypeManager() {
         return annotationTypesManager;
     }
 

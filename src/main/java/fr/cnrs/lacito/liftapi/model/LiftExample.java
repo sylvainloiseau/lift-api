@@ -13,7 +13,7 @@ public final class LiftExample extends AbstractNotable {
     public static final String DEFAULT_TRANSLATION_TYPE = "";
 
     protected Optional<String> source = Optional.empty();
-    protected final MapProperty<LiftHeaderRangeElement, MultiText> translationsProperty =
+    protected final MapProperty<Feature, MultiText> translationsProperty =
         new SimpleMapProperty<>(
             this,
             "translations",
@@ -40,7 +40,7 @@ public final class LiftExample extends AbstractNotable {
      * @return return a new empty translation.
      * @throws DuplicateTypeException if the translation type already exists.
      */
-    public MultiText createTranslation(LiftHeaderRangeElement type)
+    public MultiText createTranslation(Feature type)
         throws DuplicateTypeException {
         if (type == null) throw new IllegalArgumentException(
             "Translation type cannot be null"
@@ -64,7 +64,7 @@ public final class LiftExample extends AbstractNotable {
      * @return the translation of the given type.
      * @throws IllegalArgumentException if no translation of this type exists.
      */
-    public MultiText getTranslation(LiftHeaderRangeElement type) {
+    public MultiText getTranslation(Feature type) {
         if (translationsProperty.containsKey(type)) {
             return translationsProperty.get(type);
         } else {
@@ -91,11 +91,11 @@ public final class LiftExample extends AbstractNotable {
         return parent;
     }
 
-    public Map<LiftHeaderRangeElement, MultiText> getTranslations() {
+    public Map<Feature, MultiText> getTranslations() {
         return translationsProperty.get();
     }
 
-    public MapProperty<LiftHeaderRangeElement, MultiText> translationsProperty() {
+    public MapProperty<Feature, MultiText> translationsProperty() {
         return translationsProperty;
     }
 
@@ -111,7 +111,7 @@ public final class LiftExample extends AbstractNotable {
         return new LiftExample(source);
     }
 
-    public MultiText getOrCreateTranslation(LiftHeaderRangeElement type) {
+    public MultiText getOrCreateTranslation(Feature type) {
         return translationsProperty.computeIfAbsent(type, t -> new MultiText(this));
     }
 }

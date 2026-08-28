@@ -4,6 +4,8 @@ import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 
 /**
+ * A Lift note (not to be confused with {@link LiftTrait}, {@link LiftAnnotation}, {@link LiftField}; for comparison see {@link LiftTrait}).
+ * 
  * A note contains a Multitext and has a type. Eg :
  *
  * <pre>
@@ -25,7 +27,7 @@ public final class LiftNote
 
     protected AbstractNotable parent;
 
-    private final ObjectProperty<LiftHeaderRangeElement> typeProperty = new SimpleObjectProperty<>(
+    private final ObjectProperty<Feature> typeProperty = new SimpleObjectProperty<>(
         this,
         "type",
         null
@@ -33,7 +35,7 @@ public final class LiftNote
 
     public LiftNote() {}
 
-    public LiftNote(LiftHeaderRangeElement element) {
+    public LiftNote(Feature element) {
         typeProperty.set(element);
     }
 
@@ -46,7 +48,7 @@ public final class LiftNote
     }
 
     @Override
-    public LiftHeaderRangeElement getType() {
+    public Feature getType() {
         return typeProperty.get();
     }
 
@@ -54,12 +56,13 @@ public final class LiftNote
         getText().add(f);
     }
 
-    public void setType(LiftHeaderRangeElement type) {
+    @Override
+    public void setType(Feature type) {
         if (type == null) throw new IllegalArgumentException("note type cannot be null");
         this.typeProperty.set(type);
     }
 
-    public ObjectProperty<LiftHeaderRangeElement> typeProperty() {
+    public ObjectProperty<Feature> typeProperty() {
         return typeProperty;
     }
 

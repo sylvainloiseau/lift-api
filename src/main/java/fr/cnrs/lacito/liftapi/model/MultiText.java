@@ -102,20 +102,22 @@ public final class MultiText
     }
 
     public void add(Form f) {
-        String lang = f.lang;
         // languageManager can be null in low-level operations
-        if (languageManager != null && !languageManager.hasLanguage(lang)) {
-            throw new IllegalArgumentException(
-                "Language not registered in the dictionary: " + lang
-            );
-        }
-        if (lang2FormMap.containsKey(lang)) throw new DuplicateLangException(
-            "Duplicate lang: " + lang
-        );
-        lang2FormMap.put(lang, f);
+        // if (languageManager != null) {
+        //   System.out.println(languageManager);
+        // }
         if (languageManager != null) {
-            languageManager.addLanguageOccurrence(lang);
+            if (!languageManager.hasLanguage(f.lang)) {
+                throw new IllegalArgumentException(
+                    "Language not registered in the dictionary: " + f.lang
+                );
+            }
+            languageManager.addLanguageOccurrence(f.lang);
         }
+        if (lang2FormMap.containsKey(f.lang)) throw new DuplicateLangException(
+            "Duplicate lang: " + f.lang
+        );
+        lang2FormMap.put(f.lang, f);
     }
 
     @Override
@@ -251,11 +253,23 @@ public final class MultiText
     /// With the fluent API, this method is called before any Form has been added.
     /// With the low-level API (for loading from XML), this method is called after
     // all Forms in the XML document have been added: the LiftFactoryNew take care of computing the numbers of occurrences.
-    public void setLanguagesManager(LiftDictionaryLanguagesManager languagesManager) {
-        this.languageManager = languagesManager;
-        // for (String lang : lang2FormMap.keySet()) {
-        //     languageManager.addLanguageOccurrence(lang);
-        // }
+    public void setLanguagesManager(LiftDictionaryLanguagesManager languageManager) {
+        
+        // can be set on null on purpose, when unregistering the parent component.
+        if (languageManager == null) return;
+        
+        this.languageManager = languageManager;
+        for (String lang : lang2FormMap.keySet()) {
+            if (!languageManager.hasLanguage(lang)) {
+                throw new IllegalArgumentException(
+                    "Language not registered in the dictionary: " + lang + "; " +
+                    "contains: " + languageManager.getLanguages().toString()
+                );
+            }
+            // TODO unsatisfying. Two places for adding occurrence.
+            // Very complex logic: when exactly the LanguageManager is set...
+            languageManager.addLanguageOccurrence(lang);
+        }
     }
 
     public void unregister() {

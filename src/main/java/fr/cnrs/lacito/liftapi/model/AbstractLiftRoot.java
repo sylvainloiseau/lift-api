@@ -5,8 +5,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Root of the hierarchy for Lift objects.
- * All the concret subclasses of this class have a name starting with "Lift": LiftSense, LiftEntry, etc.
+ * Superclass of all lift component classes (all subclasses names are prefixed with Lift: {@link LiftEntry}, etc.)
  *
  * This abstract class provide a Multitext field used by subclasses.
  * Subclasses are responsible for exposing this field
@@ -61,7 +60,7 @@ public abstract sealed class AbstractLiftRoot implements LiftObject
      */
     public void detach() {
         switch (this) {
-            case LiftEntry e -> {
+            case LiftEntry _ -> {
                 // do nothing: does not have a parent.
             }
             case LiftSense s -> {

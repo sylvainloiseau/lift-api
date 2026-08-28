@@ -65,8 +65,8 @@ public enum LiftFieldAndTraitDefinitionTarget {
             case LiftEtymology _ -> ETYMOLOGY;
             case LiftRelation _ -> RELATION;
             case LiftReversal _ -> REVERSAL;
-            case LiftHeaderRange _ -> RANGE;
-            case LiftHeaderRangeElement _ -> RANGE_ELEMENT;
+            case FeatureSet _ -> RANGE;
+            case Feature _ -> RANGE_ELEMENT;
             default -> throw new IllegalArgumentException(
                 "Unexpected class name: " + o.getClass().getSimpleName()
             );

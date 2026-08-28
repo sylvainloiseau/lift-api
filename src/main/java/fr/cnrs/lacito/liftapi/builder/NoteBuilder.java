@@ -1,11 +1,12 @@
 package fr.cnrs.lacito.liftapi.builder;
 
+import java.util.function.Consumer;
+
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.HasNote;
-import fr.cnrs.lacito.liftapi.model.LiftHeaderRangeElement;
+import fr.cnrs.lacito.liftapi.model.Feature;
 import fr.cnrs.lacito.liftapi.model.LiftNote;
-import java.util.function.Consumer;
 
 /**
  * Builder for creating LiftNote instances with a fluent API.
@@ -18,7 +19,7 @@ import java.util.function.Consumer;
  *       .build();
  * </pre>
  */
-public class NoteBuilder extends AbstractLiftElementBuilder<LiftNote, HasNote> {
+public class NoteBuilder extends AbstractLiftElementWithFieldBuilder<LiftNote, HasNote> {
 
     /**
      * Create a note with a type.
@@ -26,29 +27,29 @@ public class NoteBuilder extends AbstractLiftElementBuilder<LiftNote, HasNote> {
     protected NoteBuilder(LiftDictionary dictionary, HasNote parent, String type) {
         super(LiftNote.create(), dictionary, parent);
         if (!dictionary.getHeader().getNoteTypeManager().hasRangeElements(type)) {
-            dictionary.getHeader().getNoteTypeManager().createRangeElement(type);
+            dictionary.getHeader().getNoteTypeManager().addFeature(type);
         }
-        LiftHeaderRangeElement e = dictionary.getHeader().getNoteTypeManager().getRangeElement(type);
+        Feature e = dictionary.getHeader().getNoteTypeManager().getFeature(type);
         element.setType(e);
     }
 
-    /**
-     * Set the note ID.
-     */
-    @Override
-    public NoteBuilder withId(String id) {
-        super.withId(id);
-        return this;
-    }
+    // /**
+    //  * Set the note ID. If not set, will be created automatically.
+    //  */
+    // @Override
+    // public NoteBuilder withId(String id) {
+    //     super.withId(id);
+    //     return this;
+    // }
 
-    /**
-     * Set the note GUID.
-     */
-    @Override
-    public NoteBuilder withGuid(String guid) {
-        super.withGuid(guid);
-        return this;
-    }
+    // /**
+    //  * Set the note GUID.
+    //  */
+    // @Override
+    // public NoteBuilder withGuid(String guid) {
+    //     super.withGuid(guid);
+    //     return this;
+    // }
 
     /**
      * Add text in the specified language.
@@ -72,39 +73,60 @@ public class NoteBuilder extends AbstractLiftElementBuilder<LiftNote, HasNote> {
         return this;
     }
 
-    /**
-     * Add a note via nested builder configuration.
-     */
-    @Override
-    public NoteBuilder addNote(String type, String language, String text) {
-        super.addNote(type, language, text);
+    // /**
+    //  * Add a trait.
+    //  */
+    // @Override
+    // public NoteBuilder addTrait(String name, String value) {
+    //     super.addTrait(name, value);
+    //     return this;
+    // }
+
+    public NoteBuilder withType(String type) {
+        if (type == null || type.isBlank()) throw new IllegalArgumentException("Type cannot be null or empty.");
+        Feature f = dictionary.getHeader().getNoteTypeManager().getFeature(type);
+        super.withType(f);
         return this;
     }
 
-    /**
-     * Add a note via nested builder configuration.
-     */
+    // Override WithField so that the correct type is returned
+    
     @Override
-    public NoteBuilder addNote(Consumer<NoteBuilder> config, String type) {
-        super.addNote(config, type);
+    public NoteBuilder addField(String name, String language, String text) {
+        super.addField(name, language, text);
         return this;
     }
 
-    /**
-     * Add a trait.
-     */
+    @Override
+    public NoteBuilder addField(String name, Consumer<FieldBuilder> config) {
+        super.addField(name, config);
+        return this;
+    }
+
+    // Override Trait And Annotation builder in order to return the correct type
+
     @Override
     public NoteBuilder addTrait(String name, String value) {
         super.addTrait(name, value);
         return this;
     }
 
-    /**
-     * Add a field.
-     */
     @Override
-    public NoteBuilder addField(String name, String language, String text) {
-        super.addField(name, language, text);
+    public NoteBuilder addTrait(
+        String name,
+        String value,
+        Consumer<TraitBuilder> config
+    ) {
+        super.addTrait(name, value, config);
+        return this;
+    }
+
+    @Override
+    public NoteBuilder addAnnotation(
+        String name,
+        String value
+    ) {
+        super.addAnnotation(name, value);
         return this;
     }
 

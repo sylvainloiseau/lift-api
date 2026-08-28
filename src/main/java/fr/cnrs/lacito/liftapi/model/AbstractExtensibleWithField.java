@@ -7,7 +7,7 @@ import javafx.beans.property.SimpleMapProperty;
 import javafx.collections.FXCollections;
 
 /**
- * Superclass of lift object that can contain {@code field}s.
+ * Superclass of components that can contain {@code LiftField}s.
  */
 public abstract sealed class AbstractExtensibleWithField
     extends AbstractExtensibleWithoutField
@@ -15,7 +15,7 @@ public abstract sealed class AbstractExtensibleWithField
     permits AbstractNotable, LiftEtymology,
             LiftNote, LiftPronunciation,
             LiftRelation, LiftVariant,
-            LiftHeaderRangeElement, LiftHeaderRange {
+            Feature, FeatureSet {
 
     protected final MapProperty<String, LiftField> fieldsProperty =
             new SimpleMapProperty<>(this, "fields", FXCollections.observableHashMap());

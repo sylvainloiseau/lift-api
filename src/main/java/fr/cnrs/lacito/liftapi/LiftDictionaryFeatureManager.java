@@ -14,7 +14,7 @@ import java.util.function.BiFunction;
 import javafx.collections.ListChangeListener;
 
 /**
- * The {@LiftDictionaryFeatureManager} keeps track of the number of
+ * The {@link LiftDictionaryFeatureManager} keeps track of the number of
  *  annotations/field/trait name, value, according to their host
  * (entry, sense) that are used in the dictionary.
  */

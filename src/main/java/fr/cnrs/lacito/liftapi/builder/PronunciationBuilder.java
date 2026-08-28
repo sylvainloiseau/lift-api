@@ -1,10 +1,11 @@
 package fr.cnrs.lacito.liftapi.builder;
 
+import java.util.function.Consumer;
+
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.HasPronunciation;
 import fr.cnrs.lacito.liftapi.model.LiftPronunciation;
-import java.util.function.Consumer;
 
 /**
  * Builder for creating LiftPronunciation instances with a fluent API.
@@ -16,29 +17,29 @@ import java.util.function.Consumer;
  *       .build();
  * </pre>
  */
-public class PronunciationBuilder extends AbstractLiftElementBuilder<LiftPronunciation, HasPronunciation> {
+public class PronunciationBuilder extends AbstractLiftElementWithFieldBuilder<LiftPronunciation, HasPronunciation> {
 
     protected PronunciationBuilder(LiftDictionary dictionary, HasPronunciation parent) {
         super(LiftPronunciation.create(), dictionary, parent);
     }
 
-    /**
-     * Set the pronunciation ID.
-     */
-    @Override
-    public PronunciationBuilder withId(String id) {
-        super.withId(id);
-        return this;
-    }
+    // /**
+    //  * Set the pronunciation ID.
+    //  */
+    // @Override
+    // public PronunciationBuilder withId(String id) {
+    //     super.withId(id);
+    //     return this;
+    // }
 
-    /**
-     * Set the pronunciation GUID.
-     */
-    @Override
-    public PronunciationBuilder withGuid(String guid) {
-        super.withGuid(guid);
-        return this;
-    }
+    // /**
+    //  * Set the pronunciation GUID.
+    //  */
+    // @Override
+    // public PronunciationBuilder withGuid(String guid) {
+    //     super.withGuid(guid);
+    //     return this;
+    // }
 
     /**
      * Add a pronunciation form in the specified language.
@@ -62,39 +63,53 @@ public class PronunciationBuilder extends AbstractLiftElementBuilder<LiftPronunc
         return this;
     }
 
-    /**
-     * Add a note via nested builder configuration.
-     */
+    // /**
+    //  * Add a trait.
+    //  */
+    // @Override
+    // public PronunciationBuilder addTrait(String name, String value) {
+    //     super.addTrait(name, value);
+    //     return this;
+    // }
+
+    // Override WithField so that the correct type is returned
+    
     @Override
-    public PronunciationBuilder addNote(String type, String language, String text) {
-        super.addNote(type, language, text);
+    public PronunciationBuilder addField(String name, String language, String text) {
+        super.addField(name, language, text);
         return this;
     }
 
-    /**
-     * Add a note via nested builder configuration.
-     */
     @Override
-    public PronunciationBuilder addNote(Consumer<NoteBuilder> config, String type) {
-        super.addNote(config, type);
+    public PronunciationBuilder addField(String name, Consumer<FieldBuilder> config) {
+        super.addField(name, config);
         return this;
     }
 
-    /**
-     * Add a trait.
-     */
+    // Override Trait And Annotation builder in order to return the correct type
+
     @Override
     public PronunciationBuilder addTrait(String name, String value) {
         super.addTrait(name, value);
         return this;
     }
 
-    /**
-     * Add a field.
-     */
     @Override
-    public PronunciationBuilder addField(String name, String language, String text) {
-        super.addField(name, language, text);
+    public PronunciationBuilder addTrait(
+        String name,
+        String value,
+        Consumer<TraitBuilder> config
+    ) {
+        super.addTrait(name, value, config);
+        return this;
+    }
+
+    @Override
+    public PronunciationBuilder addAnnotation(
+        String name,
+        String value
+    ) {
+        super.addAnnotation(name, value);
         return this;
     }
 

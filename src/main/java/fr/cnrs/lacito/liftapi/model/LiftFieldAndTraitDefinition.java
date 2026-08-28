@@ -64,9 +64,9 @@ type attribute. For example, it is not currently possible to declare that a text
 repeated.
 
  * When {@code @type} is {@code option}, {@code option-collection}, or {@code option-sequence},
- * the {@code @option-range} attribute may reference a {@link LiftHeaderRange} that enumerates
+ * the {@code @option-range} attribute may reference a {@link FeatureSet} that enumerates
  * the allowed values. After the header is fully parsed, call
- * {@link #resolveRange(LiftHeader)} to link this definition to the actual range object.
+ * {@link LiftFieldAndTraitDefinition#getResolvedRange()} to link this definition to the actual range object.
  *
  *
  For trait :
@@ -82,19 +82,26 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
 
     final LiftHeader parent;
 
-    private Optional<LiftHeaderRange> resolvedRange = Optional.empty();
+    private Optional<FeatureSet> resolvedRange = Optional.empty();
 
     /**
-     * If the datamodel of this trait definition is {@code option}, {@code
-     * option-collection}, or {@code option-sequence}, the {@code @option-range}
-     * attribute reference a {@link LiftHeaderRange} that enumerates the allowed
-     * values.
+     * If the datamodel of this trait definition is one of 
+     * {@link LiftFieldAndTraitDefinitionDataModel#OPTION_COLLECTION},
+     * {@link LiftFieldAndTraitDefinitionDataModel#OPTION_SEQUENCE} or
+     * {@link LiftFieldAndTraitDefinitionDataModel#OPTION}, then
+     * this method give the {@link FeatureSet} object which defines the actual
+     * values availables.
+     * 
+     * In LIFT-XML, this corresponde to the values{@code option}, {@code
+     * option-collection}, or {@code option-sequence} on the attribute type of the field-definition element;
+     * the range is given by the value of {@code @option-range}
+     * attribute.
      */
-    public Optional<LiftHeaderRange> getResolvedRange() {
+    public Optional<FeatureSet> getResolvedRange() {
         return resolvedRange;
     }
 
-    public void setResolvedRange(Optional<LiftHeaderRange> resolvedRange) {
+    public void setResolvedRange(Optional<FeatureSet> resolvedRange) {
         this.resolvedRange = resolvedRange;
     }
 

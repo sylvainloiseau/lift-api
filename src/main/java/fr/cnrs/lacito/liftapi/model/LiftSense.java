@@ -92,7 +92,7 @@ public final class LiftSense
         this.grammaticalInfo = Optional.of(gi);
     }
 
-    public void setGrammaticalInfo(LiftHeaderRangeElement value) {
+    public void setGrammaticalInfo(Feature value) {
         this.setGrammaticalInfo(new GrammaticalInfo(value));
     }
 

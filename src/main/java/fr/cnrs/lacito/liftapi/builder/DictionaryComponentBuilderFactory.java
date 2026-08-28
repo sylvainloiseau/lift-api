@@ -20,7 +20,7 @@ import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
 
 /**
- * Static factory for creating builder instances using fluent API,
+ * <strong>Entry point</strong> for creating builder instances using fluent API,
  * ensuring that all created objects are consistently registered in
  * a dictionary.
  *
@@ -28,23 +28,20 @@ import fr.cnrs.lacito.liftapi.model.LiftVariant;
  * <pre>
  *  Builder builder = dictionary.getComponentBuilder();
  *  builder.entry()
- *      .withId("entry1")
- *      .withForm("en", "entry1")
+ *      .withForm("en", "Dictionary")
  *      .build();
  * </pre>
  *
  * @see LiftDictionaryRegistry
- * @see LiftDitionary
+ * @see LiftDictionary
  * @see LiftDictionaryBuilder
  */
-public class DictionaryObjectBuilderFactory {
+public class DictionaryComponentBuilderFactory {
 
-    private final LiftDictionaryRegistry registry;
     private final LiftDictionary dictionary;
 
-    public DictionaryObjectBuilderFactory(LiftDictionary dictionary) {
+    public DictionaryComponentBuilderFactory(LiftDictionary dictionary) {
         this.dictionary = dictionary;
-        this.registry = dictionary.getLiftDictionaryRegistry();
     }
 
     /**
@@ -174,17 +171,6 @@ public class DictionaryObjectBuilderFactory {
     public TraitBuilder trait(HasTrait parent,String name, String value) {
         return new TraitBuilder(dictionary, parent, name, value);
     }
-
-//    /**
-//     * Create a new multi-text builder.
-//     */
-//    public MultitextObjectLanguageBuilder multiText() {
-//        return new MultitextObjectLanguageBuilder(registry);
-//    }
-//
-//    public MultitextMetaLanguageBuilder multiTextMetaLanguage() {
-//        return new MultitextMetaLanguageBuilder(registry);
-//    }
 
     /**
      * Create a new annotation builder.

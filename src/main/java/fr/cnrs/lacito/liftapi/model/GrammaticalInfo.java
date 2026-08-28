@@ -3,23 +3,28 @@ package fr.cnrs.lacito.liftapi.model;
 import java.util.List;
 import java.util.ArrayList;
 
+/**
+ * A component containing a reference to part of speech together with {@link LiftTrait}, to be registered to a {@link LiftSense}.
+ * 
+ * The part of speech value is a reference towards one
+ * of the {@link Feature}; the list of part of speech value is managed through
+ * the {@link LiftHeader#getGrammaticalInfoManager()}.
+ * 
+ * GrammaticalInfo
+ */
 public final class GrammaticalInfo
     implements HasTrait {
 
-    protected LiftHeaderRangeElement value;
+    protected Feature value;
 
     protected final List<LiftTrait> traits = new ArrayList<>();
 
-    protected GrammaticalInfo(LiftHeaderRangeElement v) {
+    protected GrammaticalInfo(Feature v) {
         this.value = v;
     }
 
-    public LiftHeaderRangeElement getGramInfoValue() {
+    public Feature getGramInfoValue() {
         return this.value;
-    }
-
-    public String getValue() {
-        return value.getId();
     }
 
     @Override

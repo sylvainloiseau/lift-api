@@ -18,8 +18,9 @@ public class TraitBuilder extends AbstractLiftElementBuilder<LiftTrait, HasTrait
 
     /**
      * Create a trait builder with the given name and value.
-     * @param registry the lift dictionary registry
-     * @param name the trait name
+     * @param dictionary the lift dictionary
+     * @param parent the parent element
+     * @param type the trait type
      * @param value the trait value
      */
     protected TraitBuilder(LiftDictionary dictionary, HasTrait parent, String type, String value) {
@@ -30,23 +31,23 @@ public class TraitBuilder extends AbstractLiftElementBuilder<LiftTrait, HasTrait
         element.setValue(value);
     }
 
-    /**
-     * Set the trait ID.
-     */
-    @Override
-    public TraitBuilder withId(String id) {
-        super.withId(id);
-        return this;
-    }
+    // /**
+    //  * Set the trait ID.
+    //  */
+    // @Override
+    // public TraitBuilder withId(String id) {
+    //     super.withId(id);
+    //     return this;
+    // }
 
-    /**
-     * Set the trait GUID.
-     */
-    @Override
-    public TraitBuilder withGuid(String guid) {
-        super.withGuid(guid);
-        return this;
-    }
+    // /**
+    //  * Set the trait GUID.
+    //  */
+    // @Override
+    // public TraitBuilder withGuid(String guid) {
+    //     super.withGuid(guid);
+    //     return this;
+    // }
 
     /**
      * Update the trait value.

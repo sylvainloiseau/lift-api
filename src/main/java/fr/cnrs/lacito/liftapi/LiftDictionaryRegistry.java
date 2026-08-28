@@ -27,7 +27,7 @@ import fr.cnrs.lacito.liftapi.model.LiftTrait;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
 import fr.cnrs.lacito.liftapi.model.MultiText;
 
-import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,14 +40,14 @@ import javafx.collections.ObservableList;
 import javafx.collections.ObservableMap;
 
 ///
-/// 
+///
 /// Offer two main functionalities:
-/// 
+///
 /// - unmodifiable collections for all the components of a LIFT dictionary [getEntries(), getSenses(), getExamples(), ...]
-/// 
+///
 /// - function for removing components from the dictionary [removeFromDictionary(AbstractLiftRoot node)]
 ///   - Adding nodes to dictionary should be made using the ComponentBuilder API (see LiftDictionary#getComponentBuilder())
-/// 
+///
 ///
 public class LiftDictionaryRegistry {
 
@@ -262,7 +262,7 @@ public class LiftDictionaryRegistry {
                     }
                 }
             );
-            
+
             observableList.put(clazz, x);
     }
 
@@ -355,14 +355,14 @@ public class LiftDictionaryRegistry {
     /**
      * Add a node (and its descendants) to the directory using the low-level
      * API. This interface is intended for :
-     * 
+     *
      * - unmarshalling efficiently the dictionary.
      * - inserting into the dictionary a node you haven't created (undoing a suppression, moving a node from a parent to another, etc.)
-     * 
+     *
      * If you are creating a node from scratch, the high-level (fluent) API ({@link
      * LiftDictionary#getComponentBuilder()}) should be preferred.
-     * 
-     * The relation parent / child is not manager here: 
+     *
+     * The relation parent / child is not manager here:
      * <ul>
      * <li> if you use addToDictionaryLowLevel
      * for inserting a LiftExemple into the dictionary, in addition to calling this method,
@@ -372,7 +372,7 @@ public class LiftDictionaryRegistry {
      * </ul>
      *
      * All subnodes of the node (added with addX method, such as {@link
-     * LiftElement#addSense}) will also be added to the dictionary.
+     * LiftEntry#addSense(LiftSense sense)}) will also be added to the dictionary.
      */
     public void addToDictionaryLowLevel(AbstractLiftRoot node) {
         // 1. Add the node to the register:
@@ -427,13 +427,14 @@ public class LiftDictionaryRegistry {
      * fluent API instead ({@link LiftDictionary#getComponentBuilder()}).
      *
      * Register the node in the dictionary :
-     * 
+     *
      * <ul>
      * <li>Add a UUID to the node</li>
      * <li>Register the maping (node, UUID) in collections used internally</li>
-     * <li>Add a LIFT ID to the node if it doesn't have one.</li>
+     * <li>Increment a counter for component referenced from another ones (LiftRelation, etc. : see HasRef).</li>
+     * <li>Add a LIFT ID to the node (for entry and sense) if it doesn't have one.</li>
      * </ul>
-     *  
+     *
      * @throws IllegalArgumentException if the node already as an UUID
      * @throws IllegalArgumentException (TODO) if the node is not a LiftEntry and has no parent
      */
@@ -543,6 +544,24 @@ public class LiftDictionaryRegistry {
             default -> throw new IllegalStateException(
                 "Unknown type: " + node.getClass()
             );
+        }
+
+        if (node instanceof HasRefId hasref) {
+            String target = null;
+
+            // TODO : which is available here, depending on high/low level ?
+            // Try to avoid the test
+            if (hasref.getRefId().isPresent() )
+                target = hasref.getRefId().get();
+            else if (hasref.getRefObject() != null && hasref.getRefObject().getId().isPresent())
+                target = hasref.getRefObject().getId().get();
+
+            if (target != null && !target.trim().isEmpty()) {
+                if (! refId2HasRefIdList.containsKey(target)) {
+                    refId2HasRefIdList.put(target, new ArrayList<HasRefId>());
+                }
+                refId2HasRefIdList.get(target).add(hasref);
+            }
         }
     }
 
@@ -674,12 +693,14 @@ public class LiftDictionaryRegistry {
         objectTextById.remove(node.getUUID());
         node.unregister();
         node.setUUID(null);
+        node.setLanguagesManager(null);
     }
 
     protected void unregisterMetaMultiText(MultiText node) {
         metaTextById.remove(node.getUUID());
         node.unregister();
         node.setUUID(null);
+        node.setLanguagesManager(null);
     }
 
     protected void unregisterRec(AbstractLiftRoot node) {
@@ -698,7 +719,7 @@ public class LiftDictionaryRegistry {
                     new IllegalArgumentException("Reference ID is missing")
                 );
             refId2HasRefIdList.get(target).removeIf(o -> o == a);
-        
+
         // 2. check that this node is not refered from another node
         } else if (node instanceof AbstractIdentifiable i) {
             final String refId = i
@@ -806,23 +827,25 @@ public class LiftDictionaryRegistry {
             s.getSenses().forEach(x -> unregisterRec(x));
         }
     }
-    
+
     /**
      * Completely remove a node from the dictionary.
-     * 
+     *
      * The node will not be seen by its parent
      * (for instance a sense will not be seen anymore by its parent entry).
-     * 
+     *
      * The node (and all its descendants) will be removed from the dictionary registry.
-     * 
+     *
      * The node will keep its reference towards its child, and the child towards the node.
-     * 
+     *
      * This subtree can be registered again in this dictionary or another.
      *
-     * @param entry
+     * @param node
      */
     public void removeFromDictionary(AbstractLiftRoot node) {
         // remove the link parent -> self
+
+        // pb : should be made afer the second sine it can throw an exception.
         node.detach();
 
         unregisterRec(node);
@@ -836,7 +859,8 @@ public class LiftDictionaryRegistry {
         return entriesById.values().size();
     }
 
-    protected void setLanguagesManager(LiftDictionaryLanguagesManager objectLanguagesManager,
+    protected void setLanguagesManager(
+            LiftDictionaryLanguagesManager objectLanguagesManager,
             LiftDictionaryLanguagesManager metaLanguagesManager) {
         this.objectLanguagesManager = objectLanguagesManager;
         this.metaLanguagesManager = metaLanguagesManager;

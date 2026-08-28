@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
-import fr.cnrs.lacito.liftapi.model.LiftHeaderRangeElement;
+import fr.cnrs.lacito.liftapi.model.Feature;
 
 public class LiftDictionaryTest {
 
@@ -89,7 +89,7 @@ public class LiftDictionaryTest {
     @Test
     public void testGetTranslationType() {
         LiftDictionary lf = Utils.loadDictionaryForTest("lift/tiny_translation.xml");
-        Set<String> translationType = lf.getHeader().getTranslationTypeManager().getRangeElements().values().stream().map(LiftHeaderRangeElement::getId).collect(Collectors.toSet());
+        Set<String> translationType = lf.getHeader().getTranslationTypeManager().getFeatures().values().stream().map(Feature::getId).collect(Collectors.toSet());
         assertEquals(new HashSet<String>(Arrays.asList("free", "litteral")), translationType);
     }
 

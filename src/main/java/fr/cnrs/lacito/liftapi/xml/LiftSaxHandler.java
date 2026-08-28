@@ -16,8 +16,8 @@ import fr.cnrs.lacito.liftapi.model.LiftExample;
 import fr.cnrs.lacito.liftapi.model.LiftField;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
 import fr.cnrs.lacito.liftapi.model.LiftHeader;
-import fr.cnrs.lacito.liftapi.model.LiftHeaderRange;
-import fr.cnrs.lacito.liftapi.model.LiftHeaderRangeElement;
+import fr.cnrs.lacito.liftapi.model.FeatureSet;
+import fr.cnrs.lacito.liftapi.model.Feature;
 import fr.cnrs.lacito.liftapi.model.LiftIllustration;
 import fr.cnrs.lacito.liftapi.model.LiftMedia;
 import fr.cnrs.lacito.liftapi.model.LiftPronunciation;
@@ -365,7 +365,7 @@ public final class LiftSaxHandler extends DefaultHandler {
                 elementStack.push(
                     liftXMLFactory.createRangeElement(
                         attributes,
-                        (LiftHeaderRange) elementStack.peek()
+                        (FeatureSet) elementStack.peek()
                     )
                 );
                 break;
@@ -421,10 +421,10 @@ public final class LiftSaxHandler extends DefaultHandler {
             case LiftVocabulary.ABREVIATION_LOCAL_NAME:
                 // in a range or a range element
                 switch (elementStack.peek()) {
-                    case LiftHeaderRange r -> multiTextStack.push(
+                    case FeatureSet r -> multiTextStack.push(
                         r.getAbbrev()
                     );
-                    case LiftHeaderRangeElement re -> multiTextStack.push(
+                    case Feature re -> multiTextStack.push(
                         re.getAbbrev()
                     );
                     default -> throw new IllegalStateException();
@@ -482,7 +482,7 @@ public final class LiftSaxHandler extends DefaultHandler {
                     "type"
                 );
                 if (type == null) type = LiftExample.DEFAULT_TRANSLATION_TYPE;
-                LiftHeaderRangeElement typeObject = liftXMLFactory.getTranslationType(type);
+                Feature typeObject = liftXMLFactory.getTranslationType(type);
                 // System.out.println(typeObject);
                 // System.out.println(" -> " + typeObject.getId());
                 //if (type == null) type = LiftExample.DEFAULT_TRANSLATION_TYPE; // TODO
@@ -526,10 +526,10 @@ public final class LiftSaxHandler extends DefaultHandler {
                     case LiftHeader h -> multiTextStack.push(
                         h.getDescription()
                     );
-                    case LiftHeaderRange r -> multiTextStack.push(
+                    case FeatureSet r -> multiTextStack.push(
                         r.getDescription()
                     );
-                    case LiftHeaderRangeElement re -> multiTextStack.push(
+                    case Feature re -> multiTextStack.push(
                         re.getDescription()
                     );
                     case LiftFieldAndTraitDefinition fd -> multiTextStack.push(
@@ -541,10 +541,10 @@ public final class LiftSaxHandler extends DefaultHandler {
             case LiftVocabulary.HEADER_RANGE_ABBREV_LOCAL_NAME:
                 // header only in range and range-element
                 switch (elementStack.peek()) {
-                    case LiftHeaderRange r -> multiTextStack.push(
+                    case FeatureSet r -> multiTextStack.push(
                         r.getAbbrev()
                     );
-                    case LiftHeaderRangeElement re -> multiTextStack.push(
+                    case Feature re -> multiTextStack.push(
                         re.getAbbrev()
                     );
                     default -> throw new IllegalStateException();
@@ -553,8 +553,8 @@ public final class LiftSaxHandler extends DefaultHandler {
             case LiftVocabulary.LABEL_LOCAL_NAME:
                 // label is on range-element, range, field-definition, and "URLRef-content" i.e. illustration, media
                 switch (elementStack.peek()) {
-                    case LiftHeaderRange r -> multiTextStack.push(r.getLabel());
-                    case LiftHeaderRangeElement re -> multiTextStack.push(
+                    case FeatureSet r -> multiTextStack.push(r.getLabel());
+                    case Feature re -> multiTextStack.push(
                         re.getLabel()
                     );
                     case LiftFieldAndTraitDefinition fd -> multiTextStack.push(
