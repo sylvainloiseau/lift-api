@@ -1,7 +1,6 @@
 package fr.cnrs.lacito.liftapi.xml;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
-import fr.cnrs.lacito.liftapi.LiftVersion;
 import fr.cnrs.lacito.liftapi.model.AbstractExtensibleWithField;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
 import fr.cnrs.lacito.liftapi.model.AbstractNotable;
@@ -35,7 +34,8 @@ import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
 /**
- * SAX handler for turning a LIFT XML files into a set of objects.
+ * SAX handler for turning a LIFT XML files into a set of objects,
+ * using the LiftXMLFactoryNew to create the objects.
  */
 public final class LiftSaxHandler extends DefaultHandler {
 

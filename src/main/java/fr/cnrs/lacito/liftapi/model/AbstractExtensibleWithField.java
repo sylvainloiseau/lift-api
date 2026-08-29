@@ -22,8 +22,8 @@ public abstract sealed class AbstractExtensibleWithField
 
     @Override
     public void addField(LiftField f) {
-        if (fieldsProperty.containsKey(f.nameProperty().get())) throw new DuplicateTypeException("Duplicate key (" + f.nameProperty().get() + ") for field");
-        fieldsProperty.put(f.nameProperty().get().getName(), f);
+        if (fieldsProperty.containsKey(f.specificationProperty().get())) throw new DuplicateTypeException("Duplicate key (" + f.specificationProperty().get() + ") for field");
+        fieldsProperty.put(f.specificationProperty().get().getName(), f);
         f.setParent(this);
     }
 

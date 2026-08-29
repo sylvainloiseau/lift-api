@@ -85,7 +85,7 @@ public final class FeatureSet extends AbstractExtensibleWithField {
     }
 
     public Feature getFeature(String id) {
-        if (!hasRangeElements(id)) {
+        if (!hasFeature(id)) {
             throw new IllegalArgumentException(
                 "No range element with id: " + id
             );
@@ -93,14 +93,14 @@ public final class FeatureSet extends AbstractExtensibleWithField {
         return featureMap.get(id);
     }
 
-    public Feature getOrCreateRangeElement(String id) {
-        if (!hasRangeElements(id)) {
+    public Feature getOrCreateFeature(String id) {
+        if (!hasFeature(id)) {
             return addFeature(id);
         }
         return featureMap.get(id);
     }
 
-    public boolean hasRangeElements(String id) {
+    public boolean hasFeature(String id) {
         return featureMap.containsKey(id);
     }
 

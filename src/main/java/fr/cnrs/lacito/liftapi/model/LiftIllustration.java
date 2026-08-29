@@ -12,12 +12,12 @@ public final class LiftIllustration
 
     LiftSense parent;
 
-    public LiftSense getParent() {
-        return parent;
-    }
-
     public LiftIllustration(String href) {
         this.href = href;
+    }
+
+    public LiftSense getParent() {
+        return parent;
     }
 
     protected void setParent(LiftSense parent) {

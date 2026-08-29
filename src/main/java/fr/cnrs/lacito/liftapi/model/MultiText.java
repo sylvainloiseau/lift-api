@@ -2,6 +2,7 @@ package fr.cnrs.lacito.liftapi.model;
 
 import fr.cnrs.lacito.liftapi.LiftDictionaryLanguagesManager;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
+import fr.cnrs.lacito.liftapi.LiftDictionary;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -23,10 +24,19 @@ import javafx.collections.MapChangeListener;
 import javafx.collections.ObservableMap;
 
 /**
- * A MultiText is a set of parallel {@link Form} in one or several languages,
- * either a set of object language(s) or a set of meta languages(s). In a
- * MultiText there can be only one {@link Form} in each language.
+ * A MultiText is a set of parallel {@link Form} in one or several languages + writting system coordinate.
+ * 
+ * A languages + writting system coordinate can be any documented string refering to a language or a language+writting system.
+ * 
+ * Some Multitext make more sense for giving the same content in several languages (for instance, a {@link LiftSense#getGlosses()}),
+ * while other MultiText make more sense for various writting system ({@link LiftVariant#getForms()}).
  *
+ * In a MultiText there can be only one {@link Form} in each language/writting system.
+ * 
+ * A multitex is either an object language(s) or a meta language multitext; in the first
+ * case the languages of the multitext should belong to the {@link LiftDictionary#getObjectLanguageManager()} set,
+ * in the second they should belong {@link LiftDictionary#getMetaLanguageManager()}.
+ * 
  * All LIFT field holding textual content (appart from terminological components : type of {@link LiftField},
  * name and value of {@link LiftTrait}, etc.) are stored in such MultiText object, for instance:
  * <ul>

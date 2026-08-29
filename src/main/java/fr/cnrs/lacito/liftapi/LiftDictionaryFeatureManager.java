@@ -73,7 +73,7 @@ public class LiftDictionaryFeatureManager {
                 if (v == null) {
                     v = new TreeSet<LiftFieldAndTraitDefinition>();
                 }
-                v.add(f.getType());
+                v.add(f.getSpecification());
                 return v;
             });
         }
@@ -90,7 +90,7 @@ public class LiftDictionaryFeatureManager {
     private void initTraitValue() {
         for (LiftTrait trait : this.liftDictionaryRegistry.getTraits()) {
             traitValue.compute(
-                trait.getDefinition().getName(),
+                trait.getSpecification().getName(),
                 key2SetUpdater(trait.getValue())
             );
         }
@@ -104,20 +104,20 @@ public class LiftDictionaryFeatureManager {
                         if (change.wasAdded()) {
                             for (LiftTrait trait : change.getAddedSubList()) {
                                 traitValue.compute(
-                                    trait.getDefinition().getName(),
+                                    trait.getSpecification().getName(),
                                     key2SetUpdater(trait.getValue())
                                 );
                             }
                         }
                         if (change.wasRemoved()) {
                             for (LiftTrait trait : change.getRemoved()) {
-                                if (traitValue.containsKey(trait.getDefinition().getName())) {
+                                if (traitValue.containsKey(trait.getSpecification().getName())) {
                                     Set<String> values = traitValue.get(
-                                        trait.getDefinition().getName()
+                                        trait.getSpecification().getName()
                                     );
                                     values.remove(trait.getValue());
                                     if (values.isEmpty()) {
-                                        traitValue.remove(trait.getDefinition().getName());
+                                        traitValue.remove(trait.getSpecification().getName());
                                     }
                                 }
                             }

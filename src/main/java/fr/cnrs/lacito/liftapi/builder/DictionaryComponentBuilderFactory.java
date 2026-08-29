@@ -3,6 +3,7 @@ package fr.cnrs.lacito.liftapi.builder;
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDictionaryBuilder;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
+import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
 import fr.cnrs.lacito.liftapi.model.HasAnnotation;
 import fr.cnrs.lacito.liftapi.model.HasField;
 import fr.cnrs.lacito.liftapi.model.HasNote;
@@ -22,7 +23,7 @@ import fr.cnrs.lacito.liftapi.model.LiftVariant;
 /**
  * <strong>Entry point</strong> for creating builder instances using fluent API,
  * ensuring that all created objects are consistently registered in
- * a dictionary.
+ * a dictionary -- <strong>see doc here</strong>.
  *
  * Usage:
  * <pre>
@@ -31,7 +32,23 @@ import fr.cnrs.lacito.liftapi.model.LiftVariant;
  *      .withForm("en", "Dictionary")
  *      .build();
  * </pre>
+ * 
+ * Note that you cannot add an existing node to its parent with the fluent API. If you have,
+ * say a LiftVariant {@code v} object that you want to add to a LiftEntry {@code e}, you 
+ * should:
+ * 
+ * <ul>
+ * <li>manually link the child to the parent ({@code e.addVariant(v)})</li>
+ * <li> pass {@code v} to {@link LiftDictionaryRegistry#addToDictionaryLowLevel(AbstractLiftRoot)}.</li>
+ * </ul>
  *
+ * The build() method will create and register the new Entry in the dictionary.
+ * You may not need to assign the returned value to a variable:
+ * 
+ * <pre>
+ * dictionary.getComponentBuilder().entry().withForm("en", "Dictionary").build();
+ * </pre>
+ * 
  * @see LiftDictionaryRegistry
  * @see LiftDictionary
  * @see LiftDictionaryBuilder

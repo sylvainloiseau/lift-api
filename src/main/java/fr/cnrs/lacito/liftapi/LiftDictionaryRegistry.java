@@ -39,16 +39,17 @@ import javafx.collections.MapChangeListener;
 import javafx.collections.ObservableList;
 import javafx.collections.ObservableMap;
 
-///
-///
-/// Offer two main functionalities:
-///
-/// - unmodifiable collections for all the components of a LIFT dictionary [getEntries(), getSenses(), getExamples(), ...]
-///
-/// - function for removing components from the dictionary [removeFromDictionary(AbstractLiftRoot node)]
-///   - Adding nodes to dictionary should be made using the ComponentBuilder API (see LiftDictionary#getComponentBuilder())
-///
-///
+/**
+ * Managing registers of all the nodes belonging to a dictionary.
+ *
+ * Offers two main functionalities:
+ *
+ * - unmodifiable collections for all the components of a LIFT dictionary {@code
+ * getEntries()}, {@code getSenses()}, {@code getExamples()}, ...
+ *
+ * - function for removing components from the dictionary {@code removeFromDictionary(AbstractLiftRoot node)}
+ *   - Adding nodes to dictionary should be made using the ComponentBuilder API (see {@link LiftDictionary#getComponentBuilder()})
+ */
 public class LiftDictionaryRegistry {
 
     private final LiftDictionaryFeatureManager counter;

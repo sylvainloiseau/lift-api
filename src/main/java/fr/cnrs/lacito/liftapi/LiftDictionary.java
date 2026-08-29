@@ -10,7 +10,8 @@ import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.MultiText;
 import fr.cnrs.lacito.liftapi.model.TextSpan;
 import fr.cnrs.lacito.liftapi.xml.LiftDictionaryXmlReader;
-import fr.cnrs.lacito.liftapi.xml.LiftWriter;
+import fr.cnrs.lacito.liftapi.xml.LiftWriterSession;
+import fr.cnrs.lacito.liftapi.xml.LiftVersion;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.HashSet;
@@ -23,25 +24,25 @@ import java.util.stream.Collectors;
 import javax.xml.stream.XMLStreamException;
 
 /// The entry point for working with a LIFT dictionary.
-/// 
+///
 /// Methods are distributed between this class and other classes in the same package
 /// (such as [LiftDictionaryRegistry], [DictionaryComponentBuilderFactory], [LiftDictionaryLanguagesManager], ...)
 /// whose singleton instance is accessible from here through [LiftDictionary#getLiftDictionaryRegistry)],
 /// [LiftDictionary#getComponentBuilder()],
 /// [LiftDictionary#getObjectLanguageManager()] and [LiftDictionary#getMetaLanguageManager()], etc.
-/// 
+///
 /// Functionalities include:
-/// 
+///
 /// - create dictionary from an XML document ([LiftDictionary#loadDictionaryFromFile(File f)]) or from scratch ([LiftDictionary#makeBuilder()])
 /// - add components to the dictionary with the fluent API ([LiftDictionary#getComponentBuilder()]), delete components ([LiftDictionaryRegistry#removeFromDictionary(AbstractLiftRoot node)])
 /// - lookup into dictionary content ([LiftDictionary#getEntryByForm(String lang, String form)], [LiftDictionary#searchInMetaLanguage(String lang, String searched)], [LiftDictionary#searchInObjectLanguage(String lang, String searched)])
 /// - manage languages ([LiftDictionary#getObjectLanguageManager()], [LiftDictionary#getMetaLanguageManager()])
 ///
 /// Internaly, components of the dictionary are linked in two ways:
-/// 
+///
 /// - with links from parent node to child node and from child node to parent
 /// - by managing list and map of components of a given type
-/// 
+///
 /// Creating, adding or removing a component from the dictionary implies taking
 /// care of these two aspects.
 public final class LiftDictionary {
@@ -189,9 +190,9 @@ public final class LiftDictionary {
      * @throws WrittingLiftDocumentException
      */
     public void save(File f) throws WrittingLiftDocumentException {
-        LiftWriter liftWriter = null;
+        LiftWriterSession liftWriter = null;
         try {
-            liftWriter = new LiftWriter(f);
+            liftWriter = new LiftWriterSession(f);
         } catch (FileNotFoundException e) {
             throw new WrittingLiftDocumentException(e);
         }
@@ -250,14 +251,7 @@ public final class LiftDictionary {
     public Set<String> getTraitName() {
         return this.registry.getTraits()
             .stream()
-            .map(t -> t.getDefinition().getName())
-            .collect(Collectors.toSet());
-    }
-
-    public Set<LiftFieldAndTraitDefinition> getFieldType() {
-        return this.registry.getFields()
-            .stream()
-            .map(t -> t.getType())
+            .map(t -> t.getSpecification().getName())
             .collect(Collectors.toSet());
     }
 
@@ -272,7 +266,7 @@ public final class LiftDictionary {
     public Map<String, Long> getValueCounterForTraitName(String traitName) {
         return this.registry.getTraits()
             .stream()
-            .filter(t -> t.getDefinition().getName().equals(traitName))
+            .filter(t -> t.getSpecification().getName().equals(traitName))
             .collect(
                 Collectors.groupingBy(x -> x.getValue(), Collectors.counting())
             );

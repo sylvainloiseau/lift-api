@@ -31,24 +31,6 @@ public class TraitBuilder extends AbstractLiftElementBuilder<LiftTrait, HasTrait
         element.setValue(value);
     }
 
-    // /**
-    //  * Set the trait ID.
-    //  */
-    // @Override
-    // public TraitBuilder withId(String id) {
-    //     super.withId(id);
-    //     return this;
-    // }
-
-    // /**
-    //  * Set the trait GUID.
-    //  */
-    // @Override
-    // public TraitBuilder withGuid(String guid) {
-    //     super.withGuid(guid);
-    //     return this;
-    // }
-
     /**
      * Update the trait value.
      */

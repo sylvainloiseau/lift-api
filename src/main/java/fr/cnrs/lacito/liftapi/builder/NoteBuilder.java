@@ -26,30 +26,12 @@ public class NoteBuilder extends AbstractLiftElementWithFieldBuilder<LiftNote, H
      */
     protected NoteBuilder(LiftDictionary dictionary, HasNote parent, String type) {
         super(LiftNote.create(), dictionary, parent);
-        if (!dictionary.getHeader().getNoteTypeManager().hasRangeElements(type)) {
+        if (!dictionary.getHeader().getNoteTypeManager().hasFeature(type)) {
             dictionary.getHeader().getNoteTypeManager().addFeature(type);
         }
         Feature e = dictionary.getHeader().getNoteTypeManager().getFeature(type);
         element.setType(e);
     }
-
-    // /**
-    //  * Set the note ID. If not set, will be created automatically.
-    //  */
-    // @Override
-    // public NoteBuilder withId(String id) {
-    //     super.withId(id);
-    //     return this;
-    // }
-
-    // /**
-    //  * Set the note GUID.
-    //  */
-    // @Override
-    // public NoteBuilder withGuid(String guid) {
-    //     super.withGuid(guid);
-    //     return this;
-    // }
 
     /**
      * Add text in the specified language.
@@ -72,15 +54,6 @@ public class NoteBuilder extends AbstractLiftElementWithFieldBuilder<LiftNote, H
         element.getText().add(text);
         return this;
     }
-
-    // /**
-    //  * Add a trait.
-    //  */
-    // @Override
-    // public NoteBuilder addTrait(String name, String value) {
-    //     super.addTrait(name, value);
-    //     return this;
-    // }
 
     public NoteBuilder withType(String type) {
         if (type == null || type.isBlank()) throw new IllegalArgumentException("Type cannot be null or empty.");

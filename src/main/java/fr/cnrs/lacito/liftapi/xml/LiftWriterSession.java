@@ -38,7 +38,20 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
 /**
+ * Facade for serializing a LiftDictionary to XML.
+ *
  * Manages XML serialization session with proper resource lifecycle.
+ *
+ * Use {@link LiftDictionary#save()} or call directly:
+ *
+ * <pre>
+ *   LiftDictionary dict = LiftDictionary.loadDictionaryWithFile(inputFile);
+ *   // ... modify dictionary ...
+ *   try (LiftWriterSession session = new LiftWriterSession(outputFile)) {
+ *       session.marshall(dict);
+ *   }
+ * </pre>
+ *
  * Handles stream creation, closing, and high-level serialization operations.
  */
 public class LiftWriterSession implements AutoCloseable {
@@ -390,8 +403,8 @@ public class LiftWriterSession implements AutoCloseable {
         if (f.getTypeStr().isPresent()) {
             out.writeAttribute("type", f.getTypeStr().get());
         }
-        if (f.getResolvedRange().isPresent()) {
-            out.writeAttribute("option-range", f.getResolvedRange().get().getId());
+        if (f.getResolvedFeatureSet().isPresent()) {
+            out.writeAttribute("option-range", f.getResolvedFeatureSet().get().getId());
         }
         if (f.getWritingSystem().isPresent()) {
             out.writeAttribute("writing-system", f.getWritingSystem().get());
@@ -531,7 +544,7 @@ public class LiftWriterSession implements AutoCloseable {
                 e.getType().getId()
             );
         }
-        if (e.getSource() != null) {
+        if (e.getSource() != null || !e.getSource().isEmpty()) {
             out.writeAttribute(LiftVocabulary.SOURCE_ATTRIBUTE, e.getSource());
         }
         AbstractPropertyWriters.writeAbstractExtensibleWithoutField(out, e);
@@ -563,7 +576,7 @@ public class LiftWriterSession implements AutoCloseable {
         MultiTextWriters.writeMultiText(
             out,
             LiftVocabulary.GLOSS_LOCAL_NAME,
-            sense.getGloss()
+            sense.getGlosses()
         );
 
         if (!sense.getDefinition().isEmpty()) {
@@ -628,7 +641,7 @@ public class LiftWriterSession implements AutoCloseable {
 
     private void writeTrait(LiftTrait t) throws Exception {
         out.writeStartElement(LiftVocabulary.TRAIT_LOCAL_NAME);
-        out.writeAttribute(LiftVocabulary.NAME_ATTRIBUTE, t.getDefinition().getName());
+        out.writeAttribute(LiftVocabulary.NAME_ATTRIBUTE, t.getSpecification().getName());
         out.writeAttribute(LiftVocabulary.VALUE_ATTRIBUTE, t.getValue());
         t.getAnnotations().forEach(unchecked(this::writeAnnotation));
         out.writeEndElement();

@@ -40,30 +40,12 @@ public class RelationBuilder extends AbstractLiftElementWithFieldBuilder<LiftRel
         if (type == null) {
             throw new IllegalArgumentException("Relation type cannot be null");
         }
-        if (!dictionary.getHeader().getRelationTypeManager().hasRangeElements(type)) {
+        if (!dictionary.getHeader().getRelationTypeManager().hasFeature(type)) {
             dictionary.getHeader().getRelationTypeManager().addFeature(type);
         }
         Feature e = dictionary.getHeader().getRelationTypeManager().getFeature(type);
         this.element.setType(e);
     }
-
-    // /**
-    //  * Set the relation ID.
-    //  */
-    // @Override
-    // public RelationBuilder withId(String id) {
-    //     super.withId(id);
-    //     return this;
-    // }
-
-    // /**
-    //  * Set the relation GUID.
-    //  */
-    // @Override
-    // public RelationBuilder withGuid(String guid) {
-    //     super.withGuid(guid);
-    //     return this;
-    // }
 
     /**
      * Set the reference ID (target of the relation).

@@ -3,8 +3,10 @@ package fr.cnrs.lacito.liftapi.model;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleListProperty;
@@ -25,15 +27,15 @@ import javafx.collections.FXCollections;
  * <ul>
  * <li> The key doesn't have to be unique on the object that receive the traits: several traits can have the same key on the same object.</li>
  * <li> The key indicate wich set of possible values are avaible: the key is a {@link LiftFieldAndTraitDefinition}
- *   (see {@link LiftTrait#getDefinition()}), which contain a reference to a {@link FeatureSet} taxinomy
- *   (see {@link LiftFieldAndTraitDefinition#getResolvedRange()}). See below for more details.</li>
+ *   (see {@link LiftTrait#getSpecification()}), which contain a reference to a {@link FeatureSet} taxinomy
+ *   (see {@link LiftFieldAndTraitDefinition#getResolvedFeatureSet()}). See below for more details.</li>
  * </ul>
  * </li>
  * <li>A <strong>{@link LiftField}</strong> is a key associated with an open value (text, date, integer).
  * <ul>
- * <li> The key has to be unique on the object that receive the field.</li>
+ * <li> The key must be unique on the object that receive the field.</li>
  * <li> The key is a {@link LiftFieldAndTraitDefinition}
- *   (see {@link LiftField#getType()}), which indicate the data model (text, date, integer)</li>
+ *   (see {@link LiftField#getSpecification()}), which indicate the data model (text, date, integer)</li>
  * <li>a (string) value is a multitext.</li>
  * </ul>
  * </li>
@@ -58,8 +60,8 @@ import javafx.collections.FXCollections;
  * documentation of {@link LiftFieldAndTraitDefinitionDataModel} for the various datamodel.
  * 
  * According to the datamodel, the string provided to {@link #setValue(String)} is parsed differently. For instance,
- * if the data model is {@link LiftFieldAndTraitDefinitionDataModel#OPTION_COLLECTION}, the value is interpreted
- * as a whitespace-separated list of RangeElement id to be fount in the range of {@link LiftFieldAndTraitDefinition#getResolvedRange()}.
+ * if the data model is {@link LiftFieldAndTraitDefinitionDataModel#FEATURE_SET}, the value is interpreted
+ * as a whitespace-separated list of RangeElement id to be fount in the range of {@link LiftFieldAndTraitDefinition#getResolvedFeatureSet()}.
  *
  * A Trait can receive annotation, but no notes or fields.
  *
@@ -77,83 +79,85 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
     protected HasTrait parent;
 
     /**
-     * The definition of this trait.
+     * The specification of this trait.
      */
-    private SimpleObjectProperty<LiftFieldAndTraitDefinition> definitionProperty;
+    private final SimpleObjectProperty<LiftFieldAndTraitDefinition> specification;
 
     private SimpleObjectProperty<ZonedDateTime> dateTimeProperty;
     private StringProperty stringValueProperty;
-    private SimpleObjectProperty<Feature> rangeElementProperty;
-    private SimpleSetProperty<Feature> rangeElementSetProperty;
-    private SimpleListProperty<Feature> rangeElementListProperty;
+    private SimpleObjectProperty<Feature> featureProperty;
+    private SimpleSetProperty<Feature> featureSetProperty;
+    private SimpleListProperty<Feature> featureListProperty;
     private SimpleIntegerProperty integerProperty;
 
-    public LiftTrait(LiftFieldAndTraitDefinition def) {
-        this.definitionProperty = new SimpleObjectProperty<>(this, "definition", def);
-        switch (def.getDataModel().get()) {
+    /**
+     * Construct a trait with a trait specification (the specification cannot be changed).
+     * 
+     * @param spec
+     * @throws IllegalArgumentException if the specification has no Datamodel legal value.
+     */
+    public LiftTrait(LiftFieldAndTraitDefinition spec) {
+        this.specification = new SimpleObjectProperty<>(this, "definition", spec);
+        switch (spec.getDataModel().get()) {
             case STRING -> this.stringValueProperty = new SimpleStringProperty(this, "value", "");
             case INTEGER -> this.integerProperty = new SimpleIntegerProperty(this, "value", 0);
             case DATETIME -> this.dateTimeProperty = new SimpleObjectProperty<>(this, "value", null);
-            case OPTION -> this.rangeElementProperty = new SimpleObjectProperty<>(this, "value", null);
-            case OPTION_COLLECTION -> this.rangeElementListProperty = new SimpleListProperty<>(this, "value", null);
-            case OPTION_SEQUENCE -> this.rangeElementSetProperty = new SimpleSetProperty<>(this, "value", null);
-            default -> throw new IllegalArgumentException("Unknown definition type: " + def.getDataModel().get());
+            case FEATURE -> this.featureProperty = new SimpleObjectProperty<>(this, "value", null);
+            case FEATURE_SET -> this.featureListProperty = new SimpleListProperty<>(this, "value", null);
+            case FEATURE_LIST -> this.featureSetProperty = new SimpleSetProperty<>(this, "value", null);
+            default -> throw new IllegalArgumentException("Unknown definition type: " + spec.getDataModel().get());
         }
     }
 
     public LiftTrait(LiftFieldAndTraitDefinition def, String value) {
         this(def);
-        if (!def.getDataModel().isEmpty() && def.getDataModel().get() != LiftFieldAndTraitDefinitionDataModel.STRING) {
-            throw new IllegalArgumentException("The Datamodel of this LiftTrait is not compatible with a String value ");
-        }
-        this.stringValueProperty = new SimpleStringProperty(this, "value", value);
+        this.stringValueProperty.set(value);
     }
 
     public LiftTrait(LiftFieldAndTraitDefinition def, ZonedDateTime value) {
         this(def);
-        if (def.getDataModel().isEmpty() || def.getDataModel().get() != LiftFieldAndTraitDefinitionDataModel.DATETIME) {
-            throw new IllegalArgumentException("The Datamodel of this LiftTrait is not compatible with a date times value ");
-        }
-        this.dateTimeProperty = new SimpleObjectProperty<>(this, "value", value);
+        this.dateTimeProperty.set(value);
     }
 
     public LiftTrait(LiftFieldAndTraitDefinition def, Integer i) {
         this(def);
-        if (def.getDataModel().isEmpty() || def.getDataModel().get() != LiftFieldAndTraitDefinitionDataModel.INTEGER) {
-            throw new IllegalArgumentException("The Datamodel of this LiftTrait is not compatible with an integer value ");
-        }
-        this.integerProperty = new SimpleIntegerProperty(this, "value", i);
+        this.integerProperty.set(i);
     }
 
     public LiftTrait(LiftFieldAndTraitDefinition def, Feature rangeElement) {
         this(def);
-        if (def.getDataModel().isEmpty() || def.getDataModel().get() != LiftFieldAndTraitDefinitionDataModel.OPTION) {
-            throw new IllegalArgumentException("The Datamodel of this LiftTrait is not compatible with a range value ");
-        }
-        this.rangeElementProperty = new SimpleObjectProperty<>(this, "value", rangeElement);
+        this.featureProperty.set(rangeElement);
     }
 
     public LiftTrait(LiftFieldAndTraitDefinition def, HashSet<Feature> rangeElementSet) {
         this(def);
-        if (def.getDataModel().isEmpty() || def.getDataModel().get() != LiftFieldAndTraitDefinitionDataModel.OPTION_COLLECTION) {
-            throw new IllegalArgumentException("The Datamodel of this LiftTrait is not compatible with a set of range value ");
-        }
-        this.rangeElementSetProperty = new SimpleSetProperty<Feature>(this, "value", FXCollections.observableSet(rangeElementSet));
+        this.featureSetProperty.addAll(rangeElementSet);
     }
 
     public LiftTrait(LiftFieldAndTraitDefinition def, List<Feature> rangeElementList) {
         this(def);
-        if (def.getDataModel().isEmpty() || def.getDataModel().get() != LiftFieldAndTraitDefinitionDataModel.OPTION_SEQUENCE) {
-            throw new IllegalArgumentException("The Datamodel of this LiftTrait is not compatible with a list of range value ");
-        }
-        this.rangeElementListProperty = new SimpleListProperty<Feature>(this, "value", FXCollections.observableList(rangeElementList));
+        this.featureListProperty.addAll(FXCollections.observableList(rangeElementList));
     }
 
+    // --------------------------------------------------------
+    // Text
+    // --------------------------------------------------------
+
+    /**
+     * LiftTrait have no MultiText: call to this method will throw an exception
+     * 
+     * @throws IllegalStateException
+     */
     @Override
     public MultiText getMainMultiText() {
         throw new IllegalStateException("Trait does not have a main MultiText");
     }
 
+    /**
+     * LiftTrait have no MultiText: call to this method will throw an exception
+     * 
+     * @throws IllegalStateException
+     */
     @Override
     protected void addToMainMultiText(Form t) {
         throw new UnsupportedOperationException(
@@ -161,11 +165,9 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
         );
     }
 
-    public LiftFieldAndTraitDefinition getDefinition() {
-        return definitionProperty.get();
-    }
-
-    // Values
+    // --------------------------------------------------------
+    // get and set values as string
+    // --------------------------------------------------------
 
     // private SimpleObjectProperty<ZonedDateTime> dateTimeProperty;
     // private StringProperty stringValueProperty;
@@ -175,54 +177,209 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
     // private SimpleListProperty<LiftHeaderRangeElement> rangeElementListProperty;
     // private SimpleIntegerProperty integerProperty;
 
+    /**
+     * Return a textual representation of the value.
+     * 
+     * For the actual objects,
+     * consider using the accessor ({@link #dateTimeValueProperty()},
+     * {@link #stringValueProperty()}, etc.) corresponding to the data model of this trait.
+     * 
+     * For a {@link LiftFieldAndTraitDefinitionDataModel#FEATURE_SET}
+     * or a {@link LiftFieldAndTraitDefinitionDataModel#FEATURE_LIST}, it
+     * is a comma-separated list of the ID of the features.
+     * @return
+     */
     public String getValue() {
-        return switch (definitionProperty.get().getType().get()) {
+        return switch (specification.get().getType().get()) {
             case LiftFieldAndTraitDefinitionDataModel.DATETIME -> this.dateTimeProperty.get().toString();
             case LiftFieldAndTraitDefinitionDataModel.STRING -> this.stringValueProperty.get();
-            case LiftFieldAndTraitDefinitionDataModel.OPTION -> this.rangeElementProperty.get().getId();
-            case LiftFieldAndTraitDefinitionDataModel.OPTION_COLLECTION -> {
-                throw new UnsupportedOperationException("OPTION_COLLECTION type is not supported for trait value");
-                // this.rangeElementSetProperty.get().stream()
-                //     .map(LiftHeaderRangeElement::getId)
-                //     .collect(Collectors.joining(", "));
+            case LiftFieldAndTraitDefinitionDataModel.FEATURE -> this.featureProperty.get().getId();
+            case LiftFieldAndTraitDefinitionDataModel.FEATURE_SET -> {
+                //throw new UnsupportedOperationException("OPTION_COLLECTION type is not supported for trait value");
+                 yield this.featureSetProperty.get().stream()
+                     .map(x -> x.getId())
+                     .collect(Collectors.joining(", "));
             }
-            case LiftFieldAndTraitDefinitionDataModel.OPTION_SEQUENCE -> {
-                throw new UnsupportedOperationException("OPTION_SEQUENCE type is not supported for trait value");
-                // this.rangeElementListProperty.get().stream()
-                //     .map(LiftHeaderRangeElement::getId)
-                //  .collect(Collectors.joining(", "));
+            case LiftFieldAndTraitDefinitionDataModel.FEATURE_LIST -> {
+                // throw new UnsupportedOperationException("OPTION_SEQUENCE type is not supported for trait value");
+                yield this.featureListProperty.get().stream()
+                     .map(x -> x.getId())
+                  .collect(Collectors.joining(", "));
             }
             case LiftFieldAndTraitDefinitionDataModel.INTEGER -> Integer.toString(this.integerProperty.get());
-            default -> throw new IllegalArgumentException("Illegal trait type: " + definitionProperty.get().getTypeStr());
+            default -> throw new IllegalArgumentException("Illegal trait type: " + specification.get().getTypeStr());
         };
     }
 
-    public StringProperty valueProperty() {
-        return stringValueProperty;
-    }
-
+    /**
+     * Parse the given string in order to set the value.
+     * 
+     * The string will be parsed according to the data model of this trait:
+     * 
+     * <ul>
+     * <li> for a DATETIME, it will be parsed as a date time expression.</li>
+     * <li> for a FEATURE, it will be considered as the id of a feature in the feature set of this trait.</li>
+     * <li> for a FEATURE_SET, it will be considered as the comma separated set of feature ids belonging to the feature set of this trait.</li>
+     * <li>etc.</li>
+     * </ul>
+     * 
+     * @param value
+     */
+    // TODO complete the implementation
     public void setValue(String value) {
         if (value == null) value = "";
         //valueProperty.set(value);
-        switch (definitionProperty.get().getType().get()) {
+        switch (specification.get().getType().get()) {
             case LiftFieldAndTraitDefinitionDataModel.DATETIME -> this.dateTimeProperty.set(ZonedDateTime.parse(value, DateTimeFormatter.ISO_ZONED_DATE_TIME));
             case LiftFieldAndTraitDefinitionDataModel.STRING -> this.stringValueProperty.set(value);
-            case LiftFieldAndTraitDefinitionDataModel.OPTION -> throw new UnsupportedOperationException("OPTION type is not supported for trait value");
-            case LiftFieldAndTraitDefinitionDataModel.OPTION_COLLECTION -> throw new UnsupportedOperationException("OPTION_COLLECTION type is not supported for trait value");
-            case LiftFieldAndTraitDefinitionDataModel.OPTION_SEQUENCE -> throw new UnsupportedOperationException("OPTION_SEQUENCE type is not supported for trait value");
+            case LiftFieldAndTraitDefinitionDataModel.FEATURE -> {
+                if (specification.get().getResolvedFeatureSet().get().hasFeature(value)) {
+                    Feature f = specification.get().getResolvedFeatureSet().get().getFeature(value);
+                    featureProperty.set(f);
+                } else {
+                    throw new IllegalArgumentException("Feature not known: + " + value);
+                }
+            }
+            case LiftFieldAndTraitDefinitionDataModel.FEATURE_SET -> {
+                featureSetProperty.addAll(getFeaturesFromString(value));
+            }
+            case LiftFieldAndTraitDefinitionDataModel.FEATURE_LIST -> {
+                featureListProperty.addAll(getFeaturesFromString(value));
+            }
             case LiftFieldAndTraitDefinitionDataModel.INTEGER -> this.integerProperty.set(Integer.parseInt(value));
-            default -> throw new IllegalArgumentException("Illegal trait type: " + definitionProperty.get().getTypeStr());
+            default -> throw new IllegalArgumentException("Illegal trait type: " + specification.get().getTypeStr());
         }
     }
 
+    private List<Feature> getFeaturesFromString(String value) {
+        String[] fIds = value.split(",");
+        Feature[] features = new Feature[fIds.length];
+        int i = 0;
+        for (String fId : fIds) {
+            fId = fId.trim();
+            if (fId.isEmpty()) continue;
+            if (specification.get().getResolvedFeatureSet().get().hasFeature(fId)) {
+                Feature f = specification.get().getResolvedFeatureSet().get().getFeature(fId);
+                features[i] = f;
+                i++;
+            } else {
+                throw new IllegalArgumentException("Feature not known: + " + fId);
+            }
+        }
+        return Arrays.asList(Arrays.<Feature>copyOf(features, i));
+    }
+
+    // --------------------------------------------------------
+    // Accessors for the actual value property
+    // --------------------------------------------------------
+
+    /**
+     * Return the string value property of this trait is the data model of the
+     * trait is of type {@link LiftFieldAndTraitDefinitionDataModel#STRING}.
+     * 
+     * @return a StringProperty
+     * @throws IllegalArgumentException if the data model of this trait is
+     * not of type {@link LiftFieldAndTraitDefinitionDataModel#STRING}
+     */
+    public StringProperty stringValueProperty() {
+        if (this.specification.get().getDataModel().get() != LiftFieldAndTraitDefinitionDataModel.STRING)
+            throw new IllegalArgumentException("This trait has not a 'string' type.");
+        return stringValueProperty;
+    }
+
+    /**
+     * Return the date time value property of this trait is the data model of the
+     * trait is of type {@link LiftFieldAndTraitDefinitionDataModel#DATETIME}.
+     * 
+     * @return a datetime
+     * @throws IllegalArgumentException if the data model of this trait is
+     * not of type {@link LiftFieldAndTraitDefinitionDataModel#DATETIME}
+     */
+    public SimpleObjectProperty<ZonedDateTime> dateTimeValueProperty() {
+        if (this.specification.get().getDataModel().get() != LiftFieldAndTraitDefinitionDataModel.DATETIME)
+            throw new IllegalArgumentException("This trait has not a 'datetime' type.");
+        return dateTimeProperty;
+    }
+
+    /**
+     * Return the integer value property of this trait is the data model of the
+     * trait is of type {@link LiftFieldAndTraitDefinitionDataModel#INTEGER}.
+     * 
+     * @return an integer property
+     * @throws IllegalArgumentException if the data model of this trait is
+     * not of type {@link LiftFieldAndTraitDefinitionDataModel#INTEGER}
+     */
+    public SimpleIntegerProperty integerValueProperty() {
+        if (this.specification.get().getDataModel().get() != LiftFieldAndTraitDefinitionDataModel.INTEGER)
+            throw new IllegalArgumentException("This trait has not a 'integer' type.");
+        return integerProperty;
+    }
+
+    /**
+     * Return the feature value property of this trait is the data model of the
+     * trait is of type {@link LiftFieldAndTraitDefinitionDataModel#FEATURE}.
+     * 
+     * @return an feature property
+     * @throws IllegalArgumentException if the data model of this trait is
+     * not of type {@link LiftFieldAndTraitDefinitionDataModel#FEATURE}
+     */
+    public SimpleObjectProperty<Feature> featureValueProperty() {
+        if (this.specification.get().getDataModel().get() != LiftFieldAndTraitDefinitionDataModel.FEATURE)
+            throw new IllegalArgumentException("This trait has not a 'feature' type.");
+        return featureProperty;
+    }
+
+    /**
+     * Return the feature set value property of this trait is the data model of the
+     * trait is of type {@link LiftFieldAndTraitDefinitionDataModel#FEATURE_SET}.
+     * 
+     * @return an feature set property
+     * @throws IllegalArgumentException if the data model of this trait is
+     * not of type {@link LiftFieldAndTraitDefinitionDataModel#FEATURE_SET}
+     */
+    public SimpleSetProperty<Feature> featureSetValueProperty() {
+        if (this.specification.get().getDataModel().get() != LiftFieldAndTraitDefinitionDataModel.FEATURE_SET)
+            throw new IllegalArgumentException("This trait has not a 'feature set' type.");
+        return featureSetProperty;
+    }
+
+    /**
+     * Return the feature list value property of this trait is the data model of the
+     * trait is of type {@link LiftFieldAndTraitDefinitionDataModel#FEATURE_LIST}.
+     * 
+     * @return an feature list property
+     * @throws IllegalArgumentException if the data model of this trait is
+     * not of type {@link LiftFieldAndTraitDefinitionDataModel#FEATURE_LIST}
+     */
+    public SimpleListProperty<Feature> featureListValueProperty() {
+        if (this.specification.get().getDataModel().get() != LiftFieldAndTraitDefinitionDataModel.FEATURE_LIST)
+            throw new IllegalArgumentException("This trait has not a 'feature list' type.");
+        return featureListProperty;
+    }
+    // --------------------------------------------------------
+    // Specification
+    // --------------------------------------------------------
+
+    public LiftFieldAndTraitDefinition getSpecification() {
+        return specification.get();
+    }
+
+    // --------------------------------------------------------
     // Parent
+    // --------------------------------------------------------
 
     protected void setParent(HasTrait parent) {
         if (parent == null) throw new IllegalArgumentException("Parent is null");
         this.parent = parent;
     }
 
+    public HasTrait getParent() {
+        return parent;
+    }
+
+    // --------------------------------------------------------
     // Annotations
+    // --------------------------------------------------------
 
     @Override
     public void addAnnotation(LiftAnnotation a) {
@@ -232,10 +389,6 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
 
     public List<LiftAnnotation> getAnnotations() {
         return annotations;
-    }
-
-    public HasTrait getParent() {
-        return parent;
     }
 
 }

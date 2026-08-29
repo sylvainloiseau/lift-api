@@ -39,7 +39,7 @@ public class Sanitizer {
         Map<String, List<String>> classByTrait = new HashMap<>();
         // iterate on trait and see with which object each trait name is used.
         for (LiftTrait t : registry.traitsById.values()) {
-            String traitName = t.getDefinition().getName();
+            String traitName = t.getSpecification().getName();
             String className = t.getParent().getClass().getName();
             classByTrait.compute(traitName, (k, v) -> {
                 if (v == null) v = new ArrayList<>();
@@ -49,7 +49,7 @@ public class Sanitizer {
         }
         // iterate on field and see with which object each trait name is used.
         for (LiftField t : registry.fieldsById.values()) {
-            String traitName = t.getType().getName();
+            String traitName = t.getSpecification().getName();
             String className = t.getParent().getClass().getName();
             classByTrait.compute(traitName, (k, v) -> {
                 if (v == null) v = new ArrayList<>();

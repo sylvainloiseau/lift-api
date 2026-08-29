@@ -25,7 +25,6 @@ public final class LiftAnnotation extends AbstractLiftRoot implements HasType {
         "type",
         null
     );
-
     private final StringProperty valueProperty = new SimpleStringProperty(this, "value", "");;
     private final StringProperty whoProperty = new SimpleStringProperty(this, "who", "");
     private final StringProperty whenProperty = new SimpleStringProperty(this, "when", "");
@@ -43,9 +42,15 @@ public final class LiftAnnotation extends AbstractLiftRoot implements HasType {
         this.parent = parent;
     }
 
+    public HasAnnotation getParent() {
+        return parent;
+    }
+
     public MultiText getText() {
         return getMainMultiText();
     }
+
+    // Type -----------------------------------
 
     @Override
     public Feature getType() {
@@ -57,20 +62,14 @@ public final class LiftAnnotation extends AbstractLiftRoot implements HasType {
         typeProperty.set(type);
     }
 
+    public ObjectProperty<Feature> typeProperty() {
+        return typeProperty;
+    }
+
+    // Value -----------------------------------
+
     public String getValue() {
         return valueProperty.get();
-    }
-
-    public String getWho() {
-        return whoProperty.get();
-    }
-
-    public String getWhen() {
-        return whenProperty.get();
-    }
-
-    public HasAnnotation getParent() {
-        return parent;
     }
 
     public void setValue(String value) {
@@ -78,26 +77,34 @@ public final class LiftAnnotation extends AbstractLiftRoot implements HasType {
         this.valueProperty.set(v);
     }
 
+    public StringProperty valueProperty() {
+        return valueProperty;
+    }
+
+    // Who -----------------------------------
+
+    public String getWho() {
+        return whoProperty.get();
+    }
+
     public void setWho(String who) {
         String v = who == null ? "" : who.trim();
         this.whoProperty.set(v);
     }
 
+    public StringProperty whoProperty() {
+        return whoProperty;
+    }
+
+    // When -----------------------------------
+
+    public String getWhen() {
+        return whenProperty.get();
+    }
+
     public void setWhen(String when) {
         String v = when == null ? "" : when.trim();
         this.whenProperty.set(v);
-    }
-
-    public ObjectProperty<Feature> nameProperty() {
-        return typeProperty;
-    }
-
-    public StringProperty valueProperty() {
-        return valueProperty;
-    }
-
-    public StringProperty whoProperty() {
-        return whoProperty;
     }
 
     public StringProperty whenProperty() {

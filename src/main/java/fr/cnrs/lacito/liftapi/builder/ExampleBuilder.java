@@ -11,6 +11,8 @@ import fr.cnrs.lacito.liftapi.model.LiftSense;
 /**
  * Builder for creating LiftExample instances with a fluent API.
  *
+ * At least one form is the minimum requirement in order to build the entry.
+ *
  * Usage:
  * <pre>
  *   LiftExample example = Builders.example()
@@ -80,49 +82,13 @@ public final class ExampleBuilder extends AbstractLiftElementWithFieldAndNoteBui
         if (type == null || translation == null) {
             throw new IllegalArgumentException("Type and translation cannot be null");
         }
-        if (!dictionary.getHeader().getTranslationTypeManager().hasRangeElements(type)) {
+        if (!dictionary.getHeader().getTranslationTypeManager().hasFeature(type)) {
             dictionary.getHeader().getTranslationTypeManager().addFeature(type);
         }
-        Feature rangeElement = dictionary.getHeader().getTranslationTypeManager().getFeature(type);
-        element.getOrCreateTranslation(rangeElement).add(translation);
+        Feature f = dictionary.getHeader().getTranslationTypeManager().getFeature(type);
+        element.getOrCreateTranslation(f).add(translation);
         return this;
     }
-
-//    /**
-//     * Add a note via nested builder configuration.
-//     */
-//    @Override
-//    public ExampleBuilder addNote(String type, String language, String text) {
-//        super.addNote(type, language, text);
-//        return this;
-//    }
-//
-//    /**
-//     * Add a note via nested builder configuration.
-//     */
-//    @Override
-//    public ExampleBuilder addNote(Consumer<NoteBuilder> config, String type) {
-//        super.addNote(config, type);
-//        return this;
-//    }
-//
-//    /**
-//     * Add a trait.
-//     */
-//    @Override
-//    public ExampleBuilder addTrait(String name, String value) {
-//        super.addTrait(name, value);
-//        return this;
-//    }
-//
-//    /**
-//     * Add a field.
-//     */
-//    @Override
-//    public ExampleBuilder addField(String name, String language, String text) {
-//        super.addField(name, language, text);
-//        return this;
-//    }
 
     // Override addNote in order to return the good type
 
@@ -184,6 +150,8 @@ public final class ExampleBuilder extends AbstractLiftElementWithFieldAndNoteBui
      */
     @Override
     public LiftExample build() {
+        if (element.getExample().isEmpty())
+            throw new IllegalStateException("In order to build an example, it should contain at least one example");
         super.register();
         return element;
     }

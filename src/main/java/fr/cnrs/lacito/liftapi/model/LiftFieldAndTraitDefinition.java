@@ -66,7 +66,7 @@ repeated.
  * When {@code @type} is {@code option}, {@code option-collection}, or {@code option-sequence},
  * the {@code @option-range} attribute may reference a {@link FeatureSet} that enumerates
  * the allowed values. After the header is fully parsed, call
- * {@link LiftFieldAndTraitDefinition#getResolvedRange()} to link this definition to the actual range object.
+ * {@link LiftFieldAndTraitDefinition#getResolvedFeatureSet()} to link this definition to the actual range object.
  *
  *
  For trait :
@@ -86,9 +86,9 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
 
     /**
      * If the datamodel of this trait definition is one of 
-     * {@link LiftFieldAndTraitDefinitionDataModel#OPTION_COLLECTION},
-     * {@link LiftFieldAndTraitDefinitionDataModel#OPTION_SEQUENCE} or
-     * {@link LiftFieldAndTraitDefinitionDataModel#OPTION}, then
+     * {@link LiftFieldAndTraitDefinitionDataModel#FEATURE_SET},
+     * {@link LiftFieldAndTraitDefinitionDataModel#FEATURE_LIST} or
+     * {@link LiftFieldAndTraitDefinitionDataModel#FEATURE}, then
      * this method give the {@link FeatureSet} object which defines the actual
      * values availables.
      * 
@@ -97,7 +97,7 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
      * the range is given by the value of {@code @option-range}
      * attribute.
      */
-    public Optional<FeatureSet> getResolvedRange() {
+    public Optional<FeatureSet> getResolvedFeatureSet() {
         return resolvedRange;
     }
 

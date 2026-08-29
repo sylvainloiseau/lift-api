@@ -125,6 +125,7 @@
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>3.11.2</version>
                 <configuration>
+                    <linksource>true</linksource>
                     <!--
                     <javadocExecutable>${java.home}/bin/javadoc</javadocExecutable>
                     <javadocExecutable>/usr/bin/javadoc</javadocExecutable>

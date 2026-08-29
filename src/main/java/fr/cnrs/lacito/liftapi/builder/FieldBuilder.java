@@ -52,16 +52,6 @@ public class FieldBuilder extends AbstractLiftElementWithoutFieldBuilder<LiftFie
         return this;
     }
 
-    // /**
-    //  * Add a trait.
-    //  */
-    // @Override
-    // public FieldBuilder addTrait(String name, String value) {
-    //     super.addTrait(name, value);
-    //     return this;
-    // }
-
-
     // Override Trait And Annotation builder in order to return the correct type
 
     @Override
@@ -95,7 +85,7 @@ public class FieldBuilder extends AbstractLiftElementWithoutFieldBuilder<LiftFie
      */
     @Override
     public LiftField build() {
-        if (element.getType() == null) {
+        if (element.getSpecification() == null) {
             throw new IllegalArgumentException("Field name cannot be null");
         }
         super.register();

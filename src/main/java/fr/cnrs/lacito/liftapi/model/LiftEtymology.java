@@ -10,8 +10,6 @@ public final class LiftEtymology
     implements HasGlosses, HasType
 {
 
-    protected final String source;
-
     protected final MultiText glosses = new MultiText(this);
 
     protected LiftEntry parent;
@@ -21,7 +19,6 @@ public final class LiftEtymology
     private final ReadOnlyStringWrapper sourcePropertyWrapper;
 
     public LiftEtymology(Feature type, String source) {
-        this.source = source;
         this.typeProperty = new SimpleObjectProperty<>(
             this,
             "type",
@@ -34,14 +31,27 @@ public final class LiftEtymology
         );
     }
 
-    public MultiText getGlosses() {
-        return glosses;
-    }
+    // Parent -----------------------------------
 
     public LiftEntry getParent() {
         return parent;
     }
 
+    protected void setParent(LiftEntry parent) {
+        this.parent = parent;
+    }
+
+    // Type -----------------------------------
+
+    /**
+     * <cite>
+     * Gives the etymological relationship between this sense and
+     * some other word in another language. This is a reference to a range-element in
+     * the etymology range.
+     * </cite>
+     * 
+     * Lift 0.15 specification, p. 9.
+     */
     @Override
     public Feature getType() {
         return typeProperty.get();
@@ -53,10 +63,24 @@ public final class LiftEtymology
         this.typeProperty.set(type);
     }
 
-    protected void setParent(LiftEntry parent) {
-        this.parent = parent;
+    public ObjectProperty<Feature> typeProperty() {
+        return typeProperty;
     }
 
+    // Source -----------------------------------
+    
+    /**
+     * <cite>
+     * Gives the language for the source language of the
+     * etymological relation. Where possible a lang type code (RFC 5646) should be
+     * used, but proto languages tend not to appear in the Ethnologue and so a
+     * uniquely identifying name may be given here.
+     * </cite>
+     * 
+     * Lift 0.15 specification, p. 9.
+     * 
+     * @return
+     */
     public String getSource() {
         return sourcePropertyWrapper.get();
     }
@@ -64,6 +88,12 @@ public final class LiftEtymology
     public void setSource(String source) {
         sourcePropertyWrapper.set(source);
     }
+
+    public ReadOnlyStringProperty sourceProperty() {
+        return sourcePropertyWrapper.getReadOnlyProperty();
+    }
+
+    // Form -----------------------------------
 
     public void addForm(Form form) {
         addToMainMultiText(form);
@@ -73,22 +103,22 @@ public final class LiftEtymology
         return getMainMultiText();
     }
 
+    // Gloss -----------------------------------
+
     @Override
     public void addGloss(Form gloss) {
         glosses.add(gloss);
     }
 
+    /**
+     * <cite>Gives glosses of the word that the etymological relationship is with.</cite>
+     * 
+     * Lift 0.15 specification, p. 9.
+     * 
+     */
     @Override
-    public MultiText getGloss() {
+    public MultiText getGlosses() {
         return glosses;
-    }
-
-    public ObjectProperty<Feature> typeProperty() {
-        return typeProperty;
-    }
-
-    public ReadOnlyStringProperty sourceProperty() {
-        return sourcePropertyWrapper.getReadOnlyProperty();
     }
 
     public static LiftEtymology create(Feature type, String source) {

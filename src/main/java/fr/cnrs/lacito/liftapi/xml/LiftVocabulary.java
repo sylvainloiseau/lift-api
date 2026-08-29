@@ -1,9 +1,11 @@
 package fr.cnrs.lacito.liftapi.xml;
 
+/**
+ * Represents the LIFT vocabulary, including constants for XML element and attribute names.
+ */
 public final class LiftVocabulary {
 
     public static final String CURRENT_LIFT_VERSION = "15";
-
 
     public static final String DATE_DELETED_ATTRIBUTE = "dateDeleted";
     public static final String ORDER_ATTRIBUTE = "order";

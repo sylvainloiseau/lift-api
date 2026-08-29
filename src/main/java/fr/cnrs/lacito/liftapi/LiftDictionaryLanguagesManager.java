@@ -6,6 +6,9 @@ import javafx.beans.property.SimpleMapProperty;
 import javafx.beans.property.SimpleSetProperty;
 import javafx.collections.FXCollections;
 
+/**
+ * Manages a set of languages (either meta languages or object languages) of a {@link LiftDictionary}.
+ */
 public class LiftDictionaryLanguagesManager {
 
     private final SimpleSetProperty<String> languages =
@@ -15,9 +18,7 @@ public class LiftDictionaryLanguagesManager {
         new SimpleMapProperty<>(FXCollections.observableHashMap());
 
 
-    protected LiftDictionaryLanguagesManager() {
-        
-    }
+    protected LiftDictionaryLanguagesManager() {}
 
     public SimpleSetProperty<String> languagesProperty() {
         return languages;

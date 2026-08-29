@@ -11,6 +11,9 @@ import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 import org.xml.sax.SAXException;
 
+/**
+ * Loads and parses an XML dictionary using SAX.
+ */
 public final class LiftDictionaryXmlReader {
 
     private static final Logger LOGGER = Logger.getLogger(
@@ -25,6 +28,13 @@ public final class LiftDictionaryXmlReader {
 
     private final LiftDictionary dictionary;
 
+    /**
+     * Constructs a LiftDictionaryXmlReader with the specified file, dictionary, and validation flag.
+     *
+     * @param f the XML file to parse
+     * @param dictionary the dictionary to populate
+     * @param validate whether to validate the XML against the schema
+     */
     public LiftDictionaryXmlReader(
         File f,
         LiftDictionary dictionary,

@@ -3,7 +3,6 @@ package fr.cnrs.lacito.liftapi.xml;
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDictionaryLanguagesManager;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
-import fr.cnrs.lacito.liftapi.LiftVersion;
 import fr.cnrs.lacito.liftapi.model.*;
 import javafx.collections.ObservableList;
 
@@ -19,6 +18,10 @@ import java.util.stream.Collectors;
 
 import org.xml.sax.Attributes;
 
+/**
+ * Factory class for creating components from LIFT XML elements and structures
+ * using a lower-level API than the builder API for efficiency object generation.
+ */
 public final class LiftXMLFactoryNew {
 
     public void setLiftVersion(LiftVersion liftVersion) {
@@ -84,7 +87,7 @@ public final class LiftXMLFactoryNew {
     public LiftReversal createReversal(Attributes attributes, LiftSense sense) {
         String type = attributes.getValue(LiftVocabulary.LIFT_URI, "type");
         if (type == null) throw new IllegalArgumentException();
-        if (!header.getNoteTypeManager().hasRangeElements(type)) {
+        if (!header.getNoteTypeManager().hasFeature(type)) {
             header.getNoteTypeManager().addFeature(type);
         }
         Feature element = header.getNoteTypeManager().getFeature(type);
@@ -109,7 +112,7 @@ public final class LiftXMLFactoryNew {
         String source = attributes.getValue(LiftVocabulary.LIFT_URI, "source");
         if (source == null) throw new IllegalArgumentException();
 
-        if (!header.getEtymologyTypeManager().hasRangeElements(type)) {
+        if (!header.getEtymologyTypeManager().hasFeature(type)) {
             header.getEtymologyTypeManager().addFeature(type);
         }
         Feature element = header.getEtymologyTypeManager().getFeature(type);
@@ -149,7 +152,7 @@ public final class LiftXMLFactoryNew {
             "A relation element must have a type attribute"
         );
 
-        if (!header.getRelationTypeManager().hasRangeElements(type)) {
+        if (!header.getRelationTypeManager().hasFeature(type)) {
             header.getRelationTypeManager().addFeature(type);
         }
         Feature element = header.getRelationTypeManager().getFeature(type);
@@ -195,7 +198,7 @@ public final class LiftXMLFactoryNew {
     }
 
     public Feature getTranslationType(String type) {
-        if (!header.getTranslationTypeManager().hasRangeElements(type)) {
+        if (!header.getTranslationTypeManager().hasFeature(type)) {
             header.getTranslationTypeManager().addFeature(type);
         }
         return header.getTranslationTypeManager().getFeature(type);
@@ -217,16 +220,16 @@ public final class LiftXMLFactoryNew {
                 yield new LiftTrait(def, instant);
             }
             case STRING -> new LiftTrait(def, value);
-            case OPTION -> {
-                FeatureSet r = def.getResolvedRange().get();
-                Feature e = r.getOrCreateRangeElement(value);
+            case FEATURE -> {
+                FeatureSet r = def.getResolvedFeatureSet().get();
+                Feature e = r.getOrCreateFeature(value);
                 yield new LiftTrait(def, e);
             }
-            case OPTION_COLLECTION -> {
+            case FEATURE_SET -> {
                 List<Feature> elements = parseRangeElement(def, value);
                 yield new LiftTrait(def, new HashSet<>(elements));
             }
-            case OPTION_SEQUENCE ->{
+            case FEATURE_LIST ->{
                 List<Feature> elements = parseRangeElement(def, value);
                 yield new LiftTrait(def, elements);
             }
@@ -238,10 +241,10 @@ public final class LiftXMLFactoryNew {
     }
 
     private List<Feature> parseRangeElement(LiftFieldAndTraitDefinition def, String list) {
-        FeatureSet r = def.getResolvedRange().get();
+        FeatureSet r = def.getResolvedFeatureSet().get();
         List<Feature> values = new ArrayList<>();
         for (String v : list.trim().split("\\s+")) {
-            Feature e = r.getOrCreateRangeElement(v);
+            Feature e = r.getOrCreateFeature(v);
             values.add(e);
         }
         return values;
@@ -256,7 +259,7 @@ public final class LiftXMLFactoryNew {
 
     public LiftNote createNote(String type, AbstractNotable parent) {
         if (type == null) type = "";
-        if (!header.getNoteTypeManager().hasRangeElements(type)) {
+        if (!header.getNoteTypeManager().hasFeature(type)) {
             header.getNoteTypeManager().addFeature(type);
         }
         Feature element = header.getNoteTypeManager().getFeature(type);
@@ -281,7 +284,7 @@ public final class LiftXMLFactoryNew {
             "Attribute name on annotation element cannot be null"
         );
 
-        if (!header.getAnnotationTypeManager().hasRangeElements(name)) {
+        if (!header.getAnnotationTypeManager().hasFeature(name)) {
             header.getAnnotationTypeManager().addFeature(name);
         }
         Feature element = header.getAnnotationTypeManager().getFeature(name);
@@ -461,14 +464,14 @@ public final class LiftXMLFactoryNew {
         if (id == null) throw new IllegalArgumentException();
         // the range-element may have already been created by a reference from another range-element (see parentElementId below)
         // so we use getOrCreateRangeElement rather that createRangeElement
-        Feature hre = parent.getOrCreateRangeElement(id);
+        Feature hre = parent.getOrCreateFeature(id);
 
         String parentElementId = attributes.getValue(
             LiftVocabulary.LIFT_URI,
             "parent"
         );
         if (parentElementId != null) {
-            Feature parentElement = parent.getOrCreateRangeElement(parentElementId);
+            Feature parentElement = parent.getOrCreateFeature(parentElementId);
             hre.setSuperordinateFeature(parentElement);
         }
         String guid = attributes.getValue(LiftVocabulary.LIFT_URI, "guid");
@@ -565,7 +568,7 @@ public final class LiftXMLFactoryNew {
 
 	public void setGrammaticalInfo(LiftSense s, String value) {
 	  if (value == null) throw new IllegalArgumentException("Grammatical info code cannot be null");
-	  Feature gramInfo = header.getGrammaticalInfoManager().getOrCreateRangeElement(value);
+	  Feature gramInfo = header.getGrammaticalInfoManager().getOrCreateFeature(value);
 	  s.setGrammaticalInfo(gramInfo);
 	}
 }

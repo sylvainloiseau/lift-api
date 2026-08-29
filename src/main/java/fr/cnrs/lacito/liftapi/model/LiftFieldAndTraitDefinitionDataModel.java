@@ -19,9 +19,9 @@ import java.util.Optional;
  * <ul>
  *   <li>{@link #DATETIME}</li>
  *   <li>{@link #INTEGER}</li>
- *   <li>{@link #OPTION}</li>
- *   <li>{@link #OPTION_COLLECTION}</li>
- *   <li>{@link #OPTION_SEQUENCE}</li>
+ *   <li>{@link #FEATURE} (this correspond to the {@code OPTION} value in Lift-XML)</li>
+ *   <li>{@link #FEATURE_SET} (this correspond to the {@code OPTION-COLLECTION} value in Lift-XML)</li>
+ *   <li>{@link #FEATURE_LIST} (this correspond to the {@code OPTION-SEQUENCE} value in Lift-XML)</li>
  *   <li>{@link #MULTITEXT}</li>
  * </ul>
  * 
@@ -32,9 +32,9 @@ public enum LiftFieldAndTraitDefinitionDataModel {
     STRING("string"),
     DATETIME("datetime"),
     INTEGER("integer"),
-    OPTION("option"),
-    OPTION_COLLECTION("option-collection"),
-    OPTION_SEQUENCE("option-sequence"),
+    FEATURE("option"),
+    FEATURE_SET("option-collection"),
+    FEATURE_LIST("option-sequence"),
     MULTISTRING("multistring"),
     MULTITEXT("multitext");
 

@@ -16,28 +16,35 @@ public final class LiftField extends AbstractExtensibleWithoutField {
 
     protected AbstractExtensibleWithField parent;
 
-    private final SimpleObjectProperty<LiftFieldAndTraitDefinition> nameProperty;
+    private final SimpleObjectProperty<LiftFieldAndTraitDefinition> specification;
 
     public LiftField(LiftFieldAndTraitDefinition name) {
         if (name == null) throw new IllegalArgumentException("Name is null");
-        this.nameProperty = new SimpleObjectProperty<>(
+        this.specification = new SimpleObjectProperty<>(
             this,
             "name",
             name
         );
     }
 
-    public LiftFieldAndTraitDefinition getType() {
-        return nameProperty.get();
+    // --------------------------------------------------------
+    // Specification
+    // --------------------------------------------------------
+
+    public LiftFieldAndTraitDefinition getSpecification() {
+        return this.specification.get();
     }
 
-    // TODO duplicate method
-    public SimpleObjectProperty<LiftFieldAndTraitDefinition> nameProperty() {
-        return this.nameProperty;
+    public SimpleObjectProperty<LiftFieldAndTraitDefinition> specificationProperty() {
+        return this.specification;
     }
+
+    // --------------------------------------------------------
+    // Parent
+    // --------------------------------------------------------
 
     public AbstractExtensibleWithField getParent() {
-        return parent;
+        return this.parent;
     }
 
     protected void setParent(AbstractExtensibleWithField parent) {
@@ -45,15 +52,24 @@ public final class LiftField extends AbstractExtensibleWithoutField {
         this.parent = parent;
     }
 
+    // --------------------------------------------------------
+    // Text
+    // --------------------------------------------------------
+
     public MultiText getText() {
         return getMainMultiText();
     }
+
+    public void addText(Form form) {
+        getMainMultiText().add(form);
+    }
+
+    // --------------------------------------------------------
+    // Static helper
+    // --------------------------------------------------------
 
     public static LiftField create(LiftFieldAndTraitDefinition name) {
         return new LiftField(name);
     }
 
-    public void addText(Form form) {
-        getText().add(form);
-    }
 }

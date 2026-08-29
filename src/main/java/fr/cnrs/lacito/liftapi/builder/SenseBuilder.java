@@ -39,7 +39,7 @@ public final class SenseBuilder extends AbstractLiftElementWithFieldAndNoteAndId
         if (language == null || text == null) {
             throw new IllegalArgumentException("Language and text cannot be null");
         }
-        element.getGloss().add(new Form(language, text));
+        element.getGlosses().add(new Form(language, text));
         return this;
     }
 
@@ -50,7 +50,7 @@ public final class SenseBuilder extends AbstractLiftElementWithFieldAndNoteAndId
         if (gloss == null) {
             throw new IllegalArgumentException("Gloss cannot be null");
         }
-        element.getGloss().add(gloss);
+        element.getGlosses().add(gloss);
         return this;
     }
 
@@ -83,7 +83,7 @@ public final class SenseBuilder extends AbstractLiftElementWithFieldAndNoteAndId
         if (pos == null) {
             throw new IllegalArgumentException("Part of speech cannot be null");
         }
-        Feature gramInfo = dictionary.getHeader().getGrammaticalInfoManager().getOrCreateRangeElement(pos);
+        Feature gramInfo = dictionary.getHeader().getGrammaticalInfoManager().getOrCreateFeature(pos);
         element.setGrammaticalInfo(gramInfo);
         return this;
     }
@@ -107,28 +107,6 @@ public final class SenseBuilder extends AbstractLiftElementWithFieldAndNoteAndId
         eb.build();
         return this;
     }
-
-//    /**
-//     * Add an example directly.
-//     */
-//    public SenseBuilder addExample(LiftExample example) {
-//        if (example == null) {
-//            throw new IllegalArgumentException("Example cannot be null");
-//        }
-//        element.addExample(example);
-//        return this;
-//    }
-
-//    /**
-//     * Add an illustration.
-//     */
-//    public SenseBuilder addIllustration(LiftIllustration illustration) {
-//        if (illustration == null) {
-//            throw new IllegalArgumentException("Illustration cannot be null");
-//        }
-//        element.addIllustration(illustration);
-//        return this;
-//    }
 
     /**
      * Add a relation via nested builder configuration.
@@ -162,53 +140,6 @@ public final class SenseBuilder extends AbstractLiftElementWithFieldAndNoteAndId
         //element.addSense(sb.build());
         return this;
     }
-
-//    /**
-//     * Add a sub-sense directly.
-//     */
-//    public SenseBuilder addSubSense(LiftSense subSense) {
-//        if (subSense == null) {
-//            throw new IllegalArgumentException("Sub-sense cannot be null");
-//        }
-//        element.addSense(subSense);
-//        return this;
-//    }
-
-    // /**
-    //  * Add a note via nested builder configuration.
-    //  */
-    // @Override
-    // public SenseBuilder addNote(String type, String language, String text) {
-    //     super.addNote(type, language, text);
-    //     return this;
-    // }
-
-    // /**
-    //  * Add a note via nested builder configuration.
-    //  */
-    // @Override
-    // public SenseBuilder addNote(Consumer<NoteBuilder> config, String type) {
-    //     super.addNote(config, type);
-    //     return this;
-    // }
-
-    // /**
-    //  * Add a trait.
-    //  */
-    // @Override
-    // public SenseBuilder addTrait(String name, String value) {
-    //     super.addTrait(name, value);
-    //     return this;
-    // }
-
-    // /**
-    //  * Add a field.
-    //  */
-    // @Override
-    // public SenseBuilder addField(String name, String language, String text) {
-    //     super.addField(name, language, text);
-    //     return this;
-    // }
 
     // Override Id method (so that the good type is returned)
 

@@ -22,6 +22,9 @@ public abstract sealed class AbstractLiftElementWithFieldAndNoteAndIdBuilder<T e
 
     /**
      * Set the element ID (for identifiable elements: Entry and Sense).
+     * 
+     * Not that the ID typically need not to be explicitely set: a UUID can
+     * be assigned automatically.
      */
     public AbstractLiftElementWithFieldAndNoteAndIdBuilder<T, U> withId(String id) {
         if (element instanceof Identifiable i) {
@@ -47,6 +50,5 @@ public abstract sealed class AbstractLiftElementWithFieldAndNoteAndIdBuilder<T e
         }
         return this;
     }
-
 
 }

@@ -84,7 +84,7 @@ public final class LiftSense
     }
 
     @Override
-    public MultiText getGloss() {
+    public MultiText getGlosses() {
         return getMainMultiText();
     }
 

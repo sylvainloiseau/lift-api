@@ -1,14 +1,18 @@
 package fr.cnrs.lacito.liftapi;
 
+import fr.cnrs.lacito.liftapi.model.FeatureSet;
 import fr.cnrs.lacito.liftapi.model.Form;
+import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
+import fr.cnrs.lacito.liftapi.xml.LiftVersion;
 
 /**
- * This class is a builder for the {@link LiftDictionary} class.
+ * This class offers a fluent API for creating a {@link LiftDictionary}.
  *
  * It allows to create a dictionary by setting its properties one by one.
  *
  * Usage:
  * <pre>
+ *
  *   // Create a dictionary :
  *   LiftDictionary dictionary = Builders.dictionary()
  *       .withLiftVersion(LiftVersion.V0_13)
@@ -17,11 +21,11 @@ import fr.cnrs.lacito.liftapi.model.Form;
  *       .withObjectLanguages("qyz")
  *       .withDescription("en", "Description of the doculect X (code qyz)")
  *       .build();
- *  // And then start adding entry:
+
+ *  // Start adding entry:
  *  Builder builder = dictionary.getComponentBuilder();
  *  builder.entry()
- *      .withId("entry1")
- *      .withForm("en", "entry1")
+ *      .withForm("en", "Run")
  *      .build();
  * </pre>
  */
@@ -71,6 +75,10 @@ public class LiftDictionaryBuilder {
         return this.dictionary;
     }
 
+    // ------------------------------------------------------------------
+    // languages
+    // ------------------------------------------------------------------
+
     public LiftDictionaryBuilder withMetaLanguages(String... langs) {
         for (String lang : langs)
             this.dictionary.getMetaLanguageManager().addLanguage(lang);
@@ -83,6 +91,10 @@ public class LiftDictionaryBuilder {
         return this;
     }
 
+    // ------------------------------------------------------------------
+    // Types for dictionary components
+    // ------------------------------------------------------------------
+
     public LiftDictionaryBuilder withPartOfSpeech(String... poss) {
         for (String pos : poss)
             this.dictionary.getHeader().getGrammaticalInfoManager().addFeature(pos);
@@ -90,15 +102,59 @@ public class LiftDictionaryBuilder {
     }
 
     public LiftDictionaryBuilder withNoteType(String... noteTypes) {
-        for (String noteType : noteTypes)
-            this.dictionary.getHeader().getNoteTypeManager().addFeature(noteType);
+        addTypes(this.dictionary.getHeader().getNoteTypeManager(), noteTypes);
+        return this;
+    }
+
+    public LiftDictionaryBuilder withPartOfSpeechType(String... posTypes) {
+        addTypes(this.dictionary.getHeader().getGrammaticalInfoManager(), posTypes);
         return this;
     }
 
     public LiftDictionaryBuilder withVariantType(String... variantTypes) {
-        for (String variantType : variantTypes)
-            this.dictionary.getHeader().getVariantTypeManager().addFeature(variantType);
+        addTypes(this.dictionary.getHeader().getVariantTypeManager(), variantTypes);
         return this;
     }
 
+    public LiftDictionaryBuilder withTranslationType(String... translationTypes) {
+        addTypes(this.dictionary.getHeader().getTranslationTypeManager(), translationTypes);
+        return this;
+    }
+
+    public LiftDictionaryBuilder withRelationType(String... relationTypes) {
+        addTypes(this.dictionary.getHeader().getRelationTypeManager(), relationTypes);
+        return this;
+    }
+
+    public LiftDictionaryBuilder withReverseType(String... reverseTypes) {
+        addTypes(this.dictionary.getHeader().getInverseTypeManager(), reverseTypes);
+        return this;
+    }
+
+    public LiftDictionaryBuilder withAnnotationType(String... annotationTypes) {
+        addTypes(this.dictionary.getHeader().getInverseTypeManager(), annotationTypes);
+        return this;
+    }
+
+    public LiftDictionaryBuilder withEtymologyType(String... etymologyTypes) {
+        addTypes(this.dictionary.getHeader().getEtymologyTypeManager(), etymologyTypes);
+        return this;
+    }
+
+    private void addTypes(FeatureSet set, String[] types) {
+        for (String type : types)
+            set.addFeature(type);
+    }
+
+    // ------------------------------------------------------------------
+    // Add FeatureSet
+    // ------------------------------------------------------------------
+
+    /**
+     * Add a FeatureSet to the dictionary, that will be available later for
+     * a {@link LiftFieldAndTraitDefinition}.
+     */
+    private void AddFeatureSet() {
+
+    }
 }

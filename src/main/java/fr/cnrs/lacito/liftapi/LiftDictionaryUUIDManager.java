@@ -5,12 +5,15 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * Manages the generation and allocation of unique UUIDs for Lift dictionary entries.
+ */
 public class LiftDictionaryUUIDManager {
     private final Set<UUID> usedUuid = new HashSet<>(2000);
     private final Set<UUID> availableUuid = new HashSet<>(2000);
     private Iterator<UUID> uuidIterator;
 
-    public LiftDictionaryUUIDManager () {
+    protected LiftDictionaryUUIDManager () {
         generateUniqueUuid();
     }
 
@@ -32,5 +35,5 @@ public class LiftDictionaryUUIDManager {
         //availableUuid.remove(uuid);
         usedUuid.add(uuid);
         return uuid;
-    }    
+    }
 }

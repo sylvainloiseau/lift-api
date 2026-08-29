@@ -9,7 +9,10 @@ import java.util.function.Consumer;
 /**
  * Builder for creating LiftEntry instances with a fluent API.
  *
+ * At least one form is the minimum requirement in order to build the entry.
+ * 
  * Usage:
+ *
  * <pre>
  *   LiftEntry entry = Builders.entry()
  *       .withForm("en", "dictionary")
@@ -20,6 +23,7 @@ import java.util.function.Consumer;
  *       )
  *       .build();
  * </pre>
+ * 
  */
 public final class EntryBuilder extends AbstractLiftElementWithFieldAndNoteAndIdBuilder<LiftEntry, LiftObject> {
 
@@ -75,31 +79,6 @@ public final class EntryBuilder extends AbstractLiftElementWithFieldAndNoteAndId
         return this;
     }
 
-//    /**
-//     * Add a sense directly.
-//     */
-//    public EntryBuilder addSense(LiftSense sense) {
-//        if (sense == null) {
-//            throw new IllegalArgumentException("Sense cannot be null");
-//        }
-//        element.addSense(sense);
-//        return this;
-//    }
-//
-//    /**
-//     * Add multiple senses.
-//     */
-//    public EntryBuilder addSenses(LiftSense... senses) {
-//        if (senses != null) {
-//            for (LiftSense sense : senses) {
-//                if (sense != null) {
-//                    element.addSense(sense);
-//                }
-//            }
-//        }
-//        return this;
-//    }
-
     /**
      * Add a pronunciation via nested builder configuration.
      */
@@ -113,17 +92,6 @@ public final class EntryBuilder extends AbstractLiftElementWithFieldAndNoteAndId
         return this;
     }
 
-//    /**
-//     * Add a pronunciation directly.
-//     */
-//    public EntryBuilder addPronunciation(LiftPronunciation pronunciation) {
-//        if (pronunciation == null) {
-//            throw new IllegalArgumentException("Pronunciation cannot be null");
-//        }
-//        element.addPronunciation(pronunciation);
-//        return this;
-//    }
-
     /**
      * Add a variant via nested builder configuration.
      */
@@ -134,17 +102,6 @@ public final class EntryBuilder extends AbstractLiftElementWithFieldAndNoteAndId
         //element.addVariant(vb.build());
         return this;
     }
-
-//    /**
-//     * Add a variant directly.
-//     */
-//    public EntryBuilder addVariant(LiftVariant variant) {
-//        if (variant == null) {
-//            throw new IllegalArgumentException("Variant cannot be null");
-//        }
-//        element.addVariant(variant);
-//        return this;
-//    }
 
     /**
      * Add a relation with type and target ID.
@@ -201,43 +158,6 @@ public final class EntryBuilder extends AbstractLiftElementWithFieldAndNoteAndId
         }
         return this;
     }
-
-
-    // /**
-    //  * Add a note via nested builder configuration.
-    //  */
-    // @Override
-    // public EntryBuilder addNote(String type, String language, String text) {
-    //     super.addNote(type, language, text);
-    //     return this;
-    // }
-
-    // /**
-    //  * Add a note via nested builder configuration.
-    //  */
-    // @Override
-    // public EntryBuilder addNote(Consumer<NoteBuilder> config, String type) {
-    //     super.addNote(config, type);
-    //     return this;
-    // }
-
-    // /**
-    //  * Add a trait.
-    //  */
-    // @Override
-    // public EntryBuilder addTrait(String name, String value) {
-    //     super.addTrait(name, value);
-    //     return this;
-    // }
-
-    // /**
-    //  * Add a field.
-    //  */
-    // @Override
-    // public EntryBuilder addField(String name, String language, String text) {
-    //     super.addField(name, language, text);
-    //     return this;
-    // }
 
     // Override Id method (so that the good type is returned)
 

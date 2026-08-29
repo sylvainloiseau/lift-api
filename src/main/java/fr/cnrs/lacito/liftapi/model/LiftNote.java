@@ -39,22 +39,27 @@ public final class LiftNote
         typeProperty.set(element);
     }
 
+    // Text -----------------------------------
+
     public MultiText getText() {
         return getMainMultiText();
+    }
+
+    public void addText(Form f) {
+        getText().add(f);
+    }
+
+    // Parent -----------------------------------
+
+    public AbstractNotable getParent() {
+        return parent;
     }
 
     protected void setParent(AbstractNotable parent) {
         this.parent = parent;
     }
 
-    @Override
-    public Feature getType() {
-        return typeProperty.get();
-    }
-
-    public void addText(Form f) {
-        getText().add(f);
-    }
+    // Type -----------------------------------
 
     @Override
     public void setType(Feature type) {
@@ -62,12 +67,13 @@ public final class LiftNote
         this.typeProperty.set(type);
     }
 
-    public ObjectProperty<Feature> typeProperty() {
-        return typeProperty;
+    @Override
+    public Feature getType() {
+        return typeProperty.get();
     }
 
-    public AbstractNotable getParent() {
-        return parent;
+    public ObjectProperty<Feature> typeProperty() {
+        return typeProperty;
     }
 
     public static LiftNote create() {

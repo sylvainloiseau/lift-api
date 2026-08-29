@@ -29,24 +29,6 @@ public class VariantBuilder extends AbstractLiftElementWithFieldBuilder<LiftVari
         super(new LiftVariant(), dictionary, parent);
     }
 
-    // /**
-    //  * Set the variant ID. If the ID is not set, it will be created automatically.
-    //  */
-    // @Override
-    // public VariantBuilder withId(String id) {
-    //     super.withId(id);
-    //     return this;
-    // }
-
-    // /**
-    //  * Set the variant GUID.
-    //  */
-    // @Override
-    // public VariantBuilder withGuid(String guid) {
-    //     super.withGuid(guid);
-    //     return this;
-    // }
-
     /**
      * Add a form in the specified language.
      */
@@ -126,15 +108,6 @@ public class VariantBuilder extends AbstractLiftElementWithFieldBuilder<LiftVari
         element.addRelation(relation);
         return this;
     }
-
-    // /**
-    //  * Add a trait.
-    //  */
-    // @Override
-    // public VariantBuilder addTrait(String name, String value) {
-    //     super.addTrait(name, value);
-    //     return this;
-    // }
 
     // Override WithField so that the correct type is returned
     
