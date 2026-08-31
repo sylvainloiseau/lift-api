@@ -58,6 +58,10 @@ public class DemoTest {
             .withId("word-001")
             .withForm("en", "run")
             .withForm("fr", "courir")
+            .addNote(
+                n -> n.addText("fr", "to be checked"),
+                "Comment note"
+            )
             .addSense(s ->
                 s
                     .withOrder(1)

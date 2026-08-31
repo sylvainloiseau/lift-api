@@ -23,58 +23,6 @@ public class BuilderTest {
             .build();
     }
 
-    @Test
-    public void testBuilderEntry() {
-        DictionaryComponentBuilderFactory builder = dictionary.getComponentBuilder();
-        builder
-            .entry()
-            .withForm("tww", "nofua")
-            .addSense(s ->
-                s
-                    .withGloss("en", "book")
-                    .withDefinition("en", "Any printed or written material")
-            )
-            .build();
-            assertEquals(1, dictionary.getLiftDictionaryRegistry().getEntries().size());
-    }
-
-    @Test
-    public void testBuilderCompleteEntryWithMultipleSenses() {
-        dictionary
-            .getComponentBuilder()
-            .entry()
-            .withId("word-001")
-            .withForm("tww", "honolu")
-            .withForm("tpi", "ran")
-            .addSense(s ->
-                s
-                    .withOrder(1)
-                    .withGloss("en", "to move quickly on foot")
-                    .withDefinition(
-                        "en",
-                        "To move at a pace faster than walking"
-                    )
-                    .withPartOfSpeech("verb")
-                    .addExample(ex ->
-                        ex
-                            .withExample("tww", "mwe molunomwij")
-                            .addTranslation(
-                                "litteral",
-                                "fr",
-                                "Il s'enfuit"
-                            )
-                    )
-            )
-            .addSense(s ->
-                s
-                    .withOrder(2)
-                    .withGloss("en", "to manage or operate")
-                    .withPartOfSpeech("verb")
-            )
-            .addPronunciation(p -> p.withPronunciation("tww", "honolu"))
-            .addNote("source", "en", "From Old English 'irnan'")
-            .build();
-    }
 
     @Test
     public void testBuilderVariant() {

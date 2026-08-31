@@ -215,6 +215,13 @@ public final class SenseBuilder extends AbstractLiftElementWithFieldAndNoteAndId
      */
     @Override
     public LiftSense build() {
+        if (
+            element.getDefinition().getLangs().size() == 0 
+            &&
+            element.getGlosses().getLangs().size() == 0 
+        ) {
+            throw new IllegalStateException("A sense must contain at least one gloss or one definition.");
+        }
         super.register();
         return element;
     }

@@ -23,24 +23,6 @@ public class PronunciationBuilder extends AbstractLiftElementWithFieldBuilder<Li
         super(LiftPronunciation.create(), dictionary, parent);
     }
 
-    // /**
-    //  * Set the pronunciation ID.
-    //  */
-    // @Override
-    // public PronunciationBuilder withId(String id) {
-    //     super.withId(id);
-    //     return this;
-    // }
-
-    // /**
-    //  * Set the pronunciation GUID.
-    //  */
-    // @Override
-    // public PronunciationBuilder withGuid(String guid) {
-    //     super.withGuid(guid);
-    //     return this;
-    // }
-
     /**
      * Add a pronunciation form in the specified language.
      */
@@ -62,15 +44,6 @@ public class PronunciationBuilder extends AbstractLiftElementWithFieldBuilder<Li
         element.getPronunciation().add(pronunciation);
         return this;
     }
-
-    // /**
-    //  * Add a trait.
-    //  */
-    // @Override
-    // public PronunciationBuilder addTrait(String name, String value) {
-    //     super.addTrait(name, value);
-    //     return this;
-    // }
 
     // Override WithField so that the correct type is returned
     

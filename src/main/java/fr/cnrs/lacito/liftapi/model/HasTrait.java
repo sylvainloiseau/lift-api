@@ -8,6 +8,17 @@ import java.util.List;
 public sealed interface HasTrait extends LiftObject
     permits AbstractExtensibleWithoutField, GrammaticalInfo
 {
+    /**
+     * Adds a trait to this component.
+     *
+     * @param t the trait to add.
+     */
     public void addTrait(LiftTrait t);
+
+    /**
+     * Returns the list of traits of this component.
+     *
+     * @return the list of traits.
+     */
     public List<LiftTrait> getTraits();
 }

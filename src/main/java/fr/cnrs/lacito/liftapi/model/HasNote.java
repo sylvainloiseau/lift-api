@@ -5,7 +5,10 @@ import java.util.Map;
 /**
  * Interface for LIFT components that can have {@link LiftNote}.
  */
-public sealed interface HasNote extends LiftObject permits AbstractNotable {
+public sealed interface HasNote
+    extends LiftObject
+    permits AbstractNotable {
+
     /**
      * Add a note to the Lift object.
      *
@@ -14,8 +17,20 @@ public sealed interface HasNote extends LiftObject permits AbstractNotable {
      */
     public void addNote(LiftNote note) throws DuplicateTypeException;
 
+    /**
+     * Returns the note of the given type.
+     *
+     * @param type the type of the note to return.
+     * @return the note of the given type
+     * @throws IllegalArgumentException if the note of the given type does not exist.
+     */
     public LiftNote getNote(String type);
 
+    /**
+     * Returns the notes of this component.
+     *
+     * @return the notes.
+     */
     public Map<String, LiftNote> getNotes();
 
 }

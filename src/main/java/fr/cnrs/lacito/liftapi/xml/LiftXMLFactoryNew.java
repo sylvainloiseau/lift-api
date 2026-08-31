@@ -399,14 +399,28 @@ public final class LiftXMLFactoryNew {
         if (id == null) throw new IllegalArgumentException(
             "Range ID cannot be null"
         );
-        FeatureSet hr = new FeatureSet(id, parent);
+        FeatureSet hr = null;
 
-        String href = attributes.getValue(LiftVocabulary.LIFT_URI, "href");
-        if (href != null) hr.setHref(href);
-        String guid = attributes.getValue(LiftVocabulary.LIFT_URI, "guid");
-        if (guid != null) hr.setGuid(guid);
-
-        parent.addRanges(hr);
+        // TODO that should happen only for :
+        // "note-type";
+        // "translation-type";
+        // "grammatical-info";
+        // "relation-type";
+        // "inverse-type";
+        // "annotation-type";
+        // "etymology-type";
+        // "variant-type";
+        // that are automatically created
+        if (parent.hasFeatureSet(id)) {
+            hr = parent.getFeatureSet(id);
+        } else {
+            hr = new FeatureSet(id, parent);
+            String href = attributes.getValue(LiftVocabulary.LIFT_URI, "href");
+            if (href != null) hr.setHref(href);
+            String guid = attributes.getValue(LiftVocabulary.LIFT_URI, "guid");
+            if (guid != null) hr.setGuid(guid);
+            parent.addFeatureSet(hr);
+        }
         return hr;
     }
 
@@ -510,7 +524,7 @@ public final class LiftXMLFactoryNew {
         // For each Trait Definition that register a Range,
         // add a reference to the range object to the trait definition object.
         for (String rangeId : rangeId2TraitDefinitionForDereferencing.keySet()) {
-            FeatureSet r = header.getRange(rangeId);
+            FeatureSet r = header.getFeatureSet(rangeId);
             for (LiftFieldAndTraitDefinition def : rangeId2TraitDefinitionForDereferencing.get(rangeId)) {
                 def.setResolvedRange(Optional.of(r));
             }

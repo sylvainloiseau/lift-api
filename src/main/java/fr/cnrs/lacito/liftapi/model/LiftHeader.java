@@ -11,6 +11,9 @@ import javafx.collections.ObservableList;
 import javafx.collections.ObservableMap;
 import javafx.collections.transformation.FilteredList;
 
+/**
+ * Represents the header of a LIFT file, including feature sets and field/trait definitions.
+ */
 public final class LiftHeader extends AbstractLiftRoot {
 
     private static final String NOTE_TYPE_RANGE = "note-type";
@@ -24,10 +27,10 @@ public final class LiftHeader extends AbstractLiftRoot {
 
     private Map<String, LiftFieldAndTraitDefinition> fieldsAndTraitsDefinition = new HashMap<>();
 
-    private final ObservableList<FeatureSet> derivedRangeList =
+    private final ObservableList<FeatureSet> derivedFeatureSetList =
         FXCollections.observableArrayList();
 
-    private final ObservableMap<String, FeatureSet> rangesMap =
+    private final ObservableMap<String, FeatureSet> featureSetsMap =
         FXCollections.observableHashMap();
 
     //private LiftHeaderTypeManager noteTypesManager;
@@ -52,7 +55,7 @@ public final class LiftHeader extends AbstractLiftRoot {
         new SimpleSetProperty<>(FXCollections.observableSet());
 
     public LiftHeader() {
-        rangesMap.addListener(
+        featureSetsMap.addListener(
             new MapChangeListener<String, FeatureSet>() {
                 @Override
                 public void onChanged(
@@ -62,9 +65,9 @@ public final class LiftHeader extends AbstractLiftRoot {
                     > change
                 ) {
                     if (change.wasRemoved()) {
-                        derivedRangeList.remove(change.getValueRemoved());
+                        derivedFeatureSetList.remove(change.getValueRemoved());
                     } else {
-                        derivedRangeList.add(change.getValueAdded());
+                        derivedFeatureSetList.add(change.getValueAdded());
                     }
                 }
             }
@@ -91,46 +94,101 @@ public final class LiftHeader extends AbstractLiftRoot {
         grammaticalInfoManager = new FeatureSet(GRAMMATICAL_INFO_RANGE, this);
         variantTypesManager = new FeatureSet(TRANSLATION_TYPE_RANGE, this);
 
-        rangesMap.put(NOTE_TYPE_RANGE, noteTypesManager);
-        rangesMap.put(RELATION_TYPE_RANGE, relationTypesManager);
-        rangesMap.put(INVERSE_TYPE_RANGE, inverseTypesManager);
-        rangesMap.put(ETYMOLOGY_TYPE_RANGE, etymologyTypesManager);
-        rangesMap.put(TRANSLATION_TYPE_RANGE, translationTypesManager);
-        rangesMap.put(GRAMMATICAL_INFO_RANGE, grammaticalInfoManager);
-        rangesMap.put(ANNOTATION_TYPE_RANGE, annotationTypesManager);
-        rangesMap.put(VARIANT_TYPE_RANGE, variantTypesManager);
-        
+        featureSetsMap.put(NOTE_TYPE_RANGE, noteTypesManager);
+        featureSetsMap.put(RELATION_TYPE_RANGE, relationTypesManager);
+        featureSetsMap.put(INVERSE_TYPE_RANGE, inverseTypesManager);
+        featureSetsMap.put(ETYMOLOGY_TYPE_RANGE, etymologyTypesManager);
+        featureSetsMap.put(TRANSLATION_TYPE_RANGE, translationTypesManager);
+        featureSetsMap.put(GRAMMATICAL_INFO_RANGE, grammaticalInfoManager);
+        featureSetsMap.put(ANNOTATION_TYPE_RANGE, annotationTypesManager);
+        featureSetsMap.put(VARIANT_TYPE_RANGE, variantTypesManager);
     }
 
+    /**
+     * Returns the description of this header.
+     *
+     * @return the description of this header
+     */
     public MultiText getDescription() {
         return getMainMultiText();
     }
 
-    public boolean hasRanges(String id) {
-        return rangesMap.containsKey(id);
+    // ------------------------------------------------------------------------
+    // Feature set management
+    // ------------------------------------------------------------------------
+
+    /**
+     * Returns whether this header has a feature set with the given ID.
+     *
+     * @param id the ID of the feature set to check
+     * @return true if this header has a feature set with the given ID, false otherwise
+     */
+    public boolean hasFeatureSet(String id) {
+        return featureSetsMap.containsKey(id);
     }
 
-    public FeatureSet getRange(String id) {
-        if (!rangesMap.containsKey(id)) {
+    /**
+     * Returns the feature set with the given ID.
+     *
+     * @param id the ID of the feature set to return
+     * @return the feature set with the given ID
+     * @throws IllegalArgumentException if no feature set with the given ID exists
+     */
+    public FeatureSet getFeatureSet(String id) {
+        if (!featureSetsMap.containsKey(id)) {
             throw new IllegalArgumentException("Range not found: " + id);
         }
-        return rangesMap.get(id);
+        return featureSetsMap.get(id);
     }
 
-    public FeatureSet createRange(String id) {
-        FeatureSet r = new FeatureSet(id,this);
-        rangesMap.put(id, r);
-        return r;
+    /**
+     * Creates a new feature set with the given ID and adds it to this header.
+     *
+     * @param id the ID of the feature set to create
+     * @return the newly created feature set
+     * @throws IllegalArgumentException if a feature set with the same ID already exists
+     */
+    public FeatureSet addFeatureSet(String id) {
+        if (hasFeatureSet(fs.getId()))
+            throw new IllegalArgumentException("duplicate feature set: " + fs.getId());
+        FeatureSet fs = new FeatureSet(id,this);
+        addFeatureSet(fs);
+        return fs;
     }
 
-    public void addRanges(FeatureSet range) {
-        rangesMap.put(range.getId(), range);
+    /**
+     * Adds a feature set to this header.
+     *
+     * @param fs the feature set to add
+     * @throws IllegalArgumentException if a feature set with the same ID already exists
+     */
+    public void addFeatureSet(FeatureSet fs) {
+        if (hasFeatureSet(fs.getId()))
+            throw new IllegalArgumentException("duplicate feature set: " + fs.getId());
+        featureSetsMap.put(fs.getId(), fs);
     }
 
-    public ObservableList<FeatureSet> getRanges() {
-        return derivedRangeList;
+    /**
+     * Returns the list of feature sets in this header.
+     *
+     * @return the list of feature sets
+     */
+    public ObservableList<FeatureSet> getFeatureSets() {
+        return derivedFeatureSetList;
     }
 
+    // ------------------------------------------------------------------------
+    // Field and list definitions
+    // ------------------------------------------------------------------------
+
+    /**
+     * Creates a definition with the given name and a {@link
+     * LiftFieldAndTraitDefinitionKind#UNKNOWN} kind, ie available
+     * for Field as well as for Trait.
+     *
+     * @param name the name of the definition to create
+     * @return the created definition
+     */
     public LiftFieldAndTraitDefinition createUnknownDefinition(String name) {
         LiftFieldAndTraitDefinition fd = new LiftFieldAndTraitDefinition(
             name,
@@ -140,32 +198,66 @@ public final class LiftHeader extends AbstractLiftRoot {
         return fd;
     }
 
+    /**
+     * Creates a trait (a kind of {@link LiftFieldAndTraitDefinitionKind#TRAIT}) definition with the given name.
+     *
+     * @param name the name of the definition to create
+     * @return the created definition
+     */
     public LiftFieldAndTraitDefinition createTraitDefinition(String name) {
         LiftFieldAndTraitDefinition fd = createUnknownDefinition(name);
         fd.setKind(LiftFieldAndTraitDefinitionKind.TRAIT);
         return fd;
     }
 
+    /**
+     * Creates a field (a kind of {@link LiftFieldAndTraitDefinitionKind#FIELD}) definition with the given name.
+     *
+     * @param name the name of the definition to create
+     * @return the created definition
+     */
     public LiftFieldAndTraitDefinition createFieldDefinition(String name) {
         LiftFieldAndTraitDefinition fd = createUnknownDefinition(name);
         fd.setKind(LiftFieldAndTraitDefinitionKind.FIELD);
         return fd;
     }
 
+    /**
+     * Returns whether the header contains a definition with the given name.
+     *
+     * @param name the name of the definition to check
+     * @return true if the definition is found, false otherwise
+     */
     public boolean containsFieldsAndTraitsDefinitions(String name) {
         return fieldsAndTraitsDefinition.containsKey(name);
     }
 
+    /**
+     * Returns the collection of all fields and traits definitions.
+     *
+     * @return the collection of definitions
+     */
     public Collection<LiftFieldAndTraitDefinition> getFieldsAndTraitsDefinitions() {
         return fieldsAndTraitsDefinition.values();
     }
 
+    /**
+     * Returns the collection of fields and traits definitions for the given target.
+     *
+     * @param target the target to filter by
+     * @return the filtered collection of definitions
+     */
     public ObservableList<LiftFieldAndTraitDefinition> getFieldsAndTraitsDefinitionsFor(LiftFieldAndTraitDefinitionTarget target) {
         FilteredList<LiftFieldAndTraitDefinition> filteredList = new FilteredList<>(FXCollections.observableArrayList(fieldsAndTraitsDefinition.values()));
         filteredList.setPredicate(fd -> fd.getTargets().contains(target) );
         return filteredList;
     }
 
+    /**
+     * Returns the collection of fields definitions.
+     *
+     * @return the collection of fields definitions
+     */
     public ObservableList<LiftFieldAndTraitDefinition> getFieldsDefinitions() {
         FilteredList<LiftFieldAndTraitDefinition> filteredList = new FilteredList<>(FXCollections.observableArrayList(fieldsAndTraitsDefinition.values()));
         filteredList.setPredicate(fd -> {
@@ -174,6 +266,12 @@ public final class LiftHeader extends AbstractLiftRoot {
         return filteredList;
     }
 
+    /**
+     * Returns the collection of fields definitions for the given target.
+     *
+     * @param target the target to filter by
+     * @return the filtered collection of fields definitions
+     */
     public ObservableList<LiftFieldAndTraitDefinition> getFieldsDefinitionsFor(LiftFieldAndTraitDefinitionTarget target) {
         FilteredList<LiftFieldAndTraitDefinition> filteredList = new FilteredList<>(getFieldsDefinitions());
         filteredList.setPredicate(fd -> {
@@ -182,6 +280,11 @@ public final class LiftHeader extends AbstractLiftRoot {
         return filteredList;
     }
 
+    /**
+     * Returns the collection of traits definitions.
+     *
+     * @return the collection of traits definitions
+     */
     public ObservableList<LiftFieldAndTraitDefinition> getTraitsDefinitions() {
         FilteredList<LiftFieldAndTraitDefinition> filteredList = new FilteredList<>(FXCollections.observableArrayList(fieldsAndTraitsDefinition.values()));
         filteredList.setPredicate(fd -> {
@@ -190,6 +293,12 @@ public final class LiftHeader extends AbstractLiftRoot {
         return filteredList;
     }
 
+    /**
+     * Returns the collection of traits definitions for the given target.
+     *
+     * @param target the target to filter by
+     * @return the filtered collection of traits definitions
+     */
     public ObservableList<LiftFieldAndTraitDefinition> getTraitsDefinitionsFor(LiftFieldAndTraitDefinitionTarget target) {
         FilteredList<LiftFieldAndTraitDefinition> filteredList = new FilteredList<>(FXCollections.observableArrayList(getTraitsDefinitions()));
         filteredList.setPredicate(fd -> {
@@ -198,215 +307,127 @@ public final class LiftHeader extends AbstractLiftRoot {
         return filteredList;
     }
 
+    /**
+     * Returns the field or trait definition for the given id.
+     *
+     * @param id the id of the field or trait definition to return
+     * @return the field or trait definition
+     * @throws IllegalArgumentException if no such field or trait definition exists
+     */
     public LiftFieldAndTraitDefinition getFieldsAndTraitsDefinitions(String id) {
+        if (!fieldsAndTraitsDefinition.containsKey(id)) {
+            throw new IllegalArgumentException("No such field or trait definition: " + id);
+        }
         return fieldsAndTraitsDefinition.get(id);
     }
 
+    /**
+     * Returns the trait definition for the given id, or creates it if it does not exist.
+     *
+     * @param id the id of the trait definition to return or create
+     * @return the trait definition
+     * @throws IllegalArgumentException if a field definition already exists with the given id
+     */
     public LiftFieldAndTraitDefinition getOrCreateTraitsDefinitions(String id) {
+        if (fieldsAndTraitsDefinition.containsKey(id)
+            && fieldsAndTraitsDefinition.get(id).getKind() == LiftFieldAndTraitDefinitionKind.FIELD) {
+            throw new IllegalArgumentException("Cannot create a trait definition with this name: a field definition already exists: " + id);
+        }
         if (!fieldsAndTraitsDefinition.containsKey(id)) {
             fieldsAndTraitsDefinition.put(id, createTraitDefinition(id));
         }
         return fieldsAndTraitsDefinition.get(id);
     }
 
+    /**
+     * Returns the field definition for the given id, or creates it if it does not exist.
+     *
+     * @param id the id of the field definition to return or create
+     * @return the field definition
+     * @throws IllegalArgumentException if a trait definition already exists with the given id
+     */
     public LiftFieldAndTraitDefinition getOrCreateFieldDefinitions(String id) {
+        if (fieldsAndTraitsDefinition.containsKey(id)
+            && fieldsAndTraitsDefinition.get(id).getKind() == LiftFieldAndTraitDefinitionKind.TRAIT) {
+            throw new IllegalArgumentException("Cannot create a field definition with this name: a trait definition already exists: " + id);
+        }
         if (!fieldsAndTraitsDefinition.containsKey(id)) {
             fieldsAndTraitsDefinition.put(id, createFieldDefinition(id));
         }
         return fieldsAndTraitsDefinition.get(id);
     }
 
-    // grammatical info types
+    // ------------------------------------------------------------------------
+    // Fixed feature set
+    // ------------------------------------------------------------------------
 
+    /**
+     * Returns the grammatical info manager.
+     */
     public FeatureSet getGrammaticalInfoManager() {
         return grammaticalInfoManager;
     }
 
     // note types
 
+    /**
+     * Returns the note type manager.
+     */
     public FeatureSet getNoteTypeManager() {
         return noteTypesManager;
     }
 
-    // public SimpleSetProperty<LiftHeaderRangeElement> noteTypesProperty() {
-    //     return noteTypesManager.typesProperty();
-    // }
-
-    // public void addNoteType(String type) {
-    //     noteTypesManager.createRangeElement(type);
-    // }
-
-    // public boolean containsNoteType(String type) {
-    //     return noteTypesManager.containsType(type);
-    // }
-
-    // public LiftHeaderRangeElement getNoteType(String type) {
-    //     return noteTypesManager.getType(type);
-    // }
-
     // relation types
 
+    /**
+     * Returns the variant type manager.
+     */
     public FeatureSet getVariantTypeManager() {
         return variantTypesManager;
     }
 
     // relation types
 
+    /**
+     * Returns the relation type manager.
+     */
     public FeatureSet getRelationTypeManager() {
         return relationTypesManager;
     }
 
-    // public SimpleSetProperty<LiftHeaderRangeElement> relationTypesProperty() {
-    //     return relationTypesManager.typesProperty();
-    // }
-
-    // public void addRelationType(String type) {
-    //     relationTypesManager.createRangeElement(type);
-    // }
-
-    // public boolean containsRelationType(String type) {
-    //     return relationTypesManager.containsType(type);
-    // }
-
-    // public LiftHeaderRangeElement getRelationType(String type) {
-    //     return relationTypesManager.getType(type);
-    // }
-
     // inverse types
 
+    /**
+     * Returns the inverse type manager.
+     */
     public FeatureSet getInverseTypeManager() {
         return inverseTypesManager;
     }
 
-    // public SimpleSetProperty<LiftHeaderRangeElement> inverseTypesProperty() {
-    //     return inverseTypesManager.typesProperty();
-    // }
-
-    // public void addInverseType(String type) {
-    //     inverseTypesManager.createRangeElement(type);
-    // }
-
-    // public boolean containsInverseType(String type) {
-    //     return inverseTypesManager.containsType(type);
-    // }
-
-    // public LiftHeaderRangeElement getInverseType(String type) {
-    //     return inverseTypesManager.getType(type);
-    // }
-
     // etymology types
 
+    /**
+     * Returns the etymology type manager.
+     */
     public FeatureSet getEtymologyTypeManager() {
         return etymologyTypesManager;
     }
 
-    // public SimpleSetProperty<LiftHeaderRangeElement> etymologyTypesProperty() {
-    //     return etymologyTypesManager.typesProperty();
-    // }
-
-    // public void addEtymologyType(String type) {
-    //     etymologyTypesManager.createRangeElement(type);
-    // }
-
-    // public boolean containsEtymologyType(String type) {
-    //     return etymologyTypesManager.containsType(type);
-    // }
-
-    // public LiftHeaderRangeElement getEtymologyType(String type) {
-    //     return etymologyTypesManager.getType(type);
-    // }
-
     // translation types
 
+    /**
+     * Returns the translation type manager.
+     */
     public FeatureSet getTranslationTypeManager() {
         return translationTypesManager;
     }
 
     // translation types
 
+    /**
+     * Returns the annotation type manager.
+     */
     public FeatureSet getAnnotationTypeManager() {
         return annotationTypesManager;
     }
-
-    // public SimpleSetProperty<LiftHeaderRangeElement> translationTypesProperty() {
-    //     return translationTypesManager.typesProperty();
-    // }
-
-    // public void addTranslationType(String type) {
-    //     translationTypesManager.createRangeElement(type);
-    // }
-
-    // public boolean containsTranslationType(String type) {
-    //     return translationTypesManager.containsType(type);
-    // }
-
-    // public LiftHeaderRangeElement getTranslationType(String type) {
-    //     return translationTypesManager.getType(type);
-    // }
-
-    ///** duplicate of LiftHeaderRange */
-    //private class LiftHeaderTypeManager {
-
-    //    private String name;
-    //    private LiftHeaderRange range;
-
-    //    private SimpleSetProperty<LiftHeaderRangeElement> types = null;
-    //    // new SimpleSetProperty<>(
-    //    //     FXCollections.emptyObservableSet()
-    //    // );
-
-    //    LiftHeaderTypeManager(LiftHeaderRange range, LiftHeader header) {
-    //        this.range = range;
-    //        this.name = range.getId();
-    //    }
-
-    //    protected SimpleSetProperty<LiftHeaderRangeElement> typesProperty() {
-    //        if (types == null) {
-    //            initTypes();
-    //        }
-    //        return types;
-    //    }
-
-    //    protected LiftHeaderRangeElement getType(String type) {
-    //        return range.getRangeElements().get(type);
-    //    }
-
-    //    protected void addType(String type) {
-    //        range
-    //            .getRangeElements()
-    //            .put(type, new LiftHeaderRangeElement(type, range));
-    //    }
-
-    //    protected boolean containsType(String type) {
-    //        return range.getRangeElements().containsKey(type);
-    //    }
-
-    //    private void initTypes() {
-    //        MapProperty<String, LiftHeaderRangeElement> typeRangeElements = rangesMap
-    //            .get(name)
-    //            .getRangeElements();
-    //        types = new SimpleSetProperty<>(
-    //            FXCollections.emptyObservableSet()
-    //        );
-    //        types.addAll(typeRangeElements.values());
-    //        typeRangeElements.addListener(
-    //            new MapChangeListener<String, LiftHeaderRangeElement>() {
-    //                @Override
-    //                public void onChanged(
-    //                    Change<
-    //                        ? extends String,
-    //                        ? extends LiftHeaderRangeElement
-    //                    > change
-    //                ) {
-    //                    if (change.wasAdded()) {
-    //                        types.add(change.getValueAdded());
-    //                    } else if (change.wasRemoved()) {
-    //                        types.remove(change.getValueRemoved());
-    //                    }
-    //                }
-    //            }
-    //        );
-    //    }
-    //}
-
 }

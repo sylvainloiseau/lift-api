@@ -6,6 +6,10 @@ import javafx.beans.property.ListProperty;
 import javafx.beans.property.SimpleListProperty;
 import javafx.collections.FXCollections;
 
+/**
+ * Represents a Lift dictionary entry, the top-level component of a Lift dictionary.
+ *
+ */
 public final class LiftEntry
     extends AbstractIdentifiable
     implements HasPronunciation, HasRelations, HasSense

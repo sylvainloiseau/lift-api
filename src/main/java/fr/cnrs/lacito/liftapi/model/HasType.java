@@ -1,9 +1,9 @@
 package fr.cnrs.lacito.liftapi.model;
 
 /**
- * Interface for LIFT components that can have a type. A type {@link Feature},
+ * Interface for LIFT components that can have a type. A type is a {@link Feature},
  * part of a {@link FeatureSet}.
- * 
+ *
  * Note: the {@link LiftField} and {@link LiftTrait} components do not implement this interface:
  * their type is a {@link fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition}.
  */
@@ -14,6 +14,11 @@ public sealed interface HasType
 {
     Feature getType();
 
+    /**
+     * Sets the type of this component.
+     *
+     * @param type the type to set.
+     */
     void setType(Feature type);
-    
+
 }

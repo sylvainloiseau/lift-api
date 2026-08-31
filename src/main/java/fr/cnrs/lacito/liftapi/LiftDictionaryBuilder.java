@@ -1,7 +1,15 @@
 package fr.cnrs.lacito.liftapi;
 
+import java.util.function.Consumer;
+
+import fr.cnrs.lacito.liftapi.builder.AbstractLiftElementWithFieldAndNoteBuilder;
+import fr.cnrs.lacito.liftapi.builder.FeatureSetBuilder;
+import fr.cnrs.lacito.liftapi.builder.NoteBuilder;
+import fr.cnrs.lacito.liftapi.builder.SenseBuilder;
 import fr.cnrs.lacito.liftapi.model.FeatureSet;
+import fr.cnrs.lacito.liftapi.model.Feature;
 import fr.cnrs.lacito.liftapi.model.Form;
+import fr.cnrs.lacito.liftapi.model.HasNote;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
 import fr.cnrs.lacito.liftapi.xml.LiftVersion;
 
@@ -11,8 +19,8 @@ import fr.cnrs.lacito.liftapi.xml.LiftVersion;
  * It allows to create a dictionary by setting its properties one by one.
  *
  * Usage:
- * <pre>
  *
+ * <pre>
  *   // Create a dictionary :
  *   LiftDictionary dictionary = Builders.dictionary()
  *       .withLiftVersion(LiftVersion.V0_13)
@@ -27,6 +35,22 @@ import fr.cnrs.lacito.liftapi.xml.LiftVersion;
  *  builder.entry()
  *      .withForm("en", "Run")
  *      .build();
+ * </pre>
+ * 
+ * This interface also offer to create {@link FeatureSet} and {@link Feature}:
+ *
+ * <pre>
+ *   LiftDictionary dictionary = Builders.dictionary()
+ *       .addFeatureSet(
+ *           fs -> fs.withAbbreviation("en", "myabbreviation")
+ *              .withDescription("en", "my description")
+ *              .withHref("http://www.foo.fr")
+ *              .withLabel("en", "my label")
+ *              .addFeature(f -> f.withLabel("en", "foo"), "my category 1")
+ *              .addFeature(f -> f.withLabel("en", "bar"), "my category 2"),
+ *           "my taxonomy"
+ *       )
+ *       .build();
  * </pre>
  */
 public class LiftDictionaryBuilder {
@@ -154,7 +178,11 @@ public class LiftDictionaryBuilder {
      * Add a FeatureSet to the dictionary, that will be available later for
      * a {@link LiftFieldAndTraitDefinition}.
      */
-    private void AddFeatureSet() {
-
+    public LiftDictionaryBuilder addFeatureSet(Consumer<FeatureSetBuilder> config, String type) {
+        FeatureSetBuilder fsb = new FeatureSetBuilder(dictionary, type);
+        config.accept(fsb);
+        fsb.build();
+        return this;
     }
+
 }

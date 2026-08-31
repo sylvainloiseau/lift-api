@@ -231,8 +231,8 @@ public class DictionaryComponentBuilderFactory {
         return new EtymologyBuilder(dictionary, parent, type, source);
     }
 
-    public LiftHeaderRangeBuilder range(String rangeId) {
-        return new LiftHeaderRangeBuilder(dictionary, rangeId);
+    public FeatureSetBuilder range(String rangeId) {
+        return new FeatureSetBuilder(dictionary, rangeId);
     }
 
     public ReversalBuilder reversal(HasReversal parent) {

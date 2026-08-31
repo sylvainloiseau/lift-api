@@ -97,7 +97,7 @@ public class LiftWriterSession implements AutoCloseable {
                 writeHeader(header);
             }
             out.writeCharacters(NEW_LINE);
-            if (header != null && header.getRanges() != null) {
+            if (header != null && header.getFeatureSets() != null) {
                 writeRangesToExternalFiles(header);
             }
 
@@ -166,7 +166,7 @@ public class LiftWriterSession implements AutoCloseable {
         }
         out.writeEndElement();
 
-        List<FeatureSet> ranges = header.getRanges();
+        List<FeatureSet> ranges = header.getFeatureSets();
         if (ranges != null && !ranges.isEmpty()) {
             out.writeStartElement(LiftVocabulary.HEADER_RANGES_LOCAL_NAME);
             for (FeatureSet r : ranges) {
@@ -274,7 +274,7 @@ public class LiftWriterSession implements AutoCloseable {
         }
 
         Map<File, List<FeatureSet>> byHref = new LinkedHashMap<>();
-        for (FeatureSet r : header.getRanges()) {
+        for (FeatureSet r : header.getFeatureSets()) {
             if (!r.getHref().isPresent()) {
                 continue;
             }

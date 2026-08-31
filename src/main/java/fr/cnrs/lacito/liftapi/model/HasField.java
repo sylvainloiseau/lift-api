@@ -17,7 +17,18 @@ public sealed interface HasField
      */
     public void addField(LiftField f) throws DuplicateTypeException;
 
+    /**
+     * Returns the field with the given type.
+     *
+     * @param type the type of the field.
+     * @return the field.
+     */
     public LiftField getField(String type);
 
+    /**
+     * Returns the fields of this object.
+     *
+     * @return the fields.
+     */
     public Map<String, LiftField> getFields();
 }

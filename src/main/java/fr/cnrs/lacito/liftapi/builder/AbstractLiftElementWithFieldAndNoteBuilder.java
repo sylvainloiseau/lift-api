@@ -61,5 +61,4 @@ public abstract sealed class AbstractLiftElementWithFieldAndNoteBuilder<T extend
         return this;
     }
 
-
 }
