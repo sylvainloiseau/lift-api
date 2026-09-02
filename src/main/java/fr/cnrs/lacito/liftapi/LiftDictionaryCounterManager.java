@@ -1,9 +1,11 @@
 package fr.cnrs.lacito.liftapi;
 
+import fr.cnrs.lacito.liftapi.model.Feature;
 import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
 import fr.cnrs.lacito.liftapi.model.LiftField;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinitionTarget;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
+import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinitionDataModel;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -11,14 +13,70 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import javafx.collections.ListChangeListener;
 
 /**
- * The {@link LiftDictionaryFeatureManager} keeps track of the number of
+ * The {@link LiftDictionaryCounterManager} keeps track of the number of
  *  annotations/field/trait name, value, according to their host
  * (entry, sense) that are used in the dictionary.
  */
-public class LiftDictionaryFeatureManager {
+public class LiftDictionaryCounterManager {
+
+    Map<
+      String,
+      Map<String, Long>
+    > featureSetCounter = new HashMap<>();
+
+    /**
+     * Create a observable map of the number of occurrences of each features of a feature set,
+     * whatever the traits it is used on.
+     * 
+     * @param featureSetName
+     * @return
+     */
+    public Map<String, Long> getFeatureSetCounter(String featureSetName) {
+        if (featureSetCounter.containsKey(featureSetName)) {
+            return featureSetCounter.get(featureSetName);
+        }
+
+        if (!dictionary.getHeader().hasFeatureSet(featureSetName)) {
+            throw new IllegalArgumentException("No feature set with name: " + featureSetName);
+        }
+
+        Map<String, Long> featureCounter = dictionary.getLiftDictionaryRegistry().getTraits().stream()
+            .filter(
+                trait -> trait.getSpecification().getDataModel().isPresent() &&
+                (
+                trait.getSpecification().getDataModel().get() == LiftFieldAndTraitDefinitionDataModel.FEATURE
+                ||
+                trait.getSpecification().getDataModel().get() == LiftFieldAndTraitDefinitionDataModel.FEATURE_SET
+                ||
+                trait.getSpecification().getDataModel().get() == LiftFieldAndTraitDefinitionDataModel.FEATURE_LIST
+                )
+            )
+            .filter(trait -> trait.getSpecification().getResolvedFeatureSet().isPresent())
+            .filter(trait -> trait.getSpecification().getResolvedFeatureSet().get().getId().equals(featureSetName))
+            .flatMap(trait -> {
+                return switch(trait.getSpecification().getDataModel().get()) {
+                    case FEATURE -> Stream.<Feature>of(trait.featureValueProperty().get());
+                    case FEATURE_SET -> trait.featureSetValueProperty().get().stream();
+                    case FEATURE_LIST -> trait.featureListValueProperty().get().stream();
+                    default ->
+                        throw new IllegalStateException("Unexpected data model: " + trait.getSpecification().getDataModel().get());
+                };
+            })
+            .map(x -> x.getId())
+            .collect(Collectors.groupingBy(x -> x, Collectors.counting()));;
+
+        featureSetCounter.put(featureSetName, featureCounter);
+        return featureSetCounter.get(featureSetName);
+    }
+
+
+
 
     //public record FieldSpec (LiftFieldAndTraitDefinitionTarget host, String name) {}
 
@@ -39,11 +97,13 @@ public class LiftDictionaryFeatureManager {
     > annotations = new HashMap<>();
 
     private final LiftDictionaryRegistry liftDictionaryRegistry;
+    private LiftDictionary dictionary;
 
-    public LiftDictionaryFeatureManager(
-        LiftDictionaryRegistry liftDictionaryRegistry
+    public LiftDictionaryCounterManager(
+        LiftDictionary dictionary
     ) {
-        this.liftDictionaryRegistry = liftDictionaryRegistry;
+        this.dictionary = dictionary;
+        this.liftDictionaryRegistry = dictionary.getLiftDictionaryRegistry();
         initTraitValue();
         initAnnotationNameCount();
     }

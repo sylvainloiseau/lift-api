@@ -1,20 +1,15 @@
 package fr.cnrs.lacito.liftapi;
 
-import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftField;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinitionTarget;
 import fr.cnrs.lacito.liftapi.model.LiftHeader;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
-import fr.cnrs.lacito.liftapi.model.MultiText;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class Sanitizer {
 
@@ -68,36 +63,36 @@ public class Sanitizer {
         }
     }
 
-    private void discoverLanguage() {
-        Set<String> objectLang = discoverLanguage(
-            registry.objectTextById.values()
-        );
-        for (String lang : objectLang) {
-            if (!dictionary.getObjectLanguageManager().hasLanguage(lang))
-                dictionary.getObjectLanguageManager().addLanguage(lang);
-            // if (!header.containsObjectLanguage(lang)) {
-            //     header.addObjectLanguage(lang);
-            //}
-        }
-        Set<String> metaLang = discoverLanguage(registry.metaTextById.values());
-        for (String lang : metaLang) {
-            if (!dictionary.getMetaLanguageManager().hasLanguage(lang))
-                dictionary.getMetaLanguageManager().addLanguage(lang);
-            // if (!header.containsMetaLanguage(lang)) {
-            //     header.addMetaLanguage(lang);
-            // }
-        }
-    }
+    // private void discoverLanguage() {
+    //     Set<String> objectLang = discoverLanguage(
+    //         registry.objectTextById.values()
+    //     );
+    //     for (String lang : objectLang) {
+    //         if (!dictionary.getObjectLanguageManager().hasLanguage(lang))
+    //             dictionary.getObjectLanguageManager().addLanguage(lang);
+    //         // if (!header.containsObjectLanguage(lang)) {
+    //         //     header.addObjectLanguage(lang);
+    //         //}
+    //     }
+    //     Set<String> metaLang = discoverLanguage(registry.metaTextById.values());
+    //     for (String lang : metaLang) {
+    //         if (!dictionary.getMetaLanguageManager().hasLanguage(lang))
+    //             dictionary.getMetaLanguageManager().addLanguage(lang);
+    //         // if (!header.containsMetaLanguage(lang)) {
+    //         //     header.addMetaLanguage(lang);
+    //         // }
+    //     }
+    // }
 
-   public static Set<String> discoverLanguage(
-        Collection<MultiText> multiTexts
-    ) {
-        Set<String> lang = new HashSet<>();
-        for (MultiText m : multiTexts) {
-            for (Form f : m.getForms()) {
-                lang.add(f.getLang());
-            }
-        }
-        return lang;
-    }
+//    public static Set<String> discoverLanguage(
+//         Collection<MultiText> multiTexts
+//     ) {
+//         Set<String> lang = new HashSet<>();
+//         for (MultiText m : multiTexts) {
+//             for (Form f : m.getForms()) {
+//                 lang.add(f.getLang());
+//             }
+//         }
+//         return lang;
+//     }
 }

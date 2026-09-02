@@ -34,6 +34,4 @@ public class LiftDictionaryLoaderTest {
         assertTrue(thrown.getMessage().contains("Duplicate"));
     }
 
-
-
 }

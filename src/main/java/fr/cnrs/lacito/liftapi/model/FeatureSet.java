@@ -208,8 +208,8 @@ public final class FeatureSet extends AbstractExtensibleWithField {
      * @throws IllegalArgumentException if a feature with the same id already exists
      */
     public Feature addFeature(String id) {
-        if (hasFeature(element.getId()))
-            throw new IllegalArgumentException("Duplicate feature in feature set: " + element.getId());
+        if (hasFeature(id))
+            throw new IllegalArgumentException("Duplicate feature in feature set: " + id);
         Feature e = new Feature(id, this);
         addFeature(e);
         return e;

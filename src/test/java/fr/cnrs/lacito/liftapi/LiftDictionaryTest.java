@@ -37,7 +37,13 @@ public class LiftDictionaryTest {
     @Test
     public void testGetGramInfoSet () {
         LiftDictionary lf = Utils.loadDictionaryForTest("lift/tiny.xml");
-        Set<String> gramInfo = lf.getGramInfoSet();
+        //Set<String> gramInfo = lf.getGramInfoSet();
+        Set<String> gramInfo = lf.getHeader()
+            .getGrammaticalInfoManager()
+            .getFeatures()
+            .keySet()
+            .stream()
+            .collect(Collectors.toSet());
         assertTrue(gramInfo.containsAll(Arrays.asList("Interrogative pro-form", "Noun")));
     }
 
@@ -51,9 +57,23 @@ public class LiftDictionaryTest {
 
     @Test
     public void testGetGramInfoCounterLargeDictionary () {
-        LiftDictionary lf = Utils.loadDictionaryForTest("lift/20240828Lift.lift");
-        Map<String, Long> gramInfo = lf.getGramInfoCounter();
-        assertEquals(14, gramInfo.get("Interrogative pro-form"));
+        for (String x : 
+            new String[]{
+                "lift/20240828Lift.lift",
+                "lift/20240828Lift.lift",
+                "lift/20240828Lift.lift",
+                "lift/20240828Lift.lift",
+                "lift/20240828Lift.lift"
+            }) {
+            LiftDictionary lf = Utils.loadDictionaryForTest(x);
+            assertEquals(1927, lf.entryCount());
+            Map<String, Long> gramInfo = lf.getGramInfoCounter();
+            LOGGER.info(gramInfo.toString());
+            assertEquals(14, gramInfo.get("Interrogative pro-form"));
+        }
+        // LiftDictionary lf = Utils.loadDictionaryForTest("lift/20240828Lift.lift");
+        // Map<String, Long> gramInfo = lf.getGramInfoCounter();
+        // assertEquals(14, gramInfo.get("Interrogative pro-form"));
     }
 
     @Test
@@ -66,7 +86,7 @@ public class LiftDictionaryTest {
     @Test
     public void testGetTraitName() {
         LiftDictionary lf = Utils.loadDictionaryForTest("lift/20240828Lift.lift");
-        Set<String> traitNames = lf.getTraitName();
+        Set<String> traitNames = lf.getHeader().getTraitsDefinitions().stream().map(x -> x.getName()).collect(Collectors.toSet());
         LOGGER.info(traitNames.toString());
         assertTrue(traitNames.contains("semantic-domain-ddp4"));
     }

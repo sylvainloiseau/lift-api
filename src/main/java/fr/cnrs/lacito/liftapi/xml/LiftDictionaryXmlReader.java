@@ -2,6 +2,8 @@ package fr.cnrs.lacito.liftapi.xml;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDocumentLoadingException;
+import fr.cnrs.lacito.liftapi.model.DuplicateIdException;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.logging.Level;
@@ -89,6 +91,15 @@ public final class LiftDictionaryXmlReader {
                 e
             );
             throw new LiftDocumentLoadingException(e);
+        } catch (DuplicateIdException e) {
+            throw e;
+        } catch (Exception exception) {
+            LOGGER.log(
+                Level.SEVERE,
+                "Error while parsing LIFT file: " + f.getAbsolutePath(),
+                exception
+            );
+            throw new LiftDocumentLoadingException(exception);
         }
     }
 

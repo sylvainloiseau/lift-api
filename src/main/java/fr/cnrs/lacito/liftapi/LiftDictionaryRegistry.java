@@ -52,7 +52,6 @@ import javafx.collections.ObservableMap;
  */
 public class LiftDictionaryRegistry {
 
-    private final LiftDictionaryFeatureManager counter;
     private final LiftDictionaryUUIDManager uuidManager =
         new LiftDictionaryUUIDManager();
 
@@ -338,11 +337,6 @@ public class LiftDictionaryRegistry {
 
         // should be created at the end of the initialisation of objects of constructor
         // because rely on other object (such as metaLanguagesProperty)
-        counter = new LiftDictionaryFeatureManager(this);
-    }
-
-    public LiftDictionaryFeatureManager getCounter() {
-        return counter;
     }
 
     public void addToDictionaryLowLevel(LiftEntry e, int index) {

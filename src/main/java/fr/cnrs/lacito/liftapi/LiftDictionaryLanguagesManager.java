@@ -17,7 +17,6 @@ public class LiftDictionaryLanguagesManager {
     private final SimpleMapProperty<String, Integer> languageCounts =
         new SimpleMapProperty<>(FXCollections.observableHashMap());
 
-
     protected LiftDictionaryLanguagesManager() {}
 
     public SimpleSetProperty<String> languagesProperty() {
@@ -74,6 +73,5 @@ public class LiftDictionaryLanguagesManager {
     public void setLanguageOccurrence(String lang, Long long1) {
         languageCounts.get().put(lang, long1.intValue());
     }
-
 
 }

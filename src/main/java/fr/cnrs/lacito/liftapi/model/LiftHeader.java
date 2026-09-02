@@ -149,9 +149,9 @@ public final class LiftHeader extends AbstractLiftRoot {
      * @throws IllegalArgumentException if a feature set with the same ID already exists
      */
     public FeatureSet addFeatureSet(String id) {
-        if (hasFeatureSet(fs.getId()))
-            throw new IllegalArgumentException("duplicate feature set: " + fs.getId());
-        FeatureSet fs = new FeatureSet(id,this);
+        if (hasFeatureSet(id))
+            throw new IllegalArgumentException("duplicate feature set: " + id);
+        FeatureSet fs = new FeatureSet(id, this);
         addFeatureSet(fs);
         return fs;
     }

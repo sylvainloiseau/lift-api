@@ -1,6 +1,10 @@
 # lift-api
 
-A library for dictionaries in LIFT format.
+A library for working with dictionaries in LIFT format (<a href="https://github.com/sillsdev/lift-standard">https://github.com/sillsdev/lift-standard</a>).
+
+The LIFT dictionary format allows to represent complex linguistic structures particularly in the perspective of descriptive linguistics.
+
+The API allows not only to parse and serialize LIFT dictionaries, but also to manipulate them: create, modify, and query a dictionary; update its content and create new entries or new components in the all the data structure.
 
 # Installation
 
@@ -76,7 +80,6 @@ import fr.cnrs.lacito.liftapi.LiftDictionary;
             .addPronunciation(p -> p.withPronunciation("en", "rʌn"))
             .addNote("source", "en", "From Old English 'irnan'")
             .build();
-
 ```
 
 # Running tests

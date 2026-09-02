@@ -5,7 +5,6 @@ import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
 import fr.cnrs.lacito.liftapi.model.AbstractNotable;
 import fr.cnrs.lacito.liftapi.model.Feature;
-import fr.cnrs.lacito.liftapi.model.FeatureSet;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.HasAnnotation;
 import fr.cnrs.lacito.liftapi.model.HasField;
@@ -19,7 +18,6 @@ import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftEtymology;
 import fr.cnrs.lacito.liftapi.model.LiftExample;
 import fr.cnrs.lacito.liftapi.model.LiftField;
-import fr.cnrs.lacito.liftapi.model.LiftHeader;
 import fr.cnrs.lacito.liftapi.model.LiftNote;
 import fr.cnrs.lacito.liftapi.model.LiftObject;
 import fr.cnrs.lacito.liftapi.model.LiftPronunciation;
@@ -30,7 +28,7 @@ import fr.cnrs.lacito.liftapi.model.LiftVariant;
 
 /**
  * Abstract base class for all LIFT element builders.
- * 
+ *
  * Provides common functionality for building LIFT model elements with a fluent API.
  *
  * @param <T> the type of LIFT element being built
@@ -44,6 +42,13 @@ public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot, U e
     protected final U parent;
     private boolean registered = false;
 
+    /**
+     * Constructs a new AbstractLiftElementBuilder with the given element, dictionary, and parent.
+     *
+     * @param element the LIFT element to build
+     * @param dictionary the LIFT dictionary this element belongs to
+     * @param parent the parent element of this element in the LIFT dictionary
+     */
     protected AbstractLiftElementBuilder(T element, LiftDictionary dictionary, U parent) {
         this.element = element;
         this.registry = dictionary.getLiftDictionaryRegistry();
@@ -51,6 +56,13 @@ public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot, U e
         this.parent = parent;
     }
 
+    /**
+     * Adds a multitext entry to the element. What the main multitext refers to is depending on the element type.
+     *
+     * @param lang the language of the text
+     * @param text the text to add
+     * @return this builder instance
+     */
     public AbstractLiftElementBuilder<T, U> addMultitext(String lang, String text) {
         if (lang == null || text == null) {
             throw new IllegalArgumentException("Language and text cannot be null");
@@ -59,6 +71,13 @@ public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot, U e
         return this;
     }
 
+    /**
+     * Adds a multitext entry to the element. What the main multitext refers to is depending on the element type.
+     *
+     * @param lang the language of the text
+     * @param text the text to add
+     * @return this builder instance
+     */
     public AbstractLiftElementBuilder<T, U> addMultitext(Form text) {
         if (text == null) {
             throw new IllegalArgumentException("Text cannot be null");
@@ -70,7 +89,10 @@ public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot, U e
 
     /**
      * Set the element type (for  components implementing {@link HasType}).
+     *
+     * @param type the type to set
      * @throws IllegalArgumentException if the element built is not an instance of {@code HasType}
+     * @return this builder instance
      */
     public AbstractLiftElementBuilder<T, U> withType(Feature type) {
         if (element instanceof HasType ht) {
@@ -89,9 +111,9 @@ public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot, U e
     public abstract T build();
 
     /**
-     * Register the element in the registry, and add the object to its parent
-     * (the parent take care of creating the reference from the child towards
-     * itself).
+     * Register the element built by this builder in the dictionary registry,
+     * and add the object to its parent (the parent take care of creating the
+     * reference from the child towards itself).
      */
     protected void register() {
         if(registered) {

@@ -2,14 +2,10 @@ package fr.cnrs.lacito.liftapi;
 
 import java.util.function.Consumer;
 
-import fr.cnrs.lacito.liftapi.builder.AbstractLiftElementWithFieldAndNoteBuilder;
 import fr.cnrs.lacito.liftapi.builder.FeatureSetBuilder;
-import fr.cnrs.lacito.liftapi.builder.NoteBuilder;
-import fr.cnrs.lacito.liftapi.builder.SenseBuilder;
 import fr.cnrs.lacito.liftapi.model.FeatureSet;
 import fr.cnrs.lacito.liftapi.model.Feature;
 import fr.cnrs.lacito.liftapi.model.Form;
-import fr.cnrs.lacito.liftapi.model.HasNote;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
 import fr.cnrs.lacito.liftapi.xml.LiftVersion;
 

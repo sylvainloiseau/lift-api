@@ -15,16 +15,19 @@ public abstract sealed class AbstractLiftElementWithFieldAndNoteAndIdBuilder<T e
     extends AbstractLiftElementWithFieldAndNoteBuilder<T, U>
     permits EntryBuilder, SenseBuilder
     {
-    
+
     protected AbstractLiftElementWithFieldAndNoteAndIdBuilder(T element, LiftDictionary dictionary, U parent) {
         super(element, dictionary, parent);
     }
 
     /**
      * Set the element ID (for identifiable elements: Entry and Sense).
-     * 
+     *
      * Not that the ID typically need not to be explicitely set: a UUID can
      * be assigned automatically.
+     *
+     * @param id the ID to set
+     * @return this builder instance
      */
     public AbstractLiftElementWithFieldAndNoteAndIdBuilder<T, U> withId(String id) {
         if (element instanceof Identifiable i) {
@@ -39,6 +42,9 @@ public abstract sealed class AbstractLiftElementWithFieldAndNoteAndIdBuilder<T e
 
     /**
      * Set the element GUID (for identifiable elements: Entry and Sense).
+     *
+     * @param guid the GUID to set
+     * @return this builder instance
      */
     public AbstractLiftElementWithFieldAndNoteAndIdBuilder<T, U> withGuid(String guid) {
         if (element instanceof Identifiable i) {

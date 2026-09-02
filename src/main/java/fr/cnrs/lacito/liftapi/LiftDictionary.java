@@ -4,9 +4,7 @@ import fr.cnrs.lacito.liftapi.builder.DictionaryComponentBuilderFactory;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
-import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
 import fr.cnrs.lacito.liftapi.model.LiftHeader;
-import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.MultiText;
 import fr.cnrs.lacito.liftapi.model.TextSpan;
 import fr.cnrs.lacito.liftapi.xml.LiftDictionaryXmlReader;
@@ -14,12 +12,14 @@ import fr.cnrs.lacito.liftapi.xml.LiftWriterSession;
 import fr.cnrs.lacito.liftapi.xml.LiftVersion;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.xml.stream.XMLStreamException;
 
@@ -78,6 +78,8 @@ public final class LiftDictionary {
     private LiftDictionaryLanguagesManager metaLanguagesManager =
         new LiftDictionaryLanguagesManager();
 
+    private final LiftDictionaryCounterManager counter;
+
     // TODO Ugly hack n°1
     public void turnOffLanguageManager() {
         registry.setLanguagesManager(null, null);
@@ -89,6 +91,10 @@ public final class LiftDictionary {
     }
 
     // Getters/Setters
+
+    public LiftDictionaryCounterManager getCounter() {
+        return counter;
+    }
 
     public DictionaryComponentBuilderFactory getComponentBuilder() {
         return componentBuilder;
@@ -169,6 +175,7 @@ public final class LiftDictionary {
         registry.setLanguagesManager(objectLanguagesManager, metaLanguagesManager);
         this.header = new LiftHeader();
         this.componentBuilder = new DictionaryComponentBuilderFactory(this);
+        counter = new LiftDictionaryCounterManager(this);
     }
 
     // Public methods
@@ -200,11 +207,40 @@ public final class LiftDictionary {
         try {
             liftWriter.marshall(this);
         } catch (FileNotFoundException fE) {
+            if (liftWriter != null) {
+                try {
+                    liftWriter.close();
+                } catch (IOException ioe) {
+                    throw new WrittingLiftDocumentException(ioe);
+                }
+            }
             throw new WrittingLiftDocumentException(fE);
         } catch (XMLStreamException xE) {
+            if (liftWriter != null) {
+                try {
+                    liftWriter.close();
+                } catch (IOException ioe) {
+                    throw new WrittingLiftDocumentException(ioe);
+                }
+            }
             throw new WrittingLiftDocumentException(xE);
         } catch (Exception e) {
+            if (liftWriter != null) {
+                try {
+                    liftWriter.close();
+                } catch (IOException ioe) {
+                    throw new WrittingLiftDocumentException(ioe);
+                }
+            }
             throw new WrittingLiftDocumentException(e);
+        }
+
+        if (liftWriter != null) {
+            try {
+                liftWriter.close();
+            } catch (IOException ioe) {
+                throw new WrittingLiftDocumentException(ioe);
+            }
         }
     }
 
@@ -215,14 +251,14 @@ public final class LiftDictionary {
         return this.registry.entriesById.size();
     }
 
-    public Set<String> getObjectLanguagesInLexicalUnit() {
-        Set<String> objectLanguages = new HashSet<>();
-        for (LiftEntry e : this.registry.getEntries()) {
-            // objectLanguages.addAll( ((Subfields)e.getAnnotationOrTraitOrField()).get_object_languages() );
-            objectLanguages.addAll(e.getForms().getLangs());
-        }
-        return objectLanguages;
-    }
+    // public Set<String> getObjectLanguagesInLexicalUnit() {
+    //     Set<String> objectLanguages = new HashSet<>();
+    //     for (LiftEntry e : this.registry.getEntries()) {
+    //         // objectLanguages.addAll( ((Subfields)e.getAnnotationOrTraitOrField()).get_object_languages() );
+    //         objectLanguages.addAll(e.getForms().getLangs());
+    //     }
+    //     return objectLanguages;
+    // }
 
     public Map<String, Long> getGramInfoCounter() {
         Map<String, Long> result = this.registry.getSenses()
@@ -235,25 +271,28 @@ public final class LiftDictionary {
                     Collectors.counting()
                 )
             );
+            System.out.println("gramInfoCounter: " + result.toString());
         return result;
     }
 
-    public Set<String> getGramInfoSet() {
-        Set<String> gramInfoSet = new HashSet<>();
-        for (LiftSense s : this.registry.getSenses()) {
-            s.getGrammaticalInfo().ifPresent(gi ->
-                gramInfoSet.add(gi.getGramInfoValue().getId())
-            );
-        }
-        return gramInfoSet;
-    }
+    // public Set<String> getGramInfoSet() {
+    //     Set<String> gramInfoSet = new HashSet<>();
+    //     for (LiftSense s : this.registry.getSenses()) {
+    //         s.getGrammaticalInfo().ifPresent(gi ->
+    //             gramInfoSet.add(gi.getGramInfoValue().getId())
+    //         );
+    //     }
+    //     return gramInfoSet;
+    // }
 
-    public Set<String> getTraitName() {
-        return this.registry.getTraits()
-            .stream()
-            .map(t -> t.getSpecification().getName())
-            .collect(Collectors.toSet());
-    }
+    // Instead:
+    // Set<String> traitNames = lf.getHeader().getTraitsDefinitions().stream().map(x -> x.getName()).collect(Collectors.toSet());
+    // public Set<String> getTraitName() {
+    //     return this.registry.getTraits()
+    //         .stream()
+    //         .map(t -> t.getSpecification().getName())
+    //         .collect(Collectors.toSet());
+    // }
 
     // public Set<LiftHeaderRangeElement> getTranslationType() {
     //     Set<LiftHeaderRangeElement> result = new HashSet<>();
@@ -301,33 +340,34 @@ public final class LiftDictionary {
             .toList();
     }
 
-    public List<MultiText> searchInMetaLanguage(String lang, String searched) {
-        return searchInLanguage(lang, searched, registry.metaTextById);
+    public List<MultiText> searchInMetaLanguage(String lang, String regexp) {
+        return searchInLanguage(lang, regexp, registry.metaTextById);
     }
 
     public List<MultiText> searchInObjectLanguage(
         String lang,
-        String searched
+        String regexp
     ) {
-        return searchInLanguage(lang, searched, registry.objectTextById);
+        return searchInLanguage(lang, regexp, registry.objectTextById);
     }
 
     private List<MultiText> searchInLanguage(
         String lang,
-        String searched,
+        String regexp,
         Map<UUID, MultiText> texts
     ) {
         if (lang == null) throw new IllegalArgumentException(
             "lang must not be null"
         );
-        if (searched == null) throw new IllegalArgumentException(
+        if (regexp == null) throw new IllegalArgumentException(
             "searched string must not be null"
         );
+        Pattern p = Pattern.compile(regexp);
         return texts
             .values()
             .stream()
             .filter(x -> x.containsLang(lang))
-            .filter(x -> x.getForm(lang).get().toPlainText().matches(searched))
+            .filter(x -> p.matcher(x.getForm(lang).get().toPlainText()).matches())
             .toList();
     }
 

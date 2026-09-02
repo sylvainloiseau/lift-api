@@ -19,7 +19,7 @@ public class LiftDictionaryWriterTest {
             File resourceFile = new File(resourceUrl.getPath() + ".written.lift");
             lf.save(resourceFile);
         } catch (WrittingLiftDocumentException e) {
-            e.printStackTrace();
+            throw new IllegalStateException("Error writing lift document", e);
         }
     }
 

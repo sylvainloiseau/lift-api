@@ -2,13 +2,8 @@ package fr.cnrs.lacito.liftapi.builder;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.model.LiftHeader;
-import fr.cnrs.lacito.liftapi.model.FeatureSet;
 import fr.cnrs.lacito.liftapi.model.Form;
-import fr.cnrs.lacito.liftapi.model.HasNote;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
-import fr.cnrs.lacito.liftapi.LiftDictionaryBuilder;
-import java.time.ZonedDateTime;
-import java.util.function.Consumer;
 
 /**
  * Fluent API for creating a {@link LiftFieldAndTraitDefinition}.
