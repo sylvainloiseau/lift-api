@@ -15,6 +15,8 @@ import fr.cnrs.lacito.liftapi.model.LiftField;
  */
 public class AbstractPropertyWriters {
 
+    private static final String NEW_LINE = "\n";
+
     public static void writeAbstractExtensibleWithoutField(
             XMLStreamWriter w,
             AbstractExtensibleWithoutField obj) throws Exception {

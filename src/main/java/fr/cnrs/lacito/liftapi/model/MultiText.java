@@ -125,7 +125,8 @@ public final class MultiText
             languageManager.addLanguageOccurrence(f.lang);
         }
         if (lang2FormMap.containsKey(f.lang)) throw new DuplicateLangException(
-            "Duplicate lang: " + f.lang
+            "Duplicate lang: " + f.lang + "; form '" + f.toPlainText() + "'"
+            + " already exists in this MultiText: '" + lang2FormMap.get(f.lang).toPlainText() + "'"
         );
         lang2FormMap.put(f.lang, f);
     }

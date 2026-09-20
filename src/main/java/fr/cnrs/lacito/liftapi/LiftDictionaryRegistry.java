@@ -561,23 +561,24 @@ public class LiftDictionaryRegistry {
     }
 
     public void registerObjectMultiText(MultiText element) {
-        if (element.getUUID() != null) {
-            throw new IllegalArgumentException("UUID already set");
-        }
-        UUID uuid = getNewUUID();
-        element.setUUID(uuid);
-        objectTextById.put(uuid, element);
-        element.setLanguagesManager(objectLanguagesManager);
+        registerMultiText(element, objectTextById, objectLanguagesManager);
     }
 
     public void registerMetaMultiText(MultiText element) {
+        registerMultiText(element, metaTextById, metaLanguagesManager);
+    }
+
+    private void registerMultiText(MultiText element,
+        ObservableMap<UUID, MultiText> textById,
+        LiftDictionaryLanguagesManager languagesManager
+        ) {
         if (element.getUUID() != null) {
             throw new IllegalArgumentException("UUID already set");
         }
         UUID uuid = getNewUUID();
         element.setUUID(uuid);
-        metaTextById.put(uuid, element);
-        element.setLanguagesManager(metaLanguagesManager);
+        textById.put(uuid, element);
+        element.setLanguagesManager(languagesManager);
     }
 
     /**

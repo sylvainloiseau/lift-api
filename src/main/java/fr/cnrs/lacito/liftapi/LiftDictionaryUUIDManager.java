@@ -1,7 +1,7 @@
 package fr.cnrs.lacito.liftapi;
 
+import java.util.ArrayDeque;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Set;
 import java.util.UUID;
 
@@ -9,30 +9,50 @@ import java.util.UUID;
  * Manages the generation and allocation of unique UUIDs for Lift dictionary entries.
  */
 public class LiftDictionaryUUIDManager {
-    private final Set<UUID> usedUuid = new HashSet<>(2000);
-    private final Set<UUID> availableUuid = new HashSet<>(2000);
-    private Iterator<UUID> uuidIterator;
+
+    private final static int DEFAULT_EXPECTED_NUMBER_OF_UUID = 2000;
+    private final static int DEQUE_SIZE = 1000;
+
+    private final Set<UUID> usedUuid;
+    private final ArrayDeque<UUID> availableUuid = new ArrayDeque<>(DEQUE_SIZE);
 
     protected LiftDictionaryUUIDManager () {
+        this(DEFAULT_EXPECTED_NUMBER_OF_UUID);
+    }
+
+    /**
+    *
+    * @param expectedNumberOfUuid the expected number of UUID that
+    * will be needed by the dictionary. If an estimate is available,
+    * if can speed-up the management of UUID
+    */
+    protected LiftDictionaryUUIDManager (int expectedNumberOfUuid) {
+        if (expectedNumberOfUuid < 1) throw new IllegalArgumentException("expected number of uuid cannot be lower than 1");
+        usedUuid = new HashSet<>(expectedNumberOfUuid);
         generateUniqueUuid();
     }
 
     private void generateUniqueUuid() {
-        for (int i = 0; i < 1000; i++) {
+        if (!availableUuid.isEmpty()) {
+            throw new IllegalStateException("The list of available UUID should be empty");
+        }
+        Set<UUID> alreadyAddedInAvailableUuid = new HashSet<>(DEQUE_SIZE);
+        int i = 0;
+        while (i < DEQUE_SIZE) {
             UUID uuid = UUID.randomUUID();
-            if (!usedUuid.contains(uuid) && !availableUuid.contains(uuid)) {
-                availableUuid.add(uuid);
+            if (!usedUuid.contains(uuid) && !alreadyAddedInAvailableUuid.contains(uuid)) {
+                alreadyAddedInAvailableUuid.add(uuid);
+                availableUuid.addLast(uuid);
+                i++;
             }
         }
-        uuidIterator = availableUuid.iterator();
     }
 
     protected UUID getUniqueUuid() {
-        if (!uuidIterator.hasNext()) {
+        if (availableUuid.isEmpty()) {
             generateUniqueUuid();
         }
-        UUID uuid = uuidIterator.next();
-        //availableUuid.remove(uuid);
+        UUID uuid = availableUuid.pop();
         usedUuid.add(uuid);
         return uuid;
     }

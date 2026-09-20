@@ -81,6 +81,15 @@ import fr.cnrs.lacito.liftapi.LiftDictionary;
             .addNote("source", "en", "From Old English 'irnan'")
             .build();
 ```
+## CLI
+
+Utility for loading a dictionary:
+
+```
+java -jar lift-api/target/lift-api-0.1-SNAPSHOT-jar-with-dependencies.jar <dictionaryFile>
+```
+
+Will print error message or quick summary.
 
 # Running tests
 

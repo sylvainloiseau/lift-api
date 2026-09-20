@@ -35,6 +35,11 @@
             <version>1.6.1</version>
         </dependency>
         <dependency>
+            <groupId>info.picocli</groupId>
+            <artifactId>picocli</artifactId>
+            <version>4.7.6</version>
+        </dependency>
+        <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-base</artifactId>
             <version>${javafx.version}</version>
@@ -68,13 +73,11 @@
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
                     </descriptorRefs>
-                    <!--
                     <archive>
                         <manifest>
-                            <mainClass>fr.cnrs.lacito.liftapi</mainClass>
+                            <mainClass>fr.cnrs.lacito.liftapi.cli.Main</mainClass>
                         </manifest>
                     </archive>
-                    -->
                 </configuration>
             </plugin>
             <plugin>
@@ -92,6 +95,17 @@
                     </annotationProcessorPaths>
                 </configuration>
                 -->
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>fr.cnrs.lacito.liftapi.cli.Main</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

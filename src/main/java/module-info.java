@@ -3,6 +3,7 @@ module fr.cnrs.lacito.liftapi {
     requires java.logging;
     requires java.net.http;
     requires transitive javafx.base;
+    requires info.picocli;
     exports fr.cnrs.lacito.liftapi.model;
     exports fr.cnrs.lacito.liftapi.xml; // TODO : not exported
     exports fr.cnrs.lacito.liftapi;

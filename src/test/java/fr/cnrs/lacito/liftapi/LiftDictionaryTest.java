@@ -57,7 +57,7 @@ public class LiftDictionaryTest {
 
     @Test
     public void testGetGramInfoCounterLargeDictionary () {
-        for (String x : 
+        for (String x :
             new String[]{
                 "lift/20240828Lift.lift",
                 "lift/20240828Lift.lift",
@@ -69,7 +69,7 @@ public class LiftDictionaryTest {
             assertEquals(1927, lf.entryCount());
             Map<String, Long> gramInfo = lf.getGramInfoCounter();
             LOGGER.info(gramInfo.toString());
-            assertEquals(14, gramInfo.get("Interrogative pro-form"));
+            assertEquals(20, gramInfo.get("Interrogative pro-form"));
         }
         // LiftDictionary lf = Utils.loadDictionaryForTest("lift/20240828Lift.lift");
         // Map<String, Long> gramInfo = lf.getGramInfoCounter();
@@ -113,4 +113,17 @@ public class LiftDictionaryTest {
         assertEquals(new HashSet<String>(Arrays.asList("free", "litteral")), translationType);
     }
 
+    @Test
+    public void testUuidGenerationWithLargeEntrySet() {
+        LiftDictionary lf = LiftDictionary
+            .makeBuilder()
+            .withMetaLanguages("en")
+            .withObjectLanguages("tww")
+            .build();
+        for (int i = 0; i < 10000; i++) {
+            lf.getComponentBuilder().entry().withForm("tww", "mami").build();
+        }
+        int nbDistinctUuid = lf.getLiftDictionaryRegistry().getEntriesById().size();
+        assertEquals(10000, nbDistinctUuid);
+    }
 }

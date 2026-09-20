@@ -171,6 +171,19 @@ public final class FeatureSet extends AbstractExtensibleWithField {
      * @param id the feature id
      * @return the feature
      */
+    public Feature geFeature(String id) {
+        if (!hasFeature(id)) {
+            throw new IllegalStateException("Feature do not exist: " + id + " in feature set: " + this.id);
+        }
+        return featureMap.get(id);
+    }
+
+    /**
+     * Returns the feature with the given id, or creates a new one if no such feature exists.
+     *
+     * @param id the feature id
+     * @return the feature
+     */
     public Feature getOrCreateFeature(String id) {
         if (!hasFeature(id)) {
             return addFeature(id);

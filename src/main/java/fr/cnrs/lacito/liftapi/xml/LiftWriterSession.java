@@ -85,7 +85,10 @@ public class LiftWriterSession implements AutoCloseable {
             out.writeStartElement(LiftVocabulary.LIFT_LOCAL_NAME);
             out.writeAttribute(
                 LiftVocabulary.VERSION_ATTRIBUTE,
-                d.getLiftVersion().toString()
+                switch (d.getLiftVersion()) {
+                    case LiftVersion.V0_13 -> "0.13";
+                    case LiftVersion.V0_15 -> "0.15";
+                }
             );
             out.writeAttribute(
                 LiftVocabulary.PRODUCER_ATTRIBUTE,
@@ -457,6 +460,7 @@ public class LiftWriterSession implements AutoCloseable {
         entry.getSenses().forEach(unchecked(this::writeSense));
 
         out.writeEndElement();
+        out.writeCharacters(NEW_LINE);
     }
 
     private void writePronunciation(LiftPronunciation p) throws Exception {
@@ -466,6 +470,7 @@ public class LiftWriterSession implements AutoCloseable {
         MultiTextWriters.writeMultiText(out, p.getPronunciation());
         p.getMedias().forEach(unchecked(this::writeMedia));
         out.writeEndElement();
+        out.writeCharacters(NEW_LINE);
     }
 
     private void writeMedia(LiftMedia m) throws Exception {
@@ -473,6 +478,7 @@ public class LiftWriterSession implements AutoCloseable {
         out.writeAttribute("href", m.getHref());
         MultiTextWriters.writeMultiText(out, m.getLabel());
         out.writeEndElement();
+        out.writeCharacters(NEW_LINE);
     }
 
     private void writeVariant(LiftVariant v) throws Exception {
@@ -486,6 +492,7 @@ public class LiftWriterSession implements AutoCloseable {
         v.getRelations().forEach(unchecked(this::writeRelation));
         MultiTextWriters.writeMultiText(out, v.getForms());
         out.writeEndElement();
+        out.writeCharacters(NEW_LINE);
     }
 
     private void writeRelation(LiftRelation r) throws Exception {
@@ -514,6 +521,7 @@ public class LiftWriterSession implements AutoCloseable {
             out.writeEndElement();
         }
         out.writeEndElement();
+        out.writeCharacters(NEW_LINE);
     }
 
     private void writeReversal(LiftReversal rev) throws Exception {
@@ -534,6 +542,7 @@ public class LiftWriterSession implements AutoCloseable {
             out.writeEndElement();
         }
         out.writeEndElement();
+        out.writeCharacters(NEW_LINE);
     }
 
     private void writeEtymology(LiftEtymology e) throws Exception {
@@ -558,6 +567,7 @@ public class LiftWriterSession implements AutoCloseable {
         );
 
         out.writeEndElement();
+        out.writeCharacters(NEW_LINE);
     }
 
     private void writeSense(LiftSense sense) throws Exception {
@@ -596,6 +606,7 @@ public class LiftWriterSession implements AutoCloseable {
         sense.getSenses().forEach(unchecked(this::writeSense));
 
         out.writeEndElement();
+        out.writeCharacters(NEW_LINE);
     }
 
     private void writeGrammaticalInfo(GrammaticalInfo gi) throws Exception {
@@ -603,6 +614,7 @@ public class LiftWriterSession implements AutoCloseable {
         out.writeAttribute(LiftVocabulary.VALUE_ATTRIBUTE, gi.getGramInfoValue().getId());
         gi.getTraits().forEach(unchecked(this::writeTrait));
         out.writeEndElement();
+        out.writeCharacters(NEW_LINE);
     }
 
     private void writeExample(LiftExample ex) throws Exception {
@@ -628,6 +640,7 @@ public class LiftWriterSession implements AutoCloseable {
             })
         );
         out.writeEndElement();
+        out.writeCharacters(NEW_LINE);
     }
 
     private void writeIllustration(LiftIllustration il) throws Exception {
@@ -637,6 +650,7 @@ public class LiftWriterSession implements AutoCloseable {
         }
         MultiTextWriters.writeMultiText(out, il.getLabel());
         out.writeEndElement();
+        out.writeCharacters(NEW_LINE);
     }
 
     private void writeTrait(LiftTrait t) throws Exception {
@@ -645,6 +659,7 @@ public class LiftWriterSession implements AutoCloseable {
         out.writeAttribute(LiftVocabulary.VALUE_ATTRIBUTE, t.getValue());
         t.getAnnotations().forEach(unchecked(this::writeAnnotation));
         out.writeEndElement();
+        out.writeCharacters(NEW_LINE);
     }
 
     private void writeAnnotation(LiftAnnotation a) throws Exception {
@@ -669,6 +684,7 @@ public class LiftWriterSession implements AutoCloseable {
         }
         MultiTextWriters.writeMultiText(out, a.getText());
         out.writeEndElement();
+        out.writeCharacters(NEW_LINE);
     }
 
     // Helper for unchecked exceptions in lambdas

@@ -410,7 +410,7 @@ public final class LiftXMLFactoryNew {
         // "annotation-type";
         // "etymology-type";
         // "variant-type";
-        // that are automatically created
+        // because they are automatically created
         if (parent.hasFeatureSet(id)) {
             hr = parent.getFeatureSet(id);
         } else {
@@ -478,21 +478,35 @@ public final class LiftXMLFactoryNew {
         if (id == null) throw new IllegalArgumentException();
         // the range-element may have already been created by a reference from another range-element (see parentElementId below)
         // so we use getOrCreateRangeElement rather that createRangeElement
+        // TODO however duplicate range-element ids should be detected and reported as an error
         Feature hre = parent.getOrCreateFeature(id);
 
+        // If a feature has a parent feature,
+        // The link parent -> child is stored in
+        // featureSet2Feature2ChildFeature; the
+        // actual reference from the child to the parent
+        // is created a the end of the parsing of the header,
+        // when we can be sure that the parent have been created
         String parentElementId = attributes.getValue(
             LiftVocabulary.LIFT_URI,
             "parent"
         );
         if (parentElementId != null) {
-            Feature parentElement = parent.getOrCreateFeature(parentElementId);
-            hre.setSuperordinateFeature(parentElement);
+            Map<String, Map<String, List<Feature>>> featureSet2Feature2ChildFeature = new HashMap<>();
+            if (!featureSet2Feature2ChildFeature.containsKey(parent.getId())) {
+                featureSet2Feature2ChildFeature.put(parent.getId(), new HashMap<>());
+            }
+            featureSet2Feature2ChildFeature.get(parent.getId())
+                 .computeIfAbsent(id, k -> new ArrayList<>())
+                 .add(hre);
         }
+
         String guid = attributes.getValue(LiftVocabulary.LIFT_URI, "guid");
         if (guid != null) hre.setGuid(guid);
 
         return hre;
     }
+
 
     public LiftIllustration createIllustration(
         Attributes attributes,
@@ -516,8 +530,22 @@ public final class LiftXMLFactoryNew {
 
     public void endHeader() {
         dereferenceOptionRangeInFieldAndTraitDefinitions();
+        dereferenceParentFeature();
     }
 
+    Map<String, Map<String, List<Feature>>> featureSet2Feature2ChildFeature = new HashMap<>();
+
+    private void dereferenceParentFeature() {
+        for (String featureSetId : featureSet2Feature2ChildFeature.keySet()) {
+            FeatureSet r = header.getFeatureSet(featureSetId);
+            for (String parentId : featureSet2Feature2ChildFeature.get(featureSetId).keySet()) {
+                Feature parent = r.getFeature(parentId);
+                for (Feature f : featureSet2Feature2ChildFeature.get(featureSetId).get(parentId)) {
+                    f.setSuperordinateFeature(parent);
+                }
+            }
+        }
+    }
     public Map<String, List<LiftFieldAndTraitDefinition>> rangeId2TraitDefinitionForDereferencing = new HashMap<>();
 
     private void dereferenceOptionRangeInFieldAndTraitDefinitions() {
