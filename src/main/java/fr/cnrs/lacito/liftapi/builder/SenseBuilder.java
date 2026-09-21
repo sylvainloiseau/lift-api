@@ -115,7 +115,6 @@ public final class SenseBuilder extends AbstractLiftElementWithFieldAndNoteAndId
         RelationBuilder rb = new RelationBuilder(dictionary, element, type);
         config.accept(rb);
         rb.build();
-        //element.addRelation(rb.build());
         return this;
     }
 
@@ -137,7 +136,6 @@ public final class SenseBuilder extends AbstractLiftElementWithFieldAndNoteAndId
         SenseBuilder sb = new SenseBuilder(dictionary, element);
         config.accept(sb);
         sb.build();
-        //element.addSense(sb.build());
         return this;
     }
 
@@ -145,7 +143,7 @@ public final class SenseBuilder extends AbstractLiftElementWithFieldAndNoteAndId
 
     @Override
     public SenseBuilder withId(String id) {
-        super.withGuid(id);
+        super.withId(id);
         return this;
     }
 

@@ -47,8 +47,11 @@ public final class LiftField extends AbstractExtensibleWithoutField {
         return this.parent;
     }
 
+    /**
+     * @param parent the new parent, or {@code null} when detaching this field
+     *        (see {@link AbstractLiftRoot#detach()})
+     */
     protected void setParent(AbstractExtensibleWithField parent) {
-        if (parent == null) throw new IllegalArgumentException("Parent is null");
         this.parent = parent;
     }
 

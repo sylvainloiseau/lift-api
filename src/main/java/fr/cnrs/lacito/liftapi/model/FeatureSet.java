@@ -22,6 +22,8 @@ public final class FeatureSet extends AbstractExtensibleWithField {
 
     Optional<String> href = Optional.empty();
 
+    private boolean externalContentLoaded = false;
+
     Optional<String> guid = Optional.empty();
 
     MultiText label = new MultiText(this);
@@ -124,6 +126,32 @@ public final class FeatureSet extends AbstractExtensibleWithField {
     }
 
     /**
+     * Whether the content of the external file named by {@link #getHref()} has been
+     * read into this {@code FeatureSet}.
+     *
+     * A range declared as {@code <range id="..." href="..."/>} carries its features
+     * in a separate {@code .lift-ranges} file. The reader does not load those files
+     * yet, so this is {@code false} for every externally-defined range. Serialization
+     * relies on it: rewriting a ranges file whose content was never read would
+     * replace the user's ranges with an empty shell.
+     *
+     * @return {@code true} if the external content is present in this object
+     */
+    public boolean isExternalContentLoaded() {
+        return externalContentLoaded;
+    }
+
+    /**
+     * Record that the content of the external file named by {@link #getHref()} has
+     * been read into this {@code FeatureSet}.
+     *
+     * @param loaded whether the external content is present in this object
+     */
+    public void setExternalContentLoaded(boolean loaded) {
+        this.externalContentLoaded = loaded;
+    }
+
+    /**
      * The description of this {@code FeatureSet}.
      *
      * @return the description as a {@code MultiText}
@@ -150,7 +178,9 @@ public final class FeatureSet extends AbstractExtensibleWithField {
     }
 
     /**
-     * Returns the feature with the given id, or throws an exception if no such feature exists.
+     * Returns the feature with the given id.
+     *
+     * Use {@link #getOrCreateFeature(String)} to create the feature instead of failing.
      *
      * @param id the feature id
      * @return the feature
@@ -159,30 +189,17 @@ public final class FeatureSet extends AbstractExtensibleWithField {
     public Feature getFeature(String id) {
         if (!hasFeature(id)) {
             throw new IllegalArgumentException(
-                "No range element with id: " + id
+                "No feature with id '" + id + "' in feature set '" + this.id + "'"
             );
         }
         return featureMap.get(id);
     }
 
     /**
-     * Returns the feature with the given id, or creates a new one if no such feature exists.
+     * Returns the feature with the given id, creating it if no such feature exists.
      *
      * @param id the feature id
-     * @return the feature
-     */
-    public Feature geFeature(String id) {
-        if (!hasFeature(id)) {
-            throw new IllegalStateException("Feature do not exist: " + id + " in feature set: " + this.id);
-        }
-        return featureMap.get(id);
-    }
-
-    /**
-     * Returns the feature with the given id, or creates a new one if no such feature exists.
-     *
-     * @param id the feature id
-     * @return the feature
+     * @return the existing or newly created feature
      */
     public Feature getOrCreateFeature(String id) {
         if (!hasFeature(id)) {
@@ -269,9 +286,9 @@ public final class FeatureSet extends AbstractExtensibleWithField {
     }
 
     private void initFeatureSet() {
-        featureSet = new SimpleSetProperty<>(
-            FXCollections.emptyObservableSet()
-        );
+        // FXCollections.emptyObservableSet() is unmodifiable: the addAll below (and every
+        // later addFeature) threw on it.
+        featureSet = new SimpleSetProperty<>(FXCollections.observableSet());
         featureSet.addAll(featureMap.values());
         featureMap.addListener(
             new MapChangeListener<String, Feature>() {

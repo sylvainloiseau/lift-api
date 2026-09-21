@@ -11,8 +11,6 @@ import fr.cnrs.lacito.liftapi.xml.LiftDictionaryXmlReader;
 import fr.cnrs.lacito.liftapi.xml.LiftWriterSession;
 import fr.cnrs.lacito.liftapi.xml.LiftVersion;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -21,13 +19,13 @@ import java.util.UUID;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import javax.xml.stream.XMLStreamException;
 
 /// The entry point for working with a LIFT dictionary.
 ///
 /// Methods are distributed between this class and other classes in the same package
-/// (such as [LiftDictionaryRegistry], [DictionaryComponentBuilderFactory], [LiftDictionaryLanguagesManager], ...)
-/// whose singleton instance is accessible from here through [LiftDictionary#getLiftDictionaryRegistry)],
+/// (such as [LiftDictionaryRegistry], [DictionaryComponentBuilderFactory], [LiftDictionaryLanguagesManager], ...).
+/// Each dictionary owns one instance of each of them - they are not singletons and must
+/// not be shared between dictionaries - reachable from here through [LiftDictionary#getLiftDictionaryRegistry()],
 /// [LiftDictionary#getComponentBuilder()],
 /// [LiftDictionary#getObjectLanguageManager()] and [LiftDictionary#getMetaLanguageManager()], etc.
 ///
@@ -120,12 +118,10 @@ public final class LiftDictionary {
     }
 
     public LiftDictionaryLanguagesManager getObjectLanguageManager() {
-        // System.out.println("returning:" + objectLanguagesManager);
         return this.objectLanguagesManager;
     }
 
     public LiftDictionaryLanguagesManager getMetaLanguageManager() {
-        // System.out.println("returning:" + metaLanguagesManager);
         return this.metaLanguagesManager;
     }
 
@@ -197,50 +193,13 @@ public final class LiftDictionary {
      * @throws WrittingLiftDocumentException
      */
     public void save(File f) throws WrittingLiftDocumentException {
-        LiftWriterSession liftWriter = null;
-        try {
-            liftWriter = new LiftWriterSession(f);
-        } catch (FileNotFoundException e) {
-            throw new WrittingLiftDocumentException(e);
-        }
-
-        try {
+        // try-with-resources so that a failure inside close() is suppressed onto the
+        // real cause rather than replacing it. The session only promotes its
+        // temporary file over `f` when marshalling completed.
+        try (LiftWriterSession liftWriter = new LiftWriterSession(f)) {
             liftWriter.marshall(this);
-        } catch (FileNotFoundException fE) {
-            if (liftWriter != null) {
-                try {
-                    liftWriter.close();
-                } catch (IOException ioe) {
-                    throw new WrittingLiftDocumentException(ioe);
-                }
-            }
-            throw new WrittingLiftDocumentException(fE);
-        } catch (XMLStreamException xE) {
-            if (liftWriter != null) {
-                try {
-                    liftWriter.close();
-                } catch (IOException ioe) {
-                    throw new WrittingLiftDocumentException(ioe);
-                }
-            }
-            throw new WrittingLiftDocumentException(xE);
         } catch (Exception e) {
-            if (liftWriter != null) {
-                try {
-                    liftWriter.close();
-                } catch (IOException ioe) {
-                    throw new WrittingLiftDocumentException(ioe);
-                }
-            }
             throw new WrittingLiftDocumentException(e);
-        }
-
-        if (liftWriter != null) {
-            try {
-                liftWriter.close();
-            } catch (IOException ioe) {
-                throw new WrittingLiftDocumentException(ioe);
-            }
         }
     }
 
@@ -250,15 +209,6 @@ public final class LiftDictionary {
     public int entryCount() {
         return this.registry.entriesById.size();
     }
-
-    // public Set<String> getObjectLanguagesInLexicalUnit() {
-    //     Set<String> objectLanguages = new HashSet<>();
-    //     for (LiftEntry e : this.registry.getEntries()) {
-    //         // objectLanguages.addAll( ((Subfields)e.getAnnotationOrTraitOrField()).get_object_languages() );
-    //         objectLanguages.addAll(e.getForms().getLangs());
-    //     }
-    //     return objectLanguages;
-    // }
 
     public Map<String, Long> getGramInfoCounter() {
         Map<String, Long> result = this.registry.getSenses()
@@ -271,36 +221,8 @@ public final class LiftDictionary {
                     Collectors.counting()
                 )
             );
-            System.out.println("gramInfoCounter: " + result.toString());
         return result;
     }
-
-    // public Set<String> getGramInfoSet() {
-    //     Set<String> gramInfoSet = new HashSet<>();
-    //     for (LiftSense s : this.registry.getSenses()) {
-    //         s.getGrammaticalInfo().ifPresent(gi ->
-    //             gramInfoSet.add(gi.getGramInfoValue().getId())
-    //         );
-    //     }
-    //     return gramInfoSet;
-    // }
-
-    // Instead:
-    // Set<String> traitNames = lf.getHeader().getTraitsDefinitions().stream().map(x -> x.getName()).collect(Collectors.toSet());
-    // public Set<String> getTraitName() {
-    //     return this.registry.getTraits()
-    //         .stream()
-    //         .map(t -> t.getSpecification().getName())
-    //         .collect(Collectors.toSet());
-    // }
-
-    // public Set<LiftHeaderRangeElement> getTranslationType() {
-    //     Set<LiftHeaderRangeElement> result = new HashSet<>();
-    //     for (LiftExample le : this.registry.getExamples()) {
-    //         result.addAll(le.getTranslations().keySet());
-    //     }
-    //     return result;
-    // }
 
     public Map<String, Long> getValueCounterForTraitName(String traitName) {
         return this.registry.getTraits()

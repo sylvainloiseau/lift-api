@@ -64,10 +64,11 @@ public class RelationBuilder extends AbstractLiftElementWithFieldBuilder<LiftRel
         if (type == null || type.isBlank()) {
             throw new IllegalArgumentException("Relation type cannot be null or blank");
         }
-        // if (!dictionary.getHeader().getRelationTypeManager().hasRangeElements(type)) {
-        //     dictionary.getHeader().getRelationTypeManager().addFeature(type);
-        // }
-        Feature e = dictionary.getHeader().getRelationTypeManager().getFeature(type);
+        // Create the type on demand, as this builder's own constructor already does.
+        Feature e = dictionary
+            .getHeader()
+            .getRelationTypeManager()
+            .getOrCreateFeature(type);
 
         super.withType(e);
         return this;
@@ -83,7 +84,7 @@ public class RelationBuilder extends AbstractLiftElementWithFieldBuilder<LiftRel
      */
     public RelationBuilder withOrder(Integer order) {
         if (order != null) {
-            // Order is optional, stored in the element
+            element.setOrder(order);
         }
         return this;
     }

@@ -326,18 +326,7 @@ public class LiftDictionaryRegistry {
         return entriesById;
     }
 
-    protected LiftDictionaryRegistry() {
-        //initializeReadOnlyLists();
-
-        //Type t = LiftEntry.class;
-        //@SuppressWarnings("unchecked")
-        //ObservableList<LiftEntry> entries = (ObservableList<
-        //    LiftEntry
-        //>) getType2Collection(t);
-
-        // should be created at the end of the initialisation of objects of constructor
-        // because rely on other object (such as metaLanguagesProperty)
-    }
+    protected LiftDictionaryRegistry() {}
 
     public void addToDictionaryLowLevel(LiftEntry e, int index) {
         if (index > entries.size()) throw new IllegalArgumentException("Index is greater than array size (" + index + ", " + entries.size() + ").");
@@ -383,7 +372,8 @@ public class LiftDictionaryRegistry {
         if (node instanceof LiftSense s) {
             s.getExamples().forEach(x -> addToDictionaryLowLevel(x));
             s.getIllustrations().forEach(x -> addToDictionaryLowLevel(x));
-            s.getReversals().forEach(x -> addToDictionaryLowLevel(x));
+            // Reversals are handled below by the HasReversal branch, which LiftSense
+            // also matches: doing it here as well registers each reversal twice.
         }
 
         if (node instanceof AbstractExtensibleWithoutField a) {
@@ -470,6 +460,13 @@ public class LiftDictionaryRegistry {
                 if (s.getId().isEmpty()) {
                     String uuidS = s.getUUID().toString();
                     s.setId(uuidS);
+                }
+                // Same guard as for entries: without it a file with two senses
+                // sharing an id silently loses one of them.
+                if (sensesByLiftId.containsKey(s.getId().get())) {
+                    throw new DuplicateIdException(
+                        "Duplicate lift id: " + s.getId().get()
+                    );
                 }
                 sensesByLiftId.put(s.getId().get(), s);
                 senseLiftId2Uuid.put(s.getId().get(), s.getUUID());
@@ -733,64 +730,24 @@ public class LiftDictionaryRegistry {
             }
         }
 
-        // 3. remove this node from the registers
+        // 3. remove this node from the registers.
+        // unregister() already unregisters the node's own MultiTexts; doing it again
+        // here would decrement every language counter twice.
         unregister(node);
 
-        // 4. recursively unregister its descendants and its multitext
+        // 4. recursively unregister the descendants that have no dedicated
+        // Has* interface below.
         switch (node) {
             case LiftEntry e -> {
                 e.getVariants().forEach(x -> unregisterRec(x));
                 e.getEtymologies().forEach(x -> unregisterRec(x));
-                unregisterObjectMultiText(node.getMainMultiText());
             }
             case LiftSense s -> {
                 s.getExamples().forEach(x -> unregisterRec(x));
                 s.getIllustrations().forEach(x -> unregisterRec(x));
-                s.getReversals().forEach(x -> unregisterRec(x));
-                unregisterMetaMultiText(node.getMainMultiText());
-                unregisterMetaMultiText(s.getDefinition());
             }
-            case LiftExample e -> {
-                unregisterObjectMultiText(e.getExample());
-                e.getTranslations()
-                    .values()
-                    .forEach(x -> unregisterMetaMultiText(x));
+            default -> {
             }
-            case LiftVariant v -> {
-                unregisterObjectMultiText(v.getForms());
-            }
-            case LiftTrait _ -> {
-            }
-            case LiftReversal v -> {
-                unregisterObjectMultiText(v.getForms());
-            }
-            case LiftRelation r -> {
-                unregisterMetaMultiText(r.getUsage());
-            }
-            case LiftPronunciation p -> {
-                unregisterObjectMultiText(p.getPronunciation());
-            }
-            case LiftNote n -> {
-                unregisterMetaMultiText(n.getText());
-            }
-            case LiftMedia m -> {
-                unregisterMetaMultiText(m.getLabel());
-            }
-            case LiftIllustration i -> {
-                unregisterMetaMultiText(i.getLabel());
-            }
-            case LiftField f -> {
-                unregisterMetaMultiText(f.getText());
-            }
-            case LiftEtymology e -> {
-                unregisterObjectMultiText(e.getForms());
-            }
-            case LiftAnnotation a -> {
-                unregisterMetaMultiText(a.getText());
-            }
-            default -> throw new IllegalStateException(
-                "Unknown type: " + node.getClass()
-            );
         }
 
         if (node instanceof AbstractExtensibleWithoutField a) {
@@ -861,351 +818,4 @@ public class LiftDictionaryRegistry {
         this.objectLanguagesManager = objectLanguagesManager;
         this.metaLanguagesManager = metaLanguagesManager;
     }
-
-
-    // Old implementation providing the ObservableList for all object type
-
-    // private ObservableList<LiftSense> senses = null;
-    // private ObservableList<LiftSense> sensesReadOnly = null;
-
-    // public ObservableList<LiftSense> getSenses() {
-    //     if (senses == null) {
-    //         senses = FXCollections.observableList(
-    //             FXCollections.observableArrayList(
-    //                 sensesById.values()
-    //             )
-    //         );
-    //         sensesById.addListener(
-    //             (MapChangeListener<UUID, LiftSense>) change -> {
-    //                 if (change.wasAdded()) {
-    //                     senses.add(change.getValueAdded());
-    //                 } else if (change.wasRemoved()) {
-    //                     senses.remove(change.getValueRemoved());
-    //                 }
-    //             }
-    //         );
-    //     }
-    //     sensesReadOnly = FXCollections.unmodifiableObservableList(senses);
-    //     return sensesReadOnly;
-    // }
-
-    // private ObservableList<LiftExample> examples = null;
-    // private ObservableList<LiftExample> examplesReadOnly = null;
-
-    // public ObservableList<LiftExample> getExamples() {
-    //     if (examples == null) {
-    //         examples = FXCollections.observableList(
-    //             FXCollections.observableArrayList(
-    //                 examplesById.values()
-    //             )
-    //         );
-    //         examplesById.addListener(
-    //             (MapChangeListener<UUID, LiftExample>) change -> {
-    //                 if (change.wasAdded()) {
-    //                     examples.add(change.getValueAdded());
-    //                 } else if (change.wasRemoved()) {
-    //                     examples.remove(change.getValueRemoved());
-    //                 }
-    //             }
-    //         );
-    //     }
-    //     examplesReadOnly = FXCollections.unmodifiableObservableList(examples);
-    //     return examplesReadOnly;
-    // }
-
-
-
-    // private ObservableList<LiftVariant> variantsReadOnly = null;
-
-    // public ObservableList<LiftVariant> getVariants() {
-    //     if (variantsReadOnly == null) {
-    //         variantsReadOnly = FXCollections.observableList(
-    //             FXCollections.observableArrayList(
-    //                 variantsById.values()
-    //             )
-    //         );
-    //     }
-    //     variantsById.addListener(
-    //         (MapChangeListener<UUID, LiftVariant>) change -> {
-    //             if (change.wasAdded()) {
-    //                 variantsReadOnly.add(change.getValueAdded());
-    //             } else if (change.wasRemoved()) {
-    //                 variantsReadOnly.remove(change.getValueRemoved());
-    //             }
-    //         }
-    //     );
-    //     return variantsReadOnly;
-    // }
-
-    // private ObservableList<LiftTrait> traits = null;
-
-    // public ObservableList<LiftTrait> getTraits() {
-    //     if (traits == null) {
-    //         traits = FXCollections.observableList(
-    //             FXCollections.observableArrayList(
-    //                 traitsById.values()
-    //             )
-    //         );
-    //         traitsById.addListener(
-    //             (MapChangeListener<UUID, LiftTrait>) change -> {
-    //                 if (change.wasAdded()) {
-    //                     traits.add(change.getValueAdded());
-    //                 } else if (change.wasRemoved()) {
-    //                     traits.remove(change.getValueRemoved());
-    //                 }
-    //             }
-    //         );
-    //     }
-
-    //     return traits;
-    // }
-
-    // private ObservableList<LiftReversal> reversalsReadOnly = null;
-
-    // public ObservableList<LiftReversal> getReversals() {
-    //     if (reversalsReadOnly == null) {
-    //         reversalsReadOnly = FXCollections.observableList(
-    //             FXCollections.observableArrayList(
-    //                 reversalsById.values()
-    //             )
-    //         );
-    //         reversalsById.addListener(
-    //             (MapChangeListener<UUID, LiftReversal>) change -> {
-    //                 if (change.wasAdded()) {
-    //                     reversalsReadOnly.add(change.getValueAdded());
-    //                 } else if (change.wasRemoved()) {
-    //                     reversalsReadOnly.remove(change.getValueRemoved());
-    //                 }
-    //             }
-    //         );
-    //     }
-
-    //     return reversalsReadOnly;
-    // }
-
-    // private ObservableList<LiftRelation> relationsReadOnly = null;
-
-    // public ObservableList<LiftRelation> getRelations() {
-    //     if (relationsReadOnly == null) {
-    //         relationsReadOnly = FXCollections.observableList(
-    //             FXCollections.observableArrayList(
-    //                 relationsById.values()
-    //             )
-    //         );
-    //         relationsById.addListener(
-    //             (MapChangeListener<UUID, LiftRelation>) change -> {
-    //                 if (change.wasAdded()) {
-    //                     relationsReadOnly.add(change.getValueAdded());
-    //                 } else if (change.wasRemoved()) {
-    //                     relationsReadOnly.remove(change.getValueRemoved());
-    //                 }
-    //             }
-    //         );
-    //     }
-
-    //     return relationsReadOnly;
-    // }
-
-    // private ObservableList<LiftPronunciation> pronunciationsReadOnly = null;
-
-    // public ObservableList<LiftPronunciation> getPronunciations() {
-    //     if (pronunciationsReadOnly == null) {
-    //         pronunciationsReadOnly = FXCollections.observableList(
-    //             FXCollections.observableArrayList(
-    //                 pronunciationsById.values()
-    //             )
-    //         );
-    //         pronunciationsById.addListener(
-    //             (MapChangeListener<UUID, LiftPronunciation>) change -> {
-    //                 if (change.wasAdded()) {
-    //                     pronunciationsReadOnly.add(change.getValueAdded());
-    //                 } else if (change.wasRemoved()) {
-    //                     pronunciationsReadOnly.remove(change.getValueRemoved());
-    //                 }
-    //             }
-    //         );
-    //     }
-
-    //     return pronunciationsReadOnly;
-    // }
-
-    // private ObservableList<LiftNote> notesReadOnly = null;
-
-    // public ObservableList<LiftNote> getNotes() {
-    //     if (notesReadOnly == null) {
-    //         notesReadOnly = FXCollections.observableList(
-    //             FXCollections.observableArrayList(
-    //                 notesById.values()
-    //             )
-    //         );
-    //         notesById.addListener(
-    //             (MapChangeListener<UUID, LiftNote>) change -> {
-    //                 if (change.wasAdded()) {
-    //                     notesReadOnly.add(change.getValueAdded());
-    //                 } else if (change.wasRemoved()) {
-    //                     notesReadOnly.remove(change.getValueRemoved());
-    //                 }
-    //             }
-    //         );
-    //     }
-
-    //     return notesReadOnly;
-    // }
-
-    // private ObservableList<LiftMedia> mediasReadOnly = null;
-
-    // public ObservableList<LiftMedia> getMedias() {
-    //     if (mediasReadOnly == null) {
-    //         mediasReadOnly = FXCollections.observableList(
-    //             FXCollections.observableArrayList(
-    //                 mediasById.values()
-    //             )
-    //         );
-    //         mediasById.addListener(
-    //             (MapChangeListener<UUID, LiftMedia>) change -> {
-    //                 if (change.wasAdded()) {
-    //                     mediasReadOnly.add(change.getValueAdded());
-    //                 } else if (change.wasRemoved()) {
-    //                     mediasReadOnly.remove(change.getValueRemoved());
-    //                 }
-    //             }
-    //         );
-    //     }
-
-    //     return mediasReadOnly;
-    // }
-
-    // private ObservableList<LiftIllustration> illustrationsReadOnly = null;
-
-    // public ObservableList<LiftIllustration> getIllustrations() {
-    //     if (illustrationsReadOnly == null) {
-    //         illustrationsReadOnly = FXCollections.observableList(
-    //             FXCollections.observableArrayList(
-    //                 illustrationsById.values()
-    //             )
-    //         );
-    //         illustrationsById.addListener(
-    //             (MapChangeListener<UUID, LiftIllustration>) change -> {
-    //                 if (change.wasAdded()) {
-    //                     illustrationsReadOnly.add(change.getValueAdded());
-    //                 } else if (change.wasRemoved()) {
-    //                     illustrationsReadOnly.remove(change.getValueRemoved());
-    //                 }
-    //             }
-    //         );
-    //     }
-
-    //     return illustrationsReadOnly;
-    // }
-
-    // private ObservableList<LiftField> fieldsReadOnly = null;
-
-    // public ObservableList<LiftField> getFields() {
-    //     if (fieldsReadOnly == null) {
-    //         fieldsReadOnly = FXCollections.observableList(
-    //             FXCollections.observableArrayList(
-    //                 fieldsById.values()
-    //             )
-    //         );
-    //         fieldsById.addListener(
-    //             (MapChangeListener<UUID, LiftField>) change -> {
-    //                 if (change.wasAdded()) {
-    //                     fieldsReadOnly.add(change.getValueAdded());
-    //                 } else if (change.wasRemoved()) {
-    //                     fieldsReadOnly.remove(change.getValueRemoved());
-    //                 }
-    //             }
-    //         );
-    //     }
-    //     return fieldsReadOnly;
-    // }
-
-    // private ObservableList<LiftEtymology> etymologiesReadOnly = null;
-
-    // public ObservableList<LiftEtymology> getEtymologies() {
-    //     if (etymologiesReadOnly == null) {
-    //         etymologiesReadOnly = FXCollections.observableList(
-    //             FXCollections.observableArrayList(
-    //                 etymologiesById.values()
-    //             )
-    //         );
-    //         etymologiesById.addListener(
-    //             (MapChangeListener<UUID, LiftEtymology>) change -> {
-    //                 if (change.wasAdded()) {
-    //                     etymologiesReadOnly.add(change.getValueAdded());
-    //                 } else if (change.wasRemoved()) {
-    //                     etymologiesReadOnly.remove(change.getValueRemoved());
-    //                 }
-    //             }
-    //         );
-    //     }
-    //     return etymologiesReadOnly;
-    // }
-
-    // private ObservableList<LiftAnnotation> annotationsReadOnly = null;
-
-    // public ObservableList<LiftAnnotation> getAnnotations() {
-    //     if (annotationsReadOnly == null) {
-    //         annotationsReadOnly = FXCollections.observableList(
-    //             FXCollections.observableArrayList(
-    //                 annotationsById.values()
-    //             )
-    //         );
-    //         annotationsById.addListener(
-    //             (MapChangeListener<UUID, LiftAnnotation>) change -> {
-    //                 if (change.wasAdded()) {
-    //                     annotationsReadOnly.add(change.getValueAdded());
-    //                 } else if (change.wasRemoved()) {
-    //                     annotationsReadOnly.remove(change.getValueRemoved());
-    //                 }
-    //             }
-    //         );
-    //     }
-    //     return annotationsReadOnly;
-    // }
-
-    // private ObservableList<MultiText> objectTextReadOnly = null;
-
-    // public ObservableList<MultiText> getObjectText() {
-    //     if (objectTextReadOnly == null) {
-    //         objectTextReadOnly = FXCollections.observableList(
-    //             FXCollections.observableArrayList(
-    //                 objectTextById.values()
-    //             )
-    //         );
-    //         objectTextById.addListener(
-    //             (MapChangeListener<UUID, MultiText>) change -> {
-    //                 if (change.wasAdded()) {
-    //                     objectTextReadOnly.add(change.getValueAdded());
-    //                 } else if (change.wasRemoved()) {
-    //                     objectTextReadOnly.remove(change.getValueRemoved());
-    //                 }
-    //             }
-    //         );
-    //     }
-    //     return objectTextReadOnly;
-    // }
-
-    // private ObservableList<MultiText> metaTextReadOnly = null;
-
-    // public ObservableList<MultiText> getMetaText() {
-    //     if (metaTextReadOnly == null) {
-    //         metaTextReadOnly = FXCollections.observableList(
-    //             FXCollections.observableArrayList(
-    //                 metaTextById.values()
-    //             )
-    //         );
-    //         metaTextById.addListener(
-    //             (MapChangeListener<UUID, MultiText>) change -> {
-    //                 if (change.wasAdded()) {
-    //                     metaTextReadOnly.add(change.getValueAdded());
-    //                 } else if (change.wasRemoved()) {
-    //                     metaTextReadOnly.remove(change.getValueRemoved());
-    //                 }
-    //             }
-    //         );
-    //     }
-    //     return metaTextReadOnly;
-    // }
-
 }

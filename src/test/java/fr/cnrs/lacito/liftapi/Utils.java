@@ -1,28 +1,48 @@
 package fr.cnrs.lacito.liftapi;
 
-import static org.junit.jupiter.api.Assertions.fail;
-
 import java.io.File;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.Paths;
 
 public class Utils {
 
-    public static final LiftDictionary loadDictionaryForTest(String file) {
-        URL resourceUrl = Utils.class.getClassLoader().getResource(file);
+    /**
+     * Resolve a classpath resource to a {@link File}.
+     *
+     * {@code URL.getPath()} is not URL-decoded, so it breaks as soon as the build
+     * directory contains a space (or any other escaped character). Going through
+     * {@code URI} fixes that.
+     */
+    public static final File resourceFile(String resource) {
+        URL resourceUrl = Utils.class.getClassLoader().getResource(resource);
         if (resourceUrl == null) throw new IllegalStateException(
-            "Ressource is null. Check the url of the test document."
+            "Resource not found on the test classpath: " + resource
         );
-
-        // Convert URL to File to get the absolute path
-        File resourceFile = new File(resourceUrl.getPath());
-
-        LiftDictionary lf = null;
         try {
-            lf = LiftDictionary.loadDictionaryFromFile(resourceFile);
-        } catch (LiftDocumentLoadingException e) {
-            e.printStackTrace();
-            fail(e.getMessage());
+            return Paths.get(resourceUrl.toURI()).toFile();
+        } catch (URISyntaxException e) {
+            throw new IllegalStateException(
+                "Cannot turn resource URL into a file: " + resourceUrl,
+                e
+            );
         }
-        return lf;
+    }
+
+    public static final LiftDictionary loadDictionaryForTest(String file) {
+        return loadDictionaryForTest(resourceFile(file));
+    }
+
+    public static final LiftDictionary loadDictionaryForTest(File file) {
+        try {
+            return LiftDictionary.loadDictionaryFromFile(file);
+        } catch (LiftDocumentLoadingException e) {
+            // Rethrowing (rather than calling fail() and returning null) keeps the
+            // real cause visible instead of surfacing it as a downstream NPE.
+            throw new AssertionError(
+                "Could not load test dictionary: " + file,
+                e
+            );
+        }
     }
 }

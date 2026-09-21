@@ -111,8 +111,12 @@ public final class Form implements HasAnnotation {
     }
 
     /**
-     * Returns the root of the TextSpan tree that represents the text content of this form.
-     * The root itself is a wrapper (no attributes); its children are the actual content.
+     * Returns the innermost {@code TextSpan} currently open, which is the root
+     * wrapper (no attributes, children are the actual content) whenever no
+     * {@code <span>} is being built.
+     *
+     * While {@link #append(TextSpan)} is pushing spans, this is the span being filled,
+     * not the root.
      */
     public TextSpan getTextSpanRoot() {
         return current.peek();
@@ -191,8 +195,11 @@ public final class Form implements HasAnnotation {
     }
 
     private void parseSpanContent(String input, TextSpan parent) {
+        // \s* rather than \s+: <span> without attributes is legal, and requiring an
+        // attribute made the match fail, leaving idx stuck and the loop spinning forever
+        // on input this class's own toString() produces.
         Pattern spanPattern = Pattern.compile(
-            "<span\\s+([^>]*)>(.*)</span>",
+            "<span(\\s[^>]*)?>(.*)</span>",
             Pattern.DOTALL
         );
 
@@ -201,7 +208,7 @@ public final class Form implements HasAnnotation {
             Matcher matcher = spanPattern.matcher(input.substring(idx));
             if (matcher.find() && matcher.start() == 0) {
                 // Attributs de la balise
-                String attrs = matcher.group(1);
+                String attrs = matcher.group(1) == null ? "" : matcher.group(1);
                 String content = matcher.group(2);
 
                 String lang = null,
@@ -229,7 +236,10 @@ public final class Form implements HasAnnotation {
                 // Texte brut jusqu'au prochain <span> ou fin
                 int nextSpan = input.indexOf("<span", idx);
                 String text;
-                if (nextSpan == -1) {
+                if (nextSpan == -1 || nextSpan == idx) {
+                    // Either no further span, or a "<span" that did not match the
+                    // pattern (unterminated, for instance): consume the rest as text
+                    // so that idx always advances.
                     text = input.substring(idx);
                     idx = input.length();
                 } else {

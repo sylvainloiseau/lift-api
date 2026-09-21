@@ -15,7 +15,7 @@ import fr.cnrs.lacito.liftapi.model.Feature;
 
 public class LiftDictionaryTest {
 
-    private static final Logger LOGGER = Logger.getLogger(LiftDictionary.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(LiftDictionaryTest.class.getName());
 
     @Test
     public void testObjectLanguagesInAllFields () {
@@ -31,7 +31,7 @@ public class LiftDictionaryTest {
         assertEquals(2, metaLanguages.size());
         //System.out.println(metaLanguages.toString());
         assertTrue(metaLanguages.contains("tpi"));
-        assertTrue(metaLanguages.containsAll(Arrays.asList("tpi", "tpi")));
+        assertTrue(metaLanguages.containsAll(Arrays.asList("tpi", "en")));
     }
 
     @Test
@@ -57,23 +57,11 @@ public class LiftDictionaryTest {
 
     @Test
     public void testGetGramInfoCounterLargeDictionary () {
-        for (String x :
-            new String[]{
-                "lift/20240828Lift.lift",
-                "lift/20240828Lift.lift",
-                "lift/20240828Lift.lift",
-                "lift/20240828Lift.lift",
-                "lift/20240828Lift.lift"
-            }) {
-            LiftDictionary lf = Utils.loadDictionaryForTest(x);
-            assertEquals(1927, lf.entryCount());
-            Map<String, Long> gramInfo = lf.getGramInfoCounter();
-            LOGGER.info(gramInfo.toString());
-            assertEquals(20, gramInfo.get("Interrogative pro-form"));
-        }
-        // LiftDictionary lf = Utils.loadDictionaryForTest("lift/20240828Lift.lift");
-        // Map<String, Long> gramInfo = lf.getGramInfoCounter();
-        // assertEquals(14, gramInfo.get("Interrogative pro-form"));
+        LiftDictionary lf = Utils.loadDictionaryForTest("lift/20240828Lift.lift");
+        assertEquals(1927, lf.entryCount());
+        Map<String, Long> gramInfo = lf.getGramInfoCounter();
+        LOGGER.info(gramInfo.toString());
+        assertEquals(20, gramInfo.get("Interrogative pro-form"));
     }
 
     @Test

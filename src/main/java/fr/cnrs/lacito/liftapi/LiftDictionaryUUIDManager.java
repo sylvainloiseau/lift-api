@@ -7,6 +7,11 @@ import java.util.UUID;
 
 /**
  * Manages the generation and allocation of unique UUIDs for Lift dictionary entries.
+ *
+ * <b>Not thread-safe.</b> Like the rest of the model (see the package documentation),
+ * a dictionary is owned by a single thread - the JavaFX Application Thread when a UI
+ * observes it. The check-then-pop in {@link #getUniqueUuid()} is the one place where
+ * concurrent use would actually hand out a duplicate UUID.
  */
 public class LiftDictionaryUUIDManager {
 

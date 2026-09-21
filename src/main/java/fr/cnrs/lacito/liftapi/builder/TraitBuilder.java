@@ -47,7 +47,8 @@ public class TraitBuilder extends AbstractLiftElementBuilder<LiftTrait, HasTrait
     public TraitBuilder addAnnotation(Consumer<AnnotationBuilder> config) {
         AnnotationBuilder ab = new AnnotationBuilder(dictionary, element);
         config.accept(ab);
-        element.getAnnotations().add(ab.build());
+        // build() registers the annotation and attaches it to this trait.
+        ab.build();
         return this;
     }
 
@@ -58,11 +59,10 @@ public class TraitBuilder extends AbstractLiftElementBuilder<LiftTrait, HasTrait
         if (name == null) {
             throw new IllegalArgumentException("Annotation name cannot be null");
         }
-        if (value == null) {
-            element.getAnnotations().add(new AnnotationBuilder(dictionary, element, name).build());
-        } else {
-            element.getAnnotations().add(new AnnotationBuilder(dictionary, element, name).withValue(value).build());
-        }
+        AnnotationBuilder ab = new AnnotationBuilder(dictionary, element, name);
+        if (value != null) ab.withValue(value);
+        // build() registers the annotation and attaches it to this trait.
+        ab.build();
         return this;
     }
 

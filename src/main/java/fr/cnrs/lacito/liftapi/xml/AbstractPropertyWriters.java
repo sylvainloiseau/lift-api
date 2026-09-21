@@ -15,30 +15,29 @@ import fr.cnrs.lacito.liftapi.model.LiftField;
  */
 public class AbstractPropertyWriters {
 
-    private static final String NEW_LINE = "\n";
-
     public static void writeAbstractExtensibleWithoutField(
             XMLStreamWriter w,
             AbstractExtensibleWithoutField obj) throws Exception {
         if (obj.getDateCreated().isPresent()) {
-            w.writeAttribute("dateCreated", obj.getDateCreated().get());
+            w.writeAttribute(LiftVocabulary.DATE_CREATED_ATTRIBUTE, obj.getDateCreated().get());
         }
         if (obj.getDateModified().isPresent()) {
-            w.writeAttribute("dateModified", obj.getDateModified().get());
+            w.writeAttribute(LiftVocabulary.DATE_MODIFIED_ATTRIBUTE, obj.getDateModified().get());
         }
         for (LiftAnnotation a : obj.getAnnotations()) {
-            writeAnnotationElement(w, a);
+            writeAnnotation(w, a);
         }
         for (LiftTrait t : obj.getTraits()) {
-            writeTraitElement(w, t);
+            writeTrait(w, t);
         }
     }
 
     public static void writeAbstractExtensibleWithField(
             XMLStreamWriter w,
-            AbstractExtensibleWithField obj) throws Exception {
+            AbstractExtensibleWithField obj,
+            LiftVersion version) throws Exception {
         for (LiftField f : obj.getFields().values()) {
-            writeFieldElement(w, f);
+            writeField(w, f, version);
         }
     }
 
@@ -55,13 +54,18 @@ public class AbstractPropertyWriters {
 
     public static void writeAbstractNotable(
             XMLStreamWriter w,
-            AbstractNotable obj) throws Exception {
+            AbstractNotable obj,
+            LiftVersion version) throws Exception {
         for (var entry : obj.getNotes().entrySet()) {
-            writeNoteElement(w, entry.getValue());
+            writeNote(w, entry.getValue(), version);
         }
     }
 
-    private static void writeAnnotationElement(XMLStreamWriter w, LiftAnnotation a) throws Exception {
+    /**
+     * Write an {@code <annotation>} element. This is the single implementation used
+     * everywhere annotations are serialized.
+     */
+    public static void writeAnnotation(XMLStreamWriter w, LiftAnnotation a) throws Exception {
         w.writeStartElement(LiftVocabulary.ANNOTATION_LOCAL_NAME);
         if (a.getType() != null) {
             w.writeAttribute(LiftVocabulary.NAME_ATTRIBUTE, a.getType().getId());
@@ -79,31 +83,50 @@ public class AbstractPropertyWriters {
         w.writeEndElement();
     }
 
-    private static void writeTraitElement(XMLStreamWriter w, LiftTrait t) throws Exception {
+    /**
+     * Write a {@code <trait>} element.
+     */
+    public static void writeTrait(XMLStreamWriter w, LiftTrait t) throws Exception {
         w.writeStartElement(LiftVocabulary.TRAIT_LOCAL_NAME);
         w.writeAttribute(LiftVocabulary.NAME_ATTRIBUTE, t.getSpecification().getName());
         w.writeAttribute(LiftVocabulary.VALUE_ATTRIBUTE, t.getValue());
         for (LiftAnnotation a : t.getAnnotations()) {
-            writeAnnotationElement(w, a);
+            writeAnnotation(w, a);
         }
         w.writeEndElement();
     }
 
-    private static void writeFieldElement(XMLStreamWriter w, LiftField f) throws Exception {
+    /**
+     * Write a {@code <field>} element.
+     *
+     * The name of the attribute naming the field definition changed between LIFT
+     * versions: {@code field-content} declares {@code @type} in 0.13 and
+     * {@code @name} in 0.15.
+     */
+    public static void writeField(XMLStreamWriter w, LiftField f, LiftVersion version) throws Exception {
         w.writeStartElement(LiftVocabulary.FIELD_LOCAL_NAME);
-        w.writeAttribute(LiftVocabulary.TYPE_ATTRIBUTE, f.getSpecification().getName());
+        w.writeAttribute(
+            LiftVocabulary.fieldNameAttribute(version),
+            f.getSpecification().getName()
+        );
         writeAbstractExtensibleWithoutField(w, f);
         MultiTextWriters.writeMultiText(w, f.getText());
         w.writeEndElement();
     }
 
-    private static void writeNoteElement(XMLStreamWriter w, fr.cnrs.lacito.liftapi.model.LiftNote n) throws Exception {
+    /**
+     * Write a {@code <note>} element.
+     */
+    public static void writeNote(
+            XMLStreamWriter w,
+            fr.cnrs.lacito.liftapi.model.LiftNote n,
+            LiftVersion version) throws Exception {
         w.writeStartElement(LiftVocabulary.NOTE_LOCAL_NAME);
         if (n.getType() != null) {
             w.writeAttribute(LiftVocabulary.TYPE_ATTRIBUTE, n.getType().getId());
         }
         writeAbstractExtensibleWithoutField(w, n);
-        writeAbstractExtensibleWithField(w, n);
+        writeAbstractExtensibleWithField(w, n, version);
         MultiTextWriters.writeMultiText(w, n.getText());
         w.writeEndElement();
     }

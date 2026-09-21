@@ -92,9 +92,12 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
 
     /**
      * Construct a trait with a trait specification (the specification cannot be changed).
-     * 
-     * @param spec
-     * @throws IllegalArgumentException if the specification has no Datamodel legal value.
+     *
+     * The value is left at its empty default for the specification's data model; use
+     * one of the value-taking constructors, or {@link #setValue(String)}, to set it.
+     *
+     * @param spec the specification of this trait
+     * @throws IllegalArgumentException if the specification has no legal data model
      */
     public LiftTrait(LiftFieldAndTraitDefinition spec) {
         this.specification = new SimpleObjectProperty<>(this, "definition", spec);
@@ -103,8 +106,18 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
             case INTEGER -> this.integerProperty = new SimpleIntegerProperty(this, "value", 0);
             case DATETIME -> this.dateTimeProperty = new SimpleObjectProperty<>(this, "value", null);
             case FEATURE -> this.featureProperty = new SimpleObjectProperty<>(this, "value", null);
-            case FEATURE_SET -> this.featureListProperty = new SimpleListProperty<>(this, "value", null);
-            case FEATURE_LIST -> this.featureSetProperty = new SimpleSetProperty<>(this, "value", null);
+            // A FEATURE_SET is backed by a set and a FEATURE_LIST by a list; the two used
+            // to be crossed over, and both wrapped a null collection so any addAll() threw.
+            case FEATURE_SET -> this.featureSetProperty = new SimpleSetProperty<>(
+                this,
+                "value",
+                FXCollections.observableSet()
+            );
+            case FEATURE_LIST -> this.featureListProperty = new SimpleListProperty<>(
+                this,
+                "value",
+                FXCollections.observableArrayList()
+            );
             default -> throw new IllegalArgumentException("Unknown definition type: " + spec.getDataModel().get());
         }
     }
@@ -144,9 +157,9 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
     // --------------------------------------------------------
 
     /**
-     * LiftTrait have no MultiText: call to this method will throw an exception
-     * 
-     * @throws IllegalStateException
+     * LiftTrait have no MultiText: call to this method will throw an exception.
+     *
+     * @throws IllegalStateException always
      */
     @Override
     public MultiText getMainMultiText() {
@@ -154,9 +167,9 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
     }
 
     /**
-     * LiftTrait have no MultiText: call to this method will throw an exception
-     * 
-     * @throws IllegalStateException
+     * LiftTrait have no MultiText: call to this method will throw an exception.
+     *
+     * @throws UnsupportedOperationException always
      */
     @Override
     protected void addToMainMultiText(Form t) {
@@ -368,8 +381,11 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
     // Parent
     // --------------------------------------------------------
 
+    /**
+     * @param parent the new parent, or {@code null} when detaching this trait
+     *        (see {@link AbstractLiftRoot#detach()})
+     */
     protected void setParent(HasTrait parent) {
-        if (parent == null) throw new IllegalArgumentException("Parent is null");
         this.parent = parent;
     }
 

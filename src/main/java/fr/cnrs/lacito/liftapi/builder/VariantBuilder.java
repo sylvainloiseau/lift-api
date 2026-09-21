@@ -53,7 +53,11 @@ public class VariantBuilder extends AbstractLiftElementWithFieldBuilder<LiftVari
 
     public VariantBuilder withType(String type) {
         if (type == null || type.isBlank()) throw new IllegalArgumentException("Type cannot be null or empty.");
-        Feature f = dictionary.getHeader().getVariantTypeManager().getFeature(type);
+        // Create the type on demand, like every other builder.
+        Feature f = dictionary
+            .getHeader()
+            .getVariantTypeManager()
+            .getOrCreateFeature(type);
         super.withType(f);
         return this;
     }
@@ -73,7 +77,8 @@ public class VariantBuilder extends AbstractLiftElementWithFieldBuilder<LiftVari
     public VariantBuilder addPronunciation(Consumer<PronunciationBuilder> config) {
         PronunciationBuilder pb = new PronunciationBuilder(dictionary, element);
         config.accept(pb);
-        element.addPronunciation(pb.build());
+        // build() registers the pronunciation and attaches it to this variant.
+        pb.build();
         return this;
     }
 
@@ -94,7 +99,8 @@ public class VariantBuilder extends AbstractLiftElementWithFieldBuilder<LiftVari
     public VariantBuilder addRelation(Consumer<RelationBuilder> config, String type) {
         RelationBuilder rb = new RelationBuilder(dictionary, element, type);
         config.accept(rb);
-        element.addRelation(rb.build());
+        // build() registers the relation and attaches it to this variant.
+        rb.build();
         return this;
     }
 

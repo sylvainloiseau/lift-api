@@ -1,6 +1,5 @@
 package fr.cnrs.lacito.liftapi.xml;
 
-import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.model.AbstractExtensibleWithField;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
 import fr.cnrs.lacito.liftapi.model.AbstractNotable;
@@ -31,48 +30,131 @@ import java.util.Deque;
 import java.util.logging.Logger;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
+import org.xml.sax.SAXParseException;
 import org.xml.sax.helpers.DefaultHandler;
 
 /**
  * SAX handler for turning a LIFT XML files into a set of objects,
- * using the LiftXMLFactoryNew to create the objects.
+ * using the LiftXMLFactory to create the objects.
  */
 public final class LiftSaxHandler extends DefaultHandler {
 
     private static final boolean DEBUGGING = false;
 
     private static final Logger LOGGER = Logger.getLogger(
-        LiftDictionary.class.getName()
+        LiftSaxHandler.class.getName()
     );
 
-    private boolean inText = false; // inside a text element.
-    private boolean inGrammaticalInfo = false; // (for trait)
+    /** Nesting depth of {@code <text>} elements (0 when outside any). */
+    private int inTextDepth = 0;
 
-    private final LiftXMLFactoryNew liftXMLFactory;
+    /** Nesting depth of {@code <grammatical-info>} elements (matters for traits). */
+    private int inGrammaticalInfoDepth = 0;
+
+    /**
+     * Depth of the subtree currently being skipped because its root element is not
+     * part of the LIFT vocabulary. 0 when not skipping.
+     */
+    private int skipDepth = 0;
+
+    private final LiftXMLFactory liftXMLFactory;
+
+    private final boolean strict;
 
     private Deque<AbstractLiftRoot> elementStack = new ArrayDeque<>();
     private Deque<MultiText> multiTextStack = new ArrayDeque<>();
 
-    private Form currentFormContent; // contains @lang, text, and annotation
+    /**
+     * The open {@code <form>} / {@code <gloss>} elements, innermost first.
+     *
+     * This is a stack rather than a single field because the schema allows an
+     * {@code <annotation>} - itself a multitext - inside a {@code <form>}: closing the
+     * inner form must restore the outer one, not clear it.
+     */
+    private Deque<Form> formStack = new ArrayDeque<>();
+
     private StringBuffer sb;
 
-    public LiftSaxHandler(LiftXMLFactoryNew lf) {
-        this.liftXMLFactory = lf;
+    public LiftSaxHandler(LiftXMLFactory lf) {
+        this(lf, false);
     }
 
-    public LiftXMLFactoryNew getFactory() {
+    /**
+     * @param strict when {@code true}, recoverable parse errors abort the parse
+     *        instead of only being logged.
+     */
+    public LiftSaxHandler(LiftXMLFactory lf, boolean strict) {
+        this.liftXMLFactory = lf;
+        this.strict = strict;
+    }
+
+    public LiftXMLFactory getFactory() {
         return liftXMLFactory;
+    }
+
+    /** The {@code <form>} or {@code <gloss>} currently open, or {@code null}. */
+    private Form currentForm() {
+        return formStack.peek();
     }
 
     @Override
     public void characters(char[] ch, int start, int length)
         throws SAXException {
-        if (inText) {
+        if (skipDepth > 0) {
+            super.characters(ch, start, length);
+            return;
+        }
+        if (inTextDepth > 0) {
             // we are in text
             if (sb == null) sb = new StringBuffer();
             sb.append(ch, start, length);
         }
         super.characters(ch, start, length);
+    }
+
+    /**
+     * {@link DefaultHandler} discards recoverable parse problems. Report them: a
+     * silently dropped error is a silently corrupted dictionary.
+     */
+    @Override
+    public void warning(SAXParseException e) throws SAXException {
+        LOGGER.warning(describe("Warning", e));
+    }
+
+    @Override
+    public void error(SAXParseException e) throws SAXException {
+        String message = describe("Error", e);
+        if (strict) throw new SAXException(message, e);
+        LOGGER.severe(message);
+    }
+
+    @Override
+    public void fatalError(SAXParseException e) throws SAXException {
+        throw new SAXException(describe("Fatal error", e), e);
+    }
+
+    private static String describe(String kind, SAXParseException e) {
+        return kind +
+            " while parsing LIFT at line " +
+            e.getLineNumber() +
+            ", column " +
+            e.getColumnNumber() +
+            ": " +
+            e.getMessage();
+    }
+
+    /**
+     * Log an element the LIFT vocabulary does not cover and skip its whole subtree.
+     *
+     * Aborting the parse instead would make any file with a single unexpected
+     * element unreadable - including the {@code lift-ranges} documents this package
+     * writes itself.
+     */
+    private void skipUnknownElement(String localName, String where) {
+        LOGGER.warning(
+            "Skipping unknown LIFT element <" + localName + "> (" + where + ")."
+        );
+        skipDepth = 1;
     }
 
     @Override
@@ -82,6 +164,11 @@ public final class LiftSaxHandler extends DefaultHandler {
         String qName,
         Attributes attributes
     ) throws SAXException {
+        if (skipDepth > 0) {
+            skipDepth++;
+            super.startElement(uri, localName, qName, attributes);
+            return;
+        }
         if (DEBUGGING) LOGGER.info(
             "start element: " +
                 localName +
@@ -97,12 +184,20 @@ public final class LiftSaxHandler extends DefaultHandler {
                 String version = attributes.getValue(
                     LiftVocabulary.VERSION_ATTRIBUTE
                 );
-                if (version.equals("0.13")) {
-                    liftXMLFactory.setLiftVersion(LiftVersion.V0_13);
-                } else if (version.equals("0.15")) {
-                    liftXMLFactory.setLiftVersion(LiftVersion.V0_15);
-                } else {
-                    throw new IllegalArgumentException("Cannot read lift dictionary with version " + version + "; supported versions are 13 and 15");
+                if (version == null) {
+                    throw new UnsupportedVersionException(
+                        "The <lift> element has no 'version' attribute; " +
+                            "supported versions are 0.13 and 0.15"
+                    );
+                }
+                switch (version) {
+                    case "0.13" -> liftXMLFactory.setLiftVersion(LiftVersion.V0_13);
+                    case "0.15" -> liftXMLFactory.setLiftVersion(LiftVersion.V0_15);
+                    default -> throw new UnsupportedVersionException(
+                        "Cannot read lift dictionary with version '" +
+                            version +
+                            "'; supported versions are 0.13 and 0.15"
+                    );
                 }
                 liftXMLFactory.setLiftProducer(
                     attributes.getValue(LiftVocabulary.PRODUCER_ATTRIBUTE)
@@ -158,7 +253,7 @@ public final class LiftSaxHandler extends DefaultHandler {
                     // LIFT 0.13: <field tag="..."> in header is the equivalent of <field-definition name="..."> in 0.15
                     String tag = attributes.getValue(
                         LiftVocabulary.LIFT_URI,
-                        "tag"
+                        LiftVocabulary.TAG_ATTRIBUTE
                     );
                     if (tag == null) throw new IllegalStateException(
                         "Attribute 'tag' expected on <field> in header (LIFT 0.13)"
@@ -199,12 +294,12 @@ public final class LiftSaxHandler extends DefaultHandler {
                 // annotation has no other possible child than form. An annotation can be on
                 // AbstractExtensibleWithoutField object, field, trait, MultiText, or formContent (form or gloss).
                 HasAnnotation parent = null;
-                if (inText) {
+                if (inTextDepth > 0) {
                     throw new IllegalStateException(
                         "Annotation cannot be in text element."
                     );
-                } else if (currentFormContent != null) {
-                    parent = currentFormContent;
+                } else if (currentForm() != null) {
+                    parent = currentForm();
                 } else if (
                     !multiTextStack.isEmpty() &&
                     multiTextStack.peek() instanceof HasAnnotation haMt
@@ -254,8 +349,9 @@ public final class LiftSaxHandler extends DefaultHandler {
                     LiftVocabulary.LIFT_URI,
                     LiftVocabulary.LANG_ATTRIBUTE
                 );
-                currentFormContent = liftXMLFactory.createText(lang);
-                multiTextStack.peek().add(currentFormContent);
+                Form form = liftXMLFactory.createText(lang);
+                multiTextStack.peek().add(form);
+                formStack.push(form);
                 break;
             case LiftVocabulary.GLOSS_LOCAL_NAME: // in etymology and sense
                 // TODO : essayer de grouper avec le précédent
@@ -263,12 +359,12 @@ public final class LiftSaxHandler extends DefaultHandler {
                     LiftVocabulary.LIFT_URI,
                     LiftVocabulary.LANG_ATTRIBUTE
                 );
-                currentFormContent = liftXMLFactory.createText(glossLang);
-                //currentMulti.add(currentLiftText);
+                Form gloss = liftXMLFactory.createText(glossLang);
+                formStack.push(gloss);
                 if (elementStack.peek() instanceof LiftEtymology le) {
-                    le.addGloss(currentFormContent);
+                    le.addGloss(gloss);
                 } else if (elementStack.peek() instanceof LiftSense ls2) {
-                    ls2.addGloss(currentFormContent);
+                    ls2.addGloss(gloss);
                 } else {
                     throw new IllegalStateException(
                         "gloss element is allowed in etymology and sense; found: " +
@@ -278,35 +374,35 @@ public final class LiftSaxHandler extends DefaultHandler {
                 break;
             // Dealing with multitex
             case LiftVocabulary.TEXT_LOCAL_NAME:
-                inText = true;
+                inTextDepth++;
                 break;
             case LiftVocabulary.SPAN_LOCAL_NAME:
                 if (sb != null) {
-                    currentFormContent.append(sb.toString());
+                    currentForm().append(sb.toString());
                     sb = null;
                 }
                 String sLang = attributes.getValue(
                     LiftVocabulary.LIFT_URI,
-                    "lang"
+                    LiftVocabulary.LANG_ATTRIBUTE
                 );
                 String sHref = attributes.getValue(
                     LiftVocabulary.LIFT_URI,
-                    "href"
+                    LiftVocabulary.HREF_ATTRIBUTE
                 );
                 String sClass = attributes.getValue(
                     LiftVocabulary.LIFT_URI,
-                    "class"
+                    LiftVocabulary.CLASS_ATTRIBUTE
                 );
                 TextSpan ts = liftXMLFactory.createTextSpan();
                 if (sLang != null) ts.setLang(sLang);
                 if (sHref != null) ts.setHref(sHref);
                 if (sClass != null) ts.setsClass(sClass);
-                currentFormContent.append(ts);
+                currentForm().append(ts);
                 break;
             case LiftVocabulary.TRAIT_LOCAL_NAME:
                 // on ExtensibleWithoutField or on grammatical-info, all implementing HasTrait.
                 if (elementStack.peek() instanceof HasTrait s) {
-                    if (inGrammaticalInfo) {
+                    if (inGrammaticalInfoDepth > 0) {
                         s = ((LiftSense) s).getGrammaticalInfo().orElseThrow();
                     }
                     LiftTrait trait = liftXMLFactory.createTrait(attributes, s);
@@ -319,14 +415,24 @@ public final class LiftSaxHandler extends DefaultHandler {
                 }
                 break;
             case LiftVocabulary.GRAM_INFO_LOCAL_NAME:
-                inGrammaticalInfo = true;
                 if (elementStack.peek() instanceof LiftSense s) {
-                    liftXMLFactory.setGrammaticalInfo(s, attributes.getValue(LiftVocabulary.LIFT_URI, "value"));
-                } else {
-                    throw new IllegalStateException(
-                        "LiftSense expected. Found: " +
-                            elementStack.peek().toString()
+                    inGrammaticalInfoDepth++;
+                    liftXMLFactory.setGrammaticalInfo(
+                        s,
+                        attributes.getValue(
+                            LiftVocabulary.LIFT_URI,
+                            LiftVocabulary.VALUE_ATTRIBUTE
+                        )
                     );
+                } else {
+                    // The schema also allows grammatical-info inside a reversal, which
+                    // the model does not represent; skip it rather than fail the parse.
+                    skipUnknownElement(
+                        localName,
+                        "grammatical-info outside a sense"
+                    );
+                    super.startElement(uri, localName, qName, attributes);
+                    return;
                 }
                 break;
             // <media href="..." >
@@ -378,7 +484,6 @@ public final class LiftSaxHandler extends DefaultHandler {
             case LiftVocabulary.TRANSLATION_LOCAL_NAME:
             case LiftVocabulary.HEADER_DESCRIPTION_LOCAL_NAME:
             case LiftVocabulary.HEADER_RANGE_ABBREV_LOCAL_NAME:
-            case LiftVocabulary.ABREVIATION_LOCAL_NAME:
                 break;
             case LiftVocabulary.REVERSAL_LOCAL_NAME:
                 if (elementStack.peek() instanceof LiftSense s_rev) {
@@ -407,10 +512,9 @@ public final class LiftSaxHandler extends DefaultHandler {
             case LiftVocabulary.USAGE_LOCAL_NAME:
                 break;
             default:
-                throw new IllegalStateException(
-                    "Unknown start element: " + localName
-                );
-            //break;
+                skipUnknownElement(localName, "startElement, first switch");
+                super.startElement(uri, localName, qName, attributes);
+                return;
         }
         // end of first switch
 
@@ -418,18 +522,6 @@ public final class LiftSaxHandler extends DefaultHandler {
         // If the following element can be form or gloss,
         // we register a MultiText object
         switch (localName) {
-            case LiftVocabulary.ABREVIATION_LOCAL_NAME:
-                // in a range or a range element
-                switch (elementStack.peek()) {
-                    case FeatureSet r -> multiTextStack.push(
-                        r.getAbbrev()
-                    );
-                    case Feature re -> multiTextStack.push(
-                        re.getAbbrev()
-                    );
-                    default -> throw new IllegalStateException();
-                }
-                break;
             case LiftVocabulary.FIELD_LOCAL_NAME:
                 switch (elementStack.peek()) {
                     case LiftField f -> multiTextStack.push(f.getText());
@@ -479,12 +571,10 @@ public final class LiftSaxHandler extends DefaultHandler {
             case LiftVocabulary.TRANSLATION_LOCAL_NAME:
                 String type = attributes.getValue(
                     LiftVocabulary.LIFT_URI,
-                    "type"
+                    LiftVocabulary.TYPE_ATTRIBUTE
                 );
                 if (type == null) type = LiftExample.DEFAULT_TRANSLATION_TYPE;
                 Feature typeObject = liftXMLFactory.getTranslationType(type);
-                // System.out.println(typeObject);
-                // System.out.println(" -> " + typeObject.getId());
                 //if (type == null) type = LiftExample.DEFAULT_TRANSLATION_TYPE; // TODO
                 if (elementStack.peek() instanceof LiftExample e) {
                     multiTextStack.push(e.createTranslation(typeObject));
@@ -585,10 +675,12 @@ public final class LiftSaxHandler extends DefaultHandler {
             case LiftVocabulary.MEDIA_LOCAL_NAME:
                 break;
             default:
-                throw new IllegalStateException(
-                    "Unknown case (second start element switch): " + localName
+                LOGGER.warning(
+                    "No multitext mapping for element <" +
+                        localName +
+                        "> (startElement, second switch)."
                 );
-            //break;
+                break;
         }
         // end of second switch
 
@@ -605,6 +697,11 @@ public final class LiftSaxHandler extends DefaultHandler {
     @Override
     public void endElement(String uri, String localName, String qName)
         throws SAXException {
+        if (skipDepth > 0) {
+            skipDepth--;
+            super.endElement(uri, localName, qName);
+            return;
+        }
         if (DEBUGGING) LOGGER.info(
             "end element: " +
                 localName +
@@ -633,7 +730,6 @@ public final class LiftSaxHandler extends DefaultHandler {
             case LiftVocabulary.HEADER_DESCRIPTION_LOCAL_NAME: // duplicate constant "description"
             case LiftVocabulary.HEADER_RANGE_ABBREV_LOCAL_NAME:
             case LiftVocabulary.LABEL_LOCAL_NAME: // in range, range-element, illustration or media
-            case LiftVocabulary.ABREVIATION_LOCAL_NAME:
             case LiftVocabulary.HEADER_FIELD_DEFINITION_LOCAL_NAME:
                 multiTextStack.pop();
                 break;
@@ -663,10 +759,12 @@ public final class LiftSaxHandler extends DefaultHandler {
             case LiftVocabulary.MEDIA_LOCAL_NAME:
                 break;
             default:
-                throw new IllegalStateException(
-                    "Unknown case (endElement, first switch): " + localName
+                LOGGER.warning(
+                    "Unknown element </" +
+                        localName +
+                        "> (endElement, first switch)."
                 );
-            //break;
+                return;
         }
         // end of first switch
 
@@ -700,24 +798,24 @@ public final class LiftSaxHandler extends DefaultHandler {
                 break;
             case LiftVocabulary.FORM_LOCAL_NAME:
             case LiftVocabulary.GLOSS_LOCAL_NAME:
-                currentFormContent = null;
+                formStack.pop();
                 break;
             case LiftVocabulary.TEXT_LOCAL_NAME:
                 if (sb != null) {
-                    currentFormContent.append(sb.toString());
+                    currentForm().append(sb.toString());
                     sb = null;
                 }
-                inText = false;
+                inTextDepth--;
                 break;
             case LiftVocabulary.SPAN_LOCAL_NAME:
                 if (sb != null) {
-                    currentFormContent.append(sb.toString());
+                    currentForm().append(sb.toString());
                     sb = null;
                 }
-                currentFormContent.pop();
+                currentForm().pop();
                 break;
             case LiftVocabulary.GRAM_INFO_LOCAL_NAME:
-                inGrammaticalInfo = false; // that flag is important (for trait) // TODO remove
+                inGrammaticalInfoDepth--; // that flag is important (for trait)
                 break;
             case LiftVocabulary.TRANSLATION_LOCAL_NAME:
             case LiftVocabulary.LEXICAL_UNIT_LOCAL_NAME:
@@ -729,17 +827,17 @@ public final class LiftSaxHandler extends DefaultHandler {
             case LiftVocabulary.LIFT_LOCAL_NAME:
             case LiftVocabulary.HEADER_DESCRIPTION_LOCAL_NAME:
             case LiftVocabulary.HEADER_RANGE_ABBREV_LOCAL_NAME:
-            case LiftVocabulary.ABREVIATION_LOCAL_NAME:
             case LiftVocabulary.REVERSAL_LOCAL_NAME:
             case LiftVocabulary.MAIN_LOCAL_NAME:
             case LiftVocabulary.USAGE_LOCAL_NAME:
                 break;
             default:
-                throw new IllegalStateException(
-                    "Unknown end element (endElement, second switch): " +
-                        localName
+                LOGGER.warning(
+                    "Unknown element </" +
+                        localName +
+                        "> (endElement, second switch)."
                 );
-            //break;
+                break;
         }
         // end of second switch
 

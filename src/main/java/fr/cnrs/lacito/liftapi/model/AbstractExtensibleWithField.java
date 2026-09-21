@@ -22,8 +22,14 @@ public abstract sealed class AbstractExtensibleWithField
 
     @Override
     public void addField(LiftField f) {
-        if (fieldsProperty.containsKey(f.specificationProperty().get())) throw new DuplicateTypeException("Duplicate key (" + f.specificationProperty().get() + ") for field");
-        fieldsProperty.put(f.specificationProperty().get().getName(), f);
+        // The map is keyed by the definition *name*; looking the definition object up
+        // instead never matched (LiftFieldAndTraitDefinition has no equals), so a
+        // duplicate field silently overwrote the previous one.
+        String name = f.getSpecification().getName();
+        if (fieldsProperty.containsKey(name)) throw new DuplicateTypeException(
+            "Duplicate key (" + name + ") for field"
+        );
+        fieldsProperty.put(name, f);
         f.setParent(this);
     }
 

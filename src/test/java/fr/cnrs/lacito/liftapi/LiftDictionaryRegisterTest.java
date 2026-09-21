@@ -28,11 +28,10 @@ public class LiftDictionaryRegisterTest {
         DictionaryComponentBuilderFactory builder = dictionary.getComponentBuilder();
 
         builder.entry().withForm("en", "dictionary").build();
-        // this method should be refactored
-        //assertEquals(1, dictionary.entryCount());
+        assertEquals(1, dictionary.entryCount());
 
         builder.entry().withForm("en", "registry").build();
-        //assertEquals(1, dictionary.entryCount());
+        assertEquals(2, dictionary.entryCount());
     }
 
     @Test

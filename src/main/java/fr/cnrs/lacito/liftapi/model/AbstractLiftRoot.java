@@ -67,6 +67,9 @@ public abstract sealed class AbstractLiftRoot implements LiftObject
                 HasSense p = s.getParent();
                 p.getSenses().removeIf(x -> x == s);
                 s.setParent(null);
+                // parentEntry is a second, independent link to the entry: leaving it
+                // set hands the GUI a sense that still claims to belong to a dictionary.
+                s.setParentEntry(null);
             }
             case LiftExample o -> {o.getParent()
                 .getExamples()

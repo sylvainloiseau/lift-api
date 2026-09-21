@@ -6,11 +6,14 @@ import fr.cnrs.lacito.liftapi.model.DuplicateIdException;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.StringReader;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.xml.XMLConstants;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
+import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 /**
@@ -24,9 +27,13 @@ public final class LiftDictionaryXmlReader {
 
     private final File f;
 
-    private final boolean validate;
+    /**
+     * When {@code true}, recoverable XML errors reported by the parser abort the
+     * load instead of only being logged.
+     */
+    private final boolean strict;
 
-    private LiftXMLFactoryNew liftFactory;
+    private LiftXMLFactory liftFactory;
 
     private final LiftDictionary dictionary;
 
@@ -35,24 +42,19 @@ public final class LiftDictionaryXmlReader {
      *
      * @param f the XML file to parse
      * @param dictionary the dictionary to populate
-     * @param validate whether to validate the XML against the schema
+     * @param strict whether recoverable XML errors should abort the load
      */
     public LiftDictionaryXmlReader(
         File f,
         LiftDictionary dictionary,
-        boolean validate
+        boolean strict
     ) {
         this.f = f;
         this.dictionary = dictionary;
-        this.validate = validate;
+        this.strict = strict;
     }
 
     public void parse() throws LiftDocumentLoadingException {
-        // URL schemaUrl = LiftDictionaryLoader.class.getResource("schema/lift-0.13.xsd");
-        // File schemaFile = new File(schemaUrl.getPath());
-        // if (!schemaFile.exists()) throw new LiftDocumentLoadingException("Schema not found: " + schemaFile.getAbsoluteFile());
-        // LOGGER.fine("Schema: " + schemaFile.getAbsolutePath());
-
         if (!f.exists()) throw new LiftDocumentLoadingException(
             "File does not exist: " + f.getAbsoluteFile()
         );
@@ -62,7 +64,32 @@ public final class LiftDictionaryXmlReader {
         saxFactory.setNamespaceAware(true);
         SAXParser saxParser = null;
         try {
+            // LIFT files are routinely exchanged between FLEx users, so the input is
+            // untrusted: disable DTDs, external entities and XInclude to close the
+            // XXE and entity-expansion ("billion laughs") surface.
+            saxFactory.setFeature(
+                XMLConstants.FEATURE_SECURE_PROCESSING,
+                true
+            );
+            saxFactory.setFeature(
+                "http://apache.org/xml/features/disallow-doctype-decl",
+                true
+            );
+            saxFactory.setFeature(
+                "http://xml.org/sax/features/external-general-entities",
+                false
+            );
+            saxFactory.setFeature(
+                "http://xml.org/sax/features/external-parameter-entities",
+                false
+            );
+            saxFactory.setXIncludeAware(false);
             saxParser = saxFactory.newSAXParser();
+            saxParser
+                .getXMLReader()
+                .setEntityResolver((publicId, systemId) ->
+                    new InputSource(new StringReader(""))
+                );
         } catch (ParserConfigurationException | SAXException e) {
             LOGGER.log(
                 Level.SEVERE,
@@ -73,8 +100,8 @@ public final class LiftDictionaryXmlReader {
             throw new LiftDocumentLoadingException(e);
         }
 
-        this.liftFactory = new LiftXMLFactoryNew(dictionary);
-        LiftSaxHandler lsh = new LiftSaxHandler(liftFactory);
+        this.liftFactory = new LiftXMLFactory(dictionary);
+        LiftSaxHandler lsh = new LiftSaxHandler(liftFactory, strict);
         try {
             saxParser.parse(f, lsh);
         } catch (SAXException e) {

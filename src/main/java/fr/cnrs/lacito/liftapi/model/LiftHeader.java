@@ -33,12 +33,6 @@ public final class LiftHeader extends AbstractLiftRoot {
     private final ObservableMap<String, FeatureSet> featureSetsMap =
         FXCollections.observableHashMap();
 
-    //private LiftHeaderTypeManager noteTypesManager;
-    //private LiftHeaderTypeManager relationTypesManager;
-    //private LiftHeaderTypeManager inverseTypesManager;
-    //private LiftHeaderTypeManager etymologyTypesManager;
-    //private LiftHeaderTypeManager translationTypesManager;
-
     private FeatureSet noteTypesManager;
     private FeatureSet relationTypesManager;
     private FeatureSet inverseTypesManager;
@@ -64,35 +58,26 @@ public final class LiftHeader extends AbstractLiftRoot {
                         ? extends FeatureSet
                     > change
                 ) {
+                    // A replacement reports both wasRemoved() and wasAdded(); handling
+                    // them exclusively silently dropped the new value.
                     if (change.wasRemoved()) {
                         derivedFeatureSetList.remove(change.getValueRemoved());
-                    } else {
+                    }
+                    if (change.wasAdded()) {
                         derivedFeatureSetList.add(change.getValueAdded());
                     }
                 }
             }
         );
 
-        // //noteTypesManager = new LiftHeaderTypeManager(NOTE_TYPE_RANGE, rangesMap, this);
-        // noteTypesManager = new LiftHeaderTypeManager(rangesMap.computeIfAbsent(NOTE_TYPE_RANGE, x -> new LiftHeaderRange(NOTE_TYPE_RANGE, this)), null);
-        // //relationTypesManager = new LiftHeaderTypeManager(RELATION_TYPE_RANGE, rangesMap, this);
-        // relationTypesManager = new LiftHeaderTypeManager(rangesMap.computeIfAbsent(RELATION_TYPE_RANGE, x -> new LiftHeaderRange(RELATION_TYPE_RANGE, this)), null);
-        // //inverseTypesManager = new LiftHeaderTypeManager(INVERSE_TYPE_RANGE, rangesMap, this);
-        // inverseTypesManager = new LiftHeaderTypeManager(rangesMap.computeIfAbsent(INVERSE_TYPE_RANGE, x -> new LiftHeaderRange(INVERSE_TYPE_RANGE, this)), null);
-        // //etymologyTypesManager = new LiftHeaderTypeManager(ETYMOLOGY_TYPE_RANGE, rangesMap, this);
-        // etymologyTypesManager = new LiftHeaderTypeManager(rangesMap.computeIfAbsent(ETYMOLOGY_TYPE_RANGE, x -> new LiftHeaderRange(ETYMOLOGY_TYPE_RANGE, this)), null);
-        // //translationTypesManager = new LiftHeaderTypeManager(TRANSLATION_TYPE_RANGE, rangesMap, this);
-        // translationTypesManager = new LiftHeaderTypeManager(rangesMap.computeIfAbsent(TRANSLATION_TYPE_RANGE, x -> new LiftHeaderRange(TRANSLATION_TYPE_RANGE, this)), null);
-        //noteTypesManager = new LiftHeaderTypeManager(NOTE_TYPE_RANGE, rangesMap, this);
-
         noteTypesManager = new FeatureSet(NOTE_TYPE_RANGE, this);
         relationTypesManager = new FeatureSet(RELATION_TYPE_RANGE, this);
         inverseTypesManager = new FeatureSet(INVERSE_TYPE_RANGE, this);
         etymologyTypesManager = new FeatureSet(ETYMOLOGY_TYPE_RANGE, this);
         translationTypesManager = new FeatureSet(TRANSLATION_TYPE_RANGE, this);
-        annotationTypesManager = new FeatureSet(TRANSLATION_TYPE_RANGE, this);
+        annotationTypesManager = new FeatureSet(ANNOTATION_TYPE_RANGE, this);
         grammaticalInfoManager = new FeatureSet(GRAMMATICAL_INFO_RANGE, this);
-        variantTypesManager = new FeatureSet(TRANSLATION_TYPE_RANGE, this);
+        variantTypesManager = new FeatureSet(VARIANT_TYPE_RANGE, this);
 
         featureSetsMap.put(NOTE_TYPE_RANGE, noteTypesManager);
         featureSetsMap.put(RELATION_TYPE_RANGE, relationTypesManager);

@@ -2,9 +2,14 @@ package fr.cnrs.lacito.liftapi.builder;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
+import fr.cnrs.lacito.liftapi.model.LiftVariant;
+
+import java.util.Set;
 import fr.cnrs.lacito.liftapi.xml.LiftVersion;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,20 +38,43 @@ public class BuilderTest {
             .withForm("tww", "esejle")
             .build();
 
-        dictionary
+        LiftVariant variant = dictionary
             .getComponentBuilder()
             .variant(entry)
             .withRefId(entry.getId().get())
             .withForm("tww", "eseile")
-            //.withForm("tww", "esijle")
             .build();
+
+        assertEquals("word-001", entry.getId().get());
+        assertEquals(1, entry.getVariants().size());
+        assertSame(variant, entry.getVariants().get(0));
+        assertSame(entry, variant.getRefObject());
+        assertEquals(
+            "eseile",
+            variant.getForms().getForm("tww").get().toPlainText()
+        );
+        assertEquals(
+            1,
+            dictionary.getLiftDictionaryRegistry().getVariants().size()
+        );
     }
 
     @Test
     public void testBuilderQuickEntry() {
-        dictionary
+        LiftEntry entry = dictionary
             .getComponentBuilder()
             .entry("tww", "heifo", "en", "dog");
+
+        assertEquals(
+            "heifo",
+            entry.getForms().getForm("tww").get().toPlainText()
+        );
+        assertEquals(1, entry.getSenses().size());
+        assertEquals(
+            "dog",
+            entry.getSenses().get(0).getGlosses().getForm("en").get().toPlainText()
+        );
+        assertEquals(1, dictionary.getLiftDictionaryRegistry().getEntries().size());
     }
 
     @Test
@@ -60,7 +88,15 @@ public class BuilderTest {
         for (String lang : languages) {
             entry.withForm(lang, word);
         }
-        entry.build();
+        LiftEntry built = entry.build();
+
+        assertEquals(
+            Set.of("en", "fr", "es"),
+            built.getForms().getLangs()
+        );
+        for (String lang : languages) {
+            assertEquals(word, built.getForms().getForm(lang).get().toPlainText());
+        }
     }
 
     @Test
@@ -141,7 +177,7 @@ public class BuilderTest {
 
             assertEquals(1, dictionary.getLiftDictionaryRegistry().getEntries().size());
             assertEquals(1, dictionary.getLiftDictionaryRegistry().getTraits().size());
-            assert(
+            assertTrue(
                 dictionary.getHeader().containsFieldsAndTraitsDefinitions("foo")
             );
             assertEquals("bar", dictionary.getLiftDictionaryRegistry().getTraits().get(0).getValue());

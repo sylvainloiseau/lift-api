@@ -103,7 +103,9 @@ public final class MultiText
             throw new IllegalArgumentException("No text in language: " + lang);
         }
         lang2FormMap.remove(lang);
-        languageManager.removeLanguageOccurrence(lang);
+        if (languageManager != null) {
+            languageManager.removeLanguageOccurrence(lang);
+        }
     }
 
     public Set<String> getLangs() {
@@ -112,23 +114,21 @@ public final class MultiText
     }
 
     public void add(Form f) {
-        // languageManager can be null in low-level operations
-        // if (languageManager != null) {
-        //   System.out.println(languageManager);
-        // }
-        if (languageManager != null) {
-            if (!languageManager.hasLanguage(f.lang)) {
-                throw new IllegalArgumentException(
-                    "Language not registered in the dictionary: " + f.lang
-                );
-            }
-            languageManager.addLanguageOccurrence(f.lang);
+        // Validate everything before touching the language counters: incrementing
+        // first left the count permanently inflated when the duplicate check threw.
+        if (languageManager != null && !languageManager.hasLanguage(f.lang)) {
+            throw new IllegalArgumentException(
+                "Language not registered in the dictionary: " + f.lang
+            );
         }
         if (lang2FormMap.containsKey(f.lang)) throw new DuplicateLangException(
             "Duplicate lang: " + f.lang + "; form '" + f.toPlainText() + "'"
             + " already exists in this MultiText: '" + lang2FormMap.get(f.lang).toPlainText() + "'"
         );
         lang2FormMap.put(f.lang, f);
+        if (languageManager != null) {
+            languageManager.addLanguageOccurrence(f.lang);
+        }
     }
 
     @Override
@@ -263,12 +263,17 @@ public final class MultiText
 
     /// With the fluent API, this method is called before any Form has been added.
     /// With the low-level API (for loading from XML), this method is called after
-    // all Forms in the XML document have been added: the LiftFactoryNew take care of computing the numbers of occurrences.
+    /// all Forms in the XML document have been added: the LiftFactoryNew take care of computing the numbers of occurrences.
+    ///
+    /// Passing `null` detaches this MultiText from its dictionary: it stops
+    /// contributing to that dictionary's language counters.
     public void setLanguagesManager(LiftDictionaryLanguagesManager languageManager) {
-        
         // can be set on null on purpose, when unregistering the parent component.
-        if (languageManager == null) return;
-        
+        if (languageManager == null) {
+            this.languageManager = null;
+            return;
+        }
+
         this.languageManager = languageManager;
         for (String lang : lang2FormMap.keySet()) {
             if (!languageManager.hasLanguage(lang)) {
@@ -284,8 +289,9 @@ public final class MultiText
     }
 
     public void unregister() {
+        if (languageManager == null) return;
         for (String lang : lang2FormMap.keySet()) {
             languageManager.removeLanguageOccurrence(lang);
-        }        
+        }
     }
 }

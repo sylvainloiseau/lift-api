@@ -22,7 +22,7 @@ import org.xml.sax.Attributes;
  * Factory class for creating components from LIFT XML elements and structures
  * using a lower-level API than the builder API for efficiency object generation.
  */
-public final class LiftXMLFactoryNew {
+public final class LiftXMLFactory {
 
     public void setLiftVersion(LiftVersion liftVersion) {
         this.dictionary.setLiftVersion(liftVersion);
@@ -36,7 +36,7 @@ public final class LiftXMLFactoryNew {
     private LiftDictionaryRegistry registry;
     private LiftDictionary dictionary;
 
-    public LiftXMLFactoryNew(LiftDictionary dictionary) {
+    public LiftXMLFactory(LiftDictionary dictionary) {
         this.dictionary = dictionary;
         this.header = dictionary.getHeader();
         this.registry = dictionary.getLiftDictionaryRegistry();
@@ -85,12 +85,18 @@ public final class LiftXMLFactoryNew {
     }
 
     public LiftReversal createReversal(Attributes attributes, LiftSense sense) {
-        String type = attributes.getValue(LiftVocabulary.LIFT_URI, "type");
-        if (type == null) throw new IllegalArgumentException();
-        if (!header.getNoteTypeManager().hasFeature(type)) {
-            header.getNoteTypeManager().addFeature(type);
+        // reversal-content declares @type as optional.
+        String type = attributes.getValue(
+            LiftVocabulary.LIFT_URI,
+            LiftVocabulary.TYPE_ATTRIBUTE
+        );
+        Feature element = null;
+        if (type != null) {
+            if (!header.getNoteTypeManager().hasFeature(type)) {
+                header.getNoteTypeManager().addFeature(type);
+            }
+            element = header.getNoteTypeManager().getFeature(type);
         }
-        Feature element = header.getNoteTypeManager().getFeature(type);
         LiftReversal reversal = new LiftReversal(element);
         sense.addReversal(reversal);
         return reversal;
@@ -107,10 +113,20 @@ public final class LiftXMLFactoryNew {
         Attributes attributes,
         LiftEntry parent
     ) {
-        String type = attributes.getValue(LiftVocabulary.LIFT_URI, "type");
-        if (type == null) throw new IllegalArgumentException();
-        String source = attributes.getValue(LiftVocabulary.LIFT_URI, "source");
-        if (source == null) throw new IllegalArgumentException();
+        String type = attributes.getValue(
+            LiftVocabulary.LIFT_URI,
+            LiftVocabulary.TYPE_ATTRIBUTE
+        );
+        if (type == null) throw new IllegalArgumentException(
+            "etymology-content requires a 'type' attribute"
+        );
+        String source = attributes.getValue(
+            LiftVocabulary.LIFT_URI,
+            LiftVocabulary.SOURCE_ATTRIBUTE
+        );
+        if (source == null) throw new IllegalArgumentException(
+            "etymology-content requires a 'source' attribute"
+        );
 
         if (!header.getEtymologyTypeManager().hasFeature(type)) {
             header.getEtymologyTypeManager().addFeature(type);
@@ -147,7 +163,7 @@ public final class LiftXMLFactoryNew {
         Attributes attributes,
         HasRelations parent
     ) {
-        String type = attributes.getValue(LiftVocabulary.LIFT_URI, "type");
+        String type = attributes.getValue(LiftVocabulary.LIFT_URI, LiftVocabulary.TYPE_ATTRIBUTE);
         if (type == null) throw new IllegalArgumentException(
             "A relation element must have a type attribute"
         );
@@ -186,11 +202,21 @@ public final class LiftXMLFactoryNew {
         Attributes attributes,
         AbstractExtensibleWithField parent
     ) {
-        String type = attributes.getValue(LiftVocabulary.LIFT_URI, "type");
-        if (type == null) throw new IllegalArgumentException(
-            "Attribute type on field element cannot be null"
+        // field-content names its definition with @type in LIFT 0.13 and with @name
+        // in LIFT 0.15. Accept either, whatever the declared version, so that files
+        // mixing the two (FLEx does) still load.
+        String name = attributes.getValue(
+            LiftVocabulary.LIFT_URI,
+            LiftVocabulary.NAME_ATTRIBUTE
         );
-        LiftFieldAndTraitDefinition def = header.getOrCreateFieldDefinitions(type);
+        if (name == null) name = attributes.getValue(
+            LiftVocabulary.LIFT_URI,
+            LiftVocabulary.TYPE_ATTRIBUTE
+        );
+        if (name == null) throw new IllegalArgumentException(
+            "A field element requires a 'name' (LIFT 0.15) or 'type' (LIFT 0.13) attribute"
+        );
+        LiftFieldAndTraitDefinition def = header.getOrCreateFieldDefinitions(name);
         LiftField f = new LiftField(def);
         // populateWithAttribute(f, attributes);
         parent.addField(f);
@@ -205,8 +231,8 @@ public final class LiftXMLFactoryNew {
     }
 
     public LiftTrait createTrait(Attributes attributes, HasTrait parent) {
-        String name = attributes.getValue(LiftVocabulary.LIFT_URI, "name");
-        String value = attributes.getValue(LiftVocabulary.LIFT_URI, "value");
+        String name = attributes.getValue(LiftVocabulary.LIFT_URI, LiftVocabulary.NAME_ATTRIBUTE);
+        String value = attributes.getValue(LiftVocabulary.LIFT_URI, LiftVocabulary.VALUE_ATTRIBUTE);
 
         LiftFieldAndTraitDefinition def = header.getOrCreateTraitsDefinitions(name);
 
@@ -251,7 +277,7 @@ public final class LiftXMLFactoryNew {
     }
 
     public LiftNote createNoteWithAttributes(Attributes attributes, AbstractNotable parent) {
-        String type = attributes.getValue(LiftVocabulary.LIFT_URI, "type");
+        String type = attributes.getValue(LiftVocabulary.LIFT_URI, LiftVocabulary.TYPE_ATTRIBUTE);
         LiftNote n = createNote(type, parent);
         populateWithAttribute(n, attributes);
         return n;
@@ -273,7 +299,7 @@ public final class LiftXMLFactoryNew {
         Attributes attributes,
         LiftPronunciation pronunciation
     ) {
-        String href = attributes.getValue(LiftVocabulary.LIFT_URI, "href");
+        String href = attributes.getValue(LiftVocabulary.LIFT_URI, LiftVocabulary.HREF_ATTRIBUTE);
         LiftMedia m = new LiftMedia(href); // mandatory
         pronunciation.addMedia(m);
         return m;
@@ -300,15 +326,15 @@ public final class LiftXMLFactoryNew {
         Attributes attributes,
         HasAnnotation parent
     ) {
-        String name = attributes.getValue(LiftVocabulary.LIFT_URI, "name");
+        String name = attributes.getValue(LiftVocabulary.LIFT_URI, LiftVocabulary.NAME_ATTRIBUTE);
 
         LiftAnnotation a = createAnnotation(name, parent);
 
-        String value = attributes.getValue(LiftVocabulary.LIFT_URI, "value");
+        String value = attributes.getValue(LiftVocabulary.LIFT_URI, LiftVocabulary.VALUE_ATTRIBUTE);
         if (value != null) a.setValue(value);
-        String who = attributes.getValue(LiftVocabulary.LIFT_URI, "who");
+        String who = attributes.getValue(LiftVocabulary.LIFT_URI, LiftVocabulary.WHO_ATTRIBUTE);
         if (who != null) a.setWho(who);
-        String when = attributes.getValue(LiftVocabulary.LIFT_URI, "when");
+        String when = attributes.getValue(LiftVocabulary.LIFT_URI, LiftVocabulary.WHEN_ATTRIBUTE);
         if (when != null) a.setWhen(when);
 
         return a;
@@ -321,19 +347,19 @@ public final class LiftXMLFactoryNew {
         for (int i = 0; i < attributes.getLength(); i++) {
             String name = attributes.getLocalName(i);
             String value = attributes.getValue(i);
-            if (name.equals("id")) {
+            if (name.equals(LiftVocabulary.ID_ATTRIBUTE)) {
                 if (liftObject instanceof AbstractIdentifiable ai) {
                     ai.setId(value);
                 } else {
                     liftObject.getOtherXmlAttributes().put(name, value);
                 }
-            } else if (name.equals("guid")) {
+            } else if (name.equals(LiftVocabulary.GUID_ATTRIBUTE)) {
                 if (liftObject instanceof AbstractIdentifiable ai) {
                     ai.setGuid(value);
                 } else {
                     liftObject.getOtherXmlAttributes().put(name, value);
                 }
-            } else if (name.equals("type")) {
+            } else if (name.equals(LiftVocabulary.TYPE_ATTRIBUTE)) {
                 if (liftObject instanceof LiftEtymology _) {
                     // } else if (liftObject instanceof LiftField lf) {
                 } else if (liftObject instanceof LiftRelation _) {
@@ -341,14 +367,14 @@ public final class LiftXMLFactoryNew {
                 } else {
                     liftObject.getOtherXmlAttributes().put(name, value);
                 }
-            } else if (name.equals("source")) {
+            } else if (name.equals(LiftVocabulary.SOURCE_ATTRIBUTE)) {
                 if (liftObject instanceof LiftEtymology _) {
                 } else if (liftObject instanceof LiftExample le) {
                     le.setSource(value);
                 } else {
                     liftObject.getOtherXmlAttributes().put(name, value);
                 }
-            } else if (name.equals("ref")) {
+            } else if (name.equals(LiftVocabulary.REF_ATTRIBUTE)) {
                 if (! value.trim().isEmpty()) {
                     if (liftObject instanceof LiftVariant lv) {
                         lv.setRefId(value);
@@ -366,14 +392,14 @@ public final class LiftXMLFactoryNew {
                         liftObject.getOtherXmlAttributes().put(name, value);
                     }
                 }
-            } else if (name.equals("dateDeleted")) {
+            } else if (name.equals(LiftVocabulary.DATE_DELETED_ATTRIBUTE)) {
                 // TODO use LiftVocabulary.DATE_DELETED_ATTRIBUTE
                 if (liftObject instanceof LiftEntry le) {
                     le.setDateDeleted(value);
                 } else {
                     liftObject.getOtherXmlAttributes().put(name, value);
                 }
-            } else if (name.equals("order")) {
+            } else if (name.equals(LiftVocabulary.ORDER_ATTRIBUTE)) {
                 if (liftObject instanceof LiftSense ls) {
                     ls.setOrder(Integer.parseInt(value));
                 } else if (liftObject instanceof LiftRelation lr) {
@@ -381,9 +407,9 @@ public final class LiftXMLFactoryNew {
                 } else {
                     liftObject.getOtherXmlAttributes().put(name, value);
                 }
-            } else if (name.equals("dateCreated")) {
+            } else if (name.equals(LiftVocabulary.DATE_CREATED_ATTRIBUTE)) {
                 liftObject.setDateCreated(value);
-            } else if (name.equals("dateModified")) {
+            } else if (name.equals(LiftVocabulary.DATE_MODIFIED_ATTRIBUTE)) {
                 liftObject.setDateModified(value);
             } else {
                 liftObject.getOtherXmlAttributes().put(name, value);
@@ -395,7 +421,10 @@ public final class LiftXMLFactoryNew {
         Attributes attributes,
         LiftHeader parent
     ) {
-        String id = attributes.getValue(LiftVocabulary.LIFT_URI, "id");
+        String id = attributes.getValue(
+            LiftVocabulary.LIFT_URI,
+            LiftVocabulary.ID_ATTRIBUTE
+        );
         if (id == null) throw new IllegalArgumentException(
             "Range ID cannot be null"
         );
@@ -415,9 +444,9 @@ public final class LiftXMLFactoryNew {
             hr = parent.getFeatureSet(id);
         } else {
             hr = new FeatureSet(id, parent);
-            String href = attributes.getValue(LiftVocabulary.LIFT_URI, "href");
+            String href = attributes.getValue(LiftVocabulary.LIFT_URI, LiftVocabulary.HREF_ATTRIBUTE);
             if (href != null) hr.setHref(href);
-            String guid = attributes.getValue(LiftVocabulary.LIFT_URI, "guid");
+            String guid = attributes.getValue(LiftVocabulary.LIFT_URI, LiftVocabulary.GUID_ATTRIBUTE);
             if (guid != null) hr.setGuid(guid);
             parent.addFeatureSet(hr);
         }
@@ -428,14 +457,14 @@ public final class LiftXMLFactoryNew {
         Attributes attributes,
         LiftHeader parent
     ) {
-        String name = attributes.getValue(LiftVocabulary.LIFT_URI, "name");
+        String name = attributes.getValue(LiftVocabulary.LIFT_URI, LiftVocabulary.NAME_ATTRIBUTE);
         if (name == null) name = attributes.getValue(
             LiftVocabulary.LIFT_URI,
-            "tag"
+            LiftVocabulary.TAG_ATTRIBUTE
         );
         if (name == null) name = attributes.getValue(
             LiftVocabulary.LIFT_URI,
-            "guid"
+            LiftVocabulary.GUID_ATTRIBUTE
         );
         if (name == null) throw new IllegalArgumentException(
             "An attribute 'name', 'tag', or 'guid' is required on field-definition"
@@ -444,16 +473,16 @@ public final class LiftXMLFactoryNew {
 
         String fieldclass = attributes.getValue(
             LiftVocabulary.LIFT_URI,
-            "class"
+            LiftVocabulary.CLASS_ATTRIBUTE
         );
         if (fieldclass != null) f.setTargets(fieldclass);
 
-        String type = attributes.getValue(LiftVocabulary.LIFT_URI, "type");
+        String type = attributes.getValue(LiftVocabulary.LIFT_URI, LiftVocabulary.TYPE_ATTRIBUTE);
         if (type != null) f.setDataModel(Optional.of(type));
 
         String optionRange = attributes.getValue(
             LiftVocabulary.LIFT_URI,
-            "option-range"
+            LiftVocabulary.OPTION_RANGE_ATTRIBUTE
         );
 
         // wait until the end of the header to safely point from the FieldAndTraitDefinition to the Range object.
@@ -461,7 +490,7 @@ public final class LiftXMLFactoryNew {
 
         String writingSystem = attributes.getValue(
             LiftVocabulary.LIFT_URI,
-            "writing-system"
+            LiftVocabulary.WRITING_SYSTEM_ATTRIBUTE
         );
         if (writingSystem != null) f.setWritingSystem(
             Optional.of(writingSystem)
@@ -474,8 +503,13 @@ public final class LiftXMLFactoryNew {
         Attributes attributes,
         FeatureSet parent
     ) {
-        String id = attributes.getValue(LiftVocabulary.LIFT_URI, "id");
-        if (id == null) throw new IllegalArgumentException();
+        String id = attributes.getValue(
+            LiftVocabulary.LIFT_URI,
+            LiftVocabulary.ID_ATTRIBUTE
+        );
+        if (id == null) throw new IllegalArgumentException(
+            "range-element requires an 'id' attribute"
+        );
         // the range-element may have already been created by a reference from another range-element (see parentElementId below)
         // so we use getOrCreateRangeElement rather that createRangeElement
         // TODO however duplicate range-element ids should be detected and reported as an error
@@ -489,19 +523,18 @@ public final class LiftXMLFactoryNew {
         // when we can be sure that the parent have been created
         String parentElementId = attributes.getValue(
             LiftVocabulary.LIFT_URI,
-            "parent"
+            LiftVocabulary.PARENT_ATTRIBUTE
         );
         if (parentElementId != null) {
-            Map<String, Map<String, List<Feature>>> featureSet2Feature2ChildFeature = new HashMap<>();
-            if (!featureSet2Feature2ChildFeature.containsKey(parent.getId())) {
-                featureSet2Feature2ChildFeature.put(parent.getId(), new HashMap<>());
-            }
-            featureSet2Feature2ChildFeature.get(parent.getId())
-                 .computeIfAbsent(id, k -> new ArrayList<>())
-                 .add(hre);
+            // Key by the *parent's* id: this maps parent -> children, and it must go
+            // into the field, not a fresh local map that is thrown away on return.
+            featureSet2Feature2ChildFeature
+                .computeIfAbsent(parent.getId(), k -> new HashMap<>())
+                .computeIfAbsent(parentElementId, k -> new ArrayList<>())
+                .add(hre);
         }
 
-        String guid = attributes.getValue(LiftVocabulary.LIFT_URI, "guid");
+        String guid = attributes.getValue(LiftVocabulary.LIFT_URI, LiftVocabulary.GUID_ATTRIBUTE);
         if (guid != null) hre.setGuid(guid);
 
         return hre;
@@ -512,8 +545,13 @@ public final class LiftXMLFactoryNew {
         Attributes attributes,
         LiftSense parent
     ) {
-        String href = attributes.getValue(LiftVocabulary.LIFT_URI, "href");
-        if (href == null) throw new IllegalArgumentException();
+        String href = attributes.getValue(
+            LiftVocabulary.LIFT_URI,
+            LiftVocabulary.HREF_ATTRIBUTE
+        );
+        if (href == null) throw new IllegalArgumentException(
+            "URLRef-content requires an 'href' attribute on illustration"
+        );
         LiftIllustration ill = new LiftIllustration(href);
         parent.addIllustration(ill);
         return ill;
@@ -533,18 +571,27 @@ public final class LiftXMLFactoryNew {
         dereferenceParentFeature();
     }
 
-    Map<String, Map<String, List<Feature>>> featureSet2Feature2ChildFeature = new HashMap<>();
+    /** Feature set id -&gt; parent feature id -&gt; the features declaring that parent. */
+    private final Map<String, Map<String, List<Feature>>> featureSet2Feature2ChildFeature =
+        new HashMap<>();
 
+    /**
+     * Resolve every {@code range-element/@parent} recorded while reading the header.
+     *
+     * This runs at the end of the header so that a parent declared after its children
+     * is already known.
+     */
     private void dereferenceParentFeature() {
-        for (String featureSetId : featureSet2Feature2ChildFeature.keySet()) {
-            FeatureSet r = header.getFeatureSet(featureSetId);
-            for (String parentId : featureSet2Feature2ChildFeature.get(featureSetId).keySet()) {
-                Feature parent = r.getFeature(parentId);
-                for (Feature f : featureSet2Feature2ChildFeature.get(featureSetId).get(parentId)) {
+        for (Map.Entry<String, Map<String, List<Feature>>> set : featureSet2Feature2ChildFeature.entrySet()) {
+            FeatureSet r = header.getFeatureSet(set.getKey());
+            for (Map.Entry<String, List<Feature>> byParent : set.getValue().entrySet()) {
+                Feature parent = r.getOrCreateFeature(byParent.getKey());
+                for (Feature f : byParent.getValue()) {
                     f.setSuperordinateFeature(parent);
                 }
             }
         }
+        featureSet2Feature2ChildFeature.clear();
     }
     public Map<String, List<LiftFieldAndTraitDefinition>> rangeId2TraitDefinitionForDereferencing = new HashMap<>();
 

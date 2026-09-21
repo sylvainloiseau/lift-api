@@ -34,7 +34,7 @@ public class FeatureBuilder
         return this;
     }
 
-    public FeatureBuilder witGuid(String guid) {
+    public FeatureBuilder withGuid(String guid) {
         element.setGuid(guid);
         return this;
     }

@@ -152,7 +152,7 @@ public class LiftDictionaryBuilder {
     }
 
     public LiftDictionaryBuilder withAnnotationType(String... annotationTypes) {
-        addTypes(this.dictionary.getHeader().getInverseTypeManager(), annotationTypes);
+        addTypes(this.dictionary.getHeader().getAnnotationTypeManager(), annotationTypes);
         return this;
     }
 

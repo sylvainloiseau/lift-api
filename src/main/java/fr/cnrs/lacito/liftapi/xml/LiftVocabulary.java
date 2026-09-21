@@ -5,9 +5,16 @@ package fr.cnrs.lacito.liftapi.xml;
  */
 public final class LiftVocabulary {
 
-    public static final String CURRENT_LIFT_VERSION = "15";
+    private LiftVocabulary() {}
 
     public static final String DATE_DELETED_ATTRIBUTE = "dateDeleted";
+    public static final String DATE_CREATED_ATTRIBUTE = "dateCreated";
+    public static final String DATE_MODIFIED_ATTRIBUTE = "dateModified";
+    public static final String CLASS_ATTRIBUTE = "class";
+    public static final String PARENT_ATTRIBUTE = "parent";
+    public static final String TAG_ATTRIBUTE = "tag";
+    public static final String OPTION_RANGE_ATTRIBUTE = "option-range";
+    public static final String WRITING_SYSTEM_ATTRIBUTE = "writing-system";
     public static final String ORDER_ATTRIBUTE = "order";
     public static final String TYPE_ATTRIBUTE = "type";
     public static final String SOURCE_ATTRIBUTE = "source";
@@ -48,11 +55,8 @@ public final class LiftVocabulary {
     public final static String REVERSAL_LOCAL_NAME = "reversal";
     public final static String MAIN_LOCAL_NAME = "main";
     public final static String TRANSLATION_LOCAL_NAME = "translation";
-    public final static String ABREVIATION_LOCAL_NAME = "abreviation";
     public final static String MEDIA_LOCAL_NAME = "media";
     public static final String HEADER_LOCAL_NAME = "header";
-    public static final String TAG_LOCAL_NAME = "tag";
-    public static final String ABBREV_LOCAL_NAME = "abbrev"; // in range and range-element //see HEADER_RANGE_ABBREV_LOCAL_NAME
     public static final String ILLUSTRATION_LOCAL_NAME = "illustration";
     public static final String HEADER_DESCRIPTION_LOCAL_NAME = "description"; // in header, range, range-element // see HEADER_RANGE_DESCRIPTION_LOCAL_NAME and HEADER_FIELD_DESCRIPTION_DESCRIPTION_LOCAL_NAME
     public static final String HEADER_FIELDS_DEFINITION_LOCAL_NAME = "fields";
@@ -68,4 +72,50 @@ public final class LiftVocabulary {
     //public static final String HEADER_FIELD_DESCRIPTION_DESCRIPTION_LOCAL_NAME = "description";
     public static final String PRODUCER_ATTRIBUTE = "producer";
     public static final String VERSION_ATTRIBUTE = "version";
+
+    /**
+     * The attribute of {@code <field>} naming its {@code field-definition}.
+     *
+     * {@code field-content} declares {@code @type} in LIFT 0.13 and {@code @name}
+     * in LIFT 0.15.
+     */
+    public static String fieldNameAttribute(LiftVersion version) {
+        return switch (version) {
+            case V0_13 -> TYPE_ATTRIBUTE;
+            case V0_15 -> NAME_ATTRIBUTE;
+        };
+    }
+
+    /**
+     * The element declaring a field or trait definition in the header.
+     *
+     * LIFT 0.13 uses {@code <field tag="...">}; LIFT 0.15 renamed it to
+     * {@code <field-definition name="...">}.
+     */
+    public static String fieldDefinitionElement(LiftVersion version) {
+        return switch (version) {
+            case V0_13 -> FIELD_LOCAL_NAME;
+            case V0_15 -> HEADER_FIELD_DEFINITION_LOCAL_NAME;
+        };
+    }
+
+    /**
+     * The attribute naming a field or trait definition in the header.
+     *
+     * @see #fieldDefinitionElement(LiftVersion)
+     */
+    public static String fieldDefinitionNameAttribute(LiftVersion version) {
+        return switch (version) {
+            case V0_13 -> TAG_ATTRIBUTE;
+            case V0_15 -> NAME_ATTRIBUTE;
+        };
+    }
+
+    /** The textual form of a version, as written on {@code lift/@version}. */
+    public static String versionAttributeValue(LiftVersion version) {
+        return switch (version) {
+            case V0_13 -> "0.13";
+            case V0_15 -> "0.15";
+        };
+    }
 }

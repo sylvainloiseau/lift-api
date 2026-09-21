@@ -74,8 +74,7 @@ public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot, U e
     /**
      * Adds a multitext entry to the element. What the main multitext refers to is depending on the element type.
      *
-     * @param lang the language of the text
-     * @param text the text to add
+     * @param text the form to add
      * @return this builder instance
      */
     public AbstractLiftElementBuilder<T, U> addMultitext(Form text) {
@@ -119,6 +118,10 @@ public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot, U e
         if(registered) {
             throw new IllegalStateException("This builder has already been used.");
         }
+        // Register first: register() can throw (a duplicate LIFT id, for instance), and
+        // attaching the child to its parent beforehand would leave a half-built graph
+        // behind with a node the registry does not know about.
+        registry.register(this.element);
         switch(element){
             case LiftNote note -> {
                 ((AbstractNotable)parent).addNote(note);
@@ -153,7 +156,6 @@ public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot, U e
             }
             default -> {throw new IllegalArgumentException("Unsupported element type: " + element);}
         }
-        registry.register(this.element);
         this.registered = true;
     }
 }

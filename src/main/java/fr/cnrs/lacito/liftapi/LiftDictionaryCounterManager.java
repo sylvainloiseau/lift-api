@@ -191,10 +191,7 @@ public class LiftDictionaryCounterManager {
     // substitute for getKnownAnnotationNames
     private void initAnnotationNameCount() {
         for (LiftAnnotation annotation : this.liftDictionaryRegistry.getAnnotations()) {
-            annotationNameCount.put(
-                annotation.getType().getId(),
-                annotationNameCount.getOrDefault(annotation.getType(), 0) + 1
-            );
+            annotationNameCount.merge(annotation.getType().getId(), 1, Integer::sum);
         }
         this.liftDictionaryRegistry.getAnnotations().addListener(
             new ListChangeListener<LiftAnnotation>() {
@@ -203,12 +200,10 @@ public class LiftDictionaryCounterManager {
                     while (change.next()) {
                         if (change.wasAdded()) {
                             for (LiftAnnotation annotation : change.getAddedSubList()) {
-                                annotationNameCount.put(
+                                annotationNameCount.merge(
                                     annotation.getType().getId(),
-                                    annotationNameCount.getOrDefault(
-                                        annotation.getType(),
-                                        0
-                                    ) + 1
+                                    1,
+                                    Integer::sum
                                 );
                             }
                         }

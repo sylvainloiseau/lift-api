@@ -47,7 +47,7 @@ public class LiftDictionaryLanguagesManager {
                 "The languages do not contain: " + lang
             );
         }
-        if (languageCounts.get().get(lang) != 0) {
+        if (languageCounts.get().getOrDefault(lang, 0) != 0) {
             throw new IllegalArgumentException(
                 "Cannot remove language with non-zero count: " + lang
             );
@@ -56,15 +56,37 @@ public class LiftDictionaryLanguagesManager {
         languageCounts.get().remove(lang);
     }
 
-    public void addLanguageOccurrence(String key) {
-        languageCounts.get().put(key, languageCounts.get().get(key) + 1);
+    /**
+     * Record one more use of {@code lang}.
+     *
+     * @throws IllegalArgumentException if the language is not registered
+     */
+    public void addLanguageOccurrence(String lang) {
+        requireKnown(lang);
+        languageCounts.get().merge(lang, 1, Integer::sum);
     }
 
-    public void removeLanguageOccurrence(String key) {
-        Integer count = languageCounts.get().get(key);
-        if (count != 0) {
-            count = languageCounts.get().put(key, count);
-            languageCounts.get().put(key, count - 1);
+    /**
+     * Record one fewer use of {@code lang}. The count never goes below zero.
+     *
+     * @throws IllegalArgumentException if the language is not registered
+     */
+    public void removeLanguageOccurrence(String lang) {
+        requireKnown(lang);
+        int count = languageCounts.get().getOrDefault(lang, 0);
+        languageCounts.get().put(lang, Math.max(0, count - 1));
+    }
+
+    /** The number of forms currently using {@code lang}. */
+    public int getLanguageOccurrence(String lang) {
+        return languageCounts.get().getOrDefault(lang, 0);
+    }
+
+    private void requireKnown(String lang) {
+        if (!languageCounts.get().containsKey(lang)) {
+            throw new IllegalArgumentException(
+                "Language not registered in the dictionary: " + lang
+            );
         }
     }
 

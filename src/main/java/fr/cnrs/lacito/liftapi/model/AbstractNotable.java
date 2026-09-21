@@ -29,19 +29,33 @@ public abstract sealed class AbstractNotable
     public void addNote(LiftNote n) throws DuplicateTypeException {
         Feature type = n.getType();
         if (notesProperty.containsKey(type.getId())) {
-            System.out.println("----------------------");
-            System.out.println(notesProperty.toString());
-            System.out.println(type.getId());
-            System.out.println("----------------------");
-            throw new IllegalStateException(
-                "Duplicate Note type: " +
+            throw new DuplicateTypeException(
+                "Duplicate note type '" +
                     type.getId() +
-                    "; Id: " +
-                    ((AbstractIdentifiable) this).getId().get()
+                    "' on " +
+                    describe() +
+                    "; existing note types: " +
+                    notesProperty.keySet()
             );
         }
         notesProperty.put(type.getId(), n);
         n.setParent(this);
+    }
+
+    /**
+     * A short description of this component for diagnostics.
+     *
+     * Not every {@code AbstractNotable} is identifiable - {@link LiftExample} is not -
+     * so this cannot simply cast to {@link AbstractIdentifiable}.
+     */
+    private String describe() {
+        if (this instanceof AbstractIdentifiable identifiable) {
+            return getClass().getSimpleName() +
+                " '" +
+                identifiable.getId().orElse("<no id>") +
+                "'";
+        }
+        return getClass().getSimpleName();
     }
 
     @Override

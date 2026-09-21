@@ -1,7 +1,10 @@
 package fr.cnrs.lacito.liftapi.xml;
 
 import javax.xml.stream.XMLStreamWriter;
-import java.util.Collection;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.logging.Logger;
 import fr.cnrs.lacito.liftapi.model.MultiText;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.TextSpan;
@@ -12,6 +15,10 @@ import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
  */
 public class MultiTextWriters {
 
+    private static final Logger LOGGER = Logger.getLogger(
+        MultiTextWriters.class.getName()
+    );
+
     /**
      * Write MultiText as default form elements.
      */
@@ -21,29 +28,50 @@ public class MultiTextWriters {
 
     /**
      * Write MultiText with custom element name (form, gloss, etc.).
+     *
+     * {@code multitext-content} is {@code form*}: annotations held by the MultiText
+     * itself have no place of their own, so they are written inside the first form
+     * (where {@code form-no-lang-content} does allow them). They are read back as
+     * annotations of that form.
      */
     public static void writeMultiText(XMLStreamWriter w, String elementName, MultiText mt) throws Exception {
         if (mt == null) {
             return;
         }
-        
-        // Write annotations at the multitext level
-        for (LiftAnnotation ann : mt.getAnnotations()) {
-            writeAnnotation(w, ann);
+
+        // Forms live in a hash map, so sort by language to make the output reproducible.
+        List<Form> forms = new ArrayList<>(mt.getForms());
+        forms.sort(Comparator.comparing(Form::getLang));
+
+        if (forms.isEmpty() && !mt.getAnnotations().isEmpty()) {
+            LOGGER.warning(
+                "Writing " +
+                    mt.getAnnotations().size() +
+                    " annotation(s) outside any <form>: the MultiText has no form to " +
+                    "host them, so the output is not valid against the LIFT schema."
+            );
+            for (LiftAnnotation ann : mt.getAnnotations()) {
+                AbstractPropertyWriters.writeAnnotation(w, ann);
+            }
+            return;
         }
-        
-        // Write each form
-        Collection<Form> texts = mt.getForms();
-        for (Form text : texts) {
+
+        boolean firstForm = true;
+        for (Form text : forms) {
             w.writeStartElement(elementName);
             w.writeAttribute(LiftVocabulary.LANG_ATTRIBUTE, text.getLang());
             w.writeStartElement(LiftVocabulary.TEXT_LOCAL_NAME);
             writeTextSpanChildren(w, text.getTextSpanRoot());
             w.writeEndElement(); // text
-            
-            // Write form-level annotations
+
+            if (firstForm) {
+                for (LiftAnnotation ann : mt.getAnnotations()) {
+                    AbstractPropertyWriters.writeAnnotation(w, ann);
+                }
+                firstForm = false;
+            }
             for (LiftAnnotation ann : text.getAnnotations()) {
-                writeAnnotation(w, ann);
+                AbstractPropertyWriters.writeAnnotation(w, ann);
             }
             w.writeEndElement(); // form/gloss
         }
@@ -73,7 +101,7 @@ public class MultiTextWriters {
                         w.writeAttribute(LiftVocabulary.LANG_ATTRIBUTE, child.getLang().get());
                     }
                     if (child.getSClass().isPresent()) {
-                        w.writeAttribute("class", child.getSClass().get());
+                        w.writeAttribute(LiftVocabulary.CLASS_ATTRIBUTE, child.getSClass().get());
                     }
                     if (child.getHref().isPresent()) {
                         w.writeAttribute(LiftVocabulary.HREF_ATTRIBUTE, child.getHref().get());
@@ -94,27 +122,6 @@ public class MultiTextWriters {
         w.writeStartElement(LiftVocabulary.TEXT_LOCAL_NAME);
         w.writeCharacters(form.toPlainText() != null ? form.toPlainText() : "");
         w.writeEndElement();
-        w.writeEndElement();
-    }
-
-    /**
-     * Write a LiftAnnotation element.
-     */
-    private static void writeAnnotation(XMLStreamWriter w, LiftAnnotation a) throws Exception {
-        w.writeStartElement(LiftVocabulary.ANNOTATION_LOCAL_NAME);
-        if (a.getType() != null) {
-            w.writeAttribute(LiftVocabulary.NAME_ATTRIBUTE, a.getType().getId());
-        }
-        if (!a.getValue().isEmpty()) {
-            w.writeAttribute(LiftVocabulary.VALUE_ATTRIBUTE, a.getValue());
-        }
-        if (!a.getWho().isEmpty()) {
-            w.writeAttribute(LiftVocabulary.WHO_ATTRIBUTE, a.getWho());
-        }
-        if (!a.getWhen().isEmpty()) {
-            w.writeAttribute(LiftVocabulary.WHEN_ATTRIBUTE, a.getWhen());
-        }
-        writeMultiText(w, a.getText());
         w.writeEndElement();
     }
 }

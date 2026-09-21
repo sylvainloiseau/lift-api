@@ -135,6 +135,13 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
     private Optional<LiftFieldAndTraitDefinitionDataModel> definitionType =
         Optional.empty();
 
+    /**
+     * Whether {@link #definitionType} came from an explicit {@code @type} attribute
+     * rather than from the {@link LiftFieldAndTraitDefinitionDataModel#STRING} default
+     * applied by the constructor.
+     */
+    private boolean dataModelDeclared = false;
+
     public Optional<LiftFieldAndTraitDefinitionDataModel> getDataModel() {
         return definitionType;
     }
@@ -189,9 +196,29 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
         return definitionType;
     }
 
-    /** Raw @type value (for serialization). */
+    /** Raw @type value. */
     public Optional<String> getTypeStr() {
         return definitionType.map(LiftFieldAndTraitDefinitionDataModel::toStringValue);
+    }
+
+    /**
+     * Raw {@code @type} value, but only when one was actually declared.
+     *
+     * Serialization must use this rather than {@link #getTypeStr()}: the constructor
+     * defaults the data model to {@link LiftFieldAndTraitDefinitionDataModel#STRING},
+     * so writing {@link #getTypeStr()} unconditionally would add a
+     * {@code type="string"} attribute that the source document never had — and on
+     * re-read that attribute promotes an {@link LiftFieldAndTraitDefinitionKind#UNKNOWN}
+     * definition to {@link LiftFieldAndTraitDefinitionKind#TRAIT}, which then clashes
+     * with any {@code <field>} using the same name.
+     */
+    public Optional<String> getDeclaredTypeStr() {
+        return dataModelDeclared ? getTypeStr() : Optional.empty();
+    }
+
+    /** Whether a {@code @type} was explicitly declared for this definition. */
+    public boolean isDataModelDeclared() {
+        return dataModelDeclared;
     }
 
     /** Set from raw @type attribute string, resolving the enum and kind. */
@@ -199,6 +226,7 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
         this.definitionType = typeStr.flatMap(
             LiftFieldAndTraitDefinitionDataModel::fromStringValue
         );
+        this.dataModelDeclared = this.definitionType.isPresent();
         // If the kind is still UNKNOWN, resolve it from the definition type.
         if (this.kind == LiftFieldAndTraitDefinitionKind.UNKNOWN) {
             this.kind = this.definitionType

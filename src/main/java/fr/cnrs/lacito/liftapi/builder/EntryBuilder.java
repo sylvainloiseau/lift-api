@@ -75,7 +75,6 @@ public final class EntryBuilder extends AbstractLiftElementWithFieldAndNoteAndId
         SenseBuilder sb = new SenseBuilder(dictionary, element);
         config.accept(sb);
         sb.build();
-        //element.addSense(sb.build());
         return this;
     }
 
@@ -88,7 +87,6 @@ public final class EntryBuilder extends AbstractLiftElementWithFieldAndNoteAndId
         PronunciationBuilder pb = new PronunciationBuilder(dictionary, element);
         config.accept(pb);
         pb.build();
-        //element.addPronunciation(pb.build());
         return this;
     }
 
@@ -99,7 +97,6 @@ public final class EntryBuilder extends AbstractLiftElementWithFieldAndNoteAndId
         VariantBuilder vb = new VariantBuilder(dictionary, element);
         config.accept(vb);
         vb.build();
-        //element.addVariant(vb.build());
         return this;
     }
 
@@ -135,7 +132,6 @@ public final class EntryBuilder extends AbstractLiftElementWithFieldAndNoteAndId
         EtymologyBuilder eb = new EtymologyBuilder(this.dictionary, element, type, source);
         config.accept(eb);
         eb.build();
-        //element.addEtymology(eb.build());
         return this;
     }
 
@@ -163,7 +159,7 @@ public final class EntryBuilder extends AbstractLiftElementWithFieldAndNoteAndId
 
     @Override
     public EntryBuilder withId(String id) {
-        super.withGuid(id);
+        super.withId(id);
         return this;
     }
 

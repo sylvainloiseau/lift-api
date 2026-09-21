@@ -21,12 +21,15 @@ import fr.cnrs.lacito.liftapi.model.LiftVariant;
 import fr.cnrs.lacito.liftapi.model.MultiText;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.io.UnsupportedEncodingException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -41,6 +44,11 @@ import javax.xml.stream.XMLStreamWriter;
  * Facade for serializing a LiftDictionary to XML.
  *
  * Manages XML serialization session with proper resource lifecycle.
+ *
+ * The document is written to a temporary file next to the requested output and
+ * moved into place by {@link #close()} only once {@link #marshall(LiftDictionary)}
+ * has completed. A failure part way through therefore leaves any pre-existing
+ * file untouched instead of destroying it.
  *
  * Use {@link LiftDictionary#save()} or call directly:
  *
@@ -60,18 +68,40 @@ public class LiftWriterSession implements AutoCloseable {
         LiftWriterSession.class.getName()
     );
     private static final String NEW_LINE = "\n";
+    private static final String XML_VERSION = "1.0";
 
     private final File outputFile;
+    private final Path temporaryFile;
     private XMLStreamWriter out;
     private OutputStream outputStream;
 
-    public LiftWriterSession(File outputFile) throws FileNotFoundException {
-        this.outputFile = outputFile;
-        try {
-            this.outputStream = new FileOutputStream(outputFile);
-        } catch (java.io.FileNotFoundException e) {
-            throw e;
+    /**
+     * Whether the document was serialized in full. Only then is the temporary
+     * file promoted to {@link #outputFile}.
+     */
+    private boolean complete = false;
+
+    /** The LIFT version being written; several elements are spelled differently per version. */
+    private LiftVersion version = LiftVersion.V0_15;
+
+    public LiftWriterSession(File outputFile) throws IOException {
+        if (outputFile == null) {
+            throw new IllegalArgumentException("outputFile cannot be null");
         }
+        this.outputFile = outputFile;
+        Path target = outputFile.toPath().toAbsolutePath();
+        Path directory = target.getParent();
+        if (directory == null || !Files.isDirectory(directory)) {
+            throw new FileNotFoundException(
+                "Output directory does not exist: " + directory
+            );
+        }
+        this.temporaryFile = Files.createTempFile(
+            directory,
+            target.getFileName().toString(),
+            ".tmp"
+        );
+        this.outputStream = Files.newOutputStream(temporaryFile);
     }
 
     /**
@@ -81,14 +111,15 @@ public class LiftWriterSession implements AutoCloseable {
         try {
             initializeWriter();
 
-            out.writeStartDocument();
+            out.writeStartDocument(
+                StandardCharsets.UTF_8.name(),
+                XML_VERSION
+            );
+            this.version = d.getLiftVersion();
             out.writeStartElement(LiftVocabulary.LIFT_LOCAL_NAME);
             out.writeAttribute(
                 LiftVocabulary.VERSION_ATTRIBUTE,
-                switch (d.getLiftVersion()) {
-                    case LiftVersion.V0_13 -> "0.13";
-                    case LiftVersion.V0_15 -> "0.15";
-                }
+                LiftVocabulary.versionAttributeValue(version)
             );
             out.writeAttribute(
                 LiftVocabulary.PRODUCER_ATTRIBUTE,
@@ -117,14 +148,11 @@ public class LiftWriterSession implements AutoCloseable {
             out.writeEndElement(); // </lift>
             out.writeEndDocument();
             out.flush();
-        } catch (
-            UnsupportedEncodingException
-            | XMLStreamException
-            | FactoryConfigurationError e
-        ) {
+            complete = true;
+        } catch (XMLStreamException | FactoryConfigurationError e) {
             LOGGER.log(
                 java.util.logging.Level.SEVERE,
-                "Unable to initialize XML writer",
+                "Unable to write the LIFT document",
                 e
             );
             throw e;
@@ -132,48 +160,87 @@ public class LiftWriterSession implements AutoCloseable {
     }
 
     /**
-     * Close all resources properly.
+     * Close all resources and, if the document was written in full, replace the
+     * output file with it.
+     *
+     * A failure to flush or close is reported rather than logged and dropped: a
+     * lost final flush is lost data.
      */
     @Override
     public void close() throws IOException {
+        IOException failure = null;
         if (out != null) {
             try {
                 out.close();
             } catch (XMLStreamException e) {
-                LOGGER.log(
-                    java.util.logging.Level.WARNING,
-                    "Error closing XML writer",
-                    e
-                );
+                complete = false;
+                failure = new IOException("Error closing XML writer", e);
             }
         }
         if (outputStream != null) {
-            outputStream.close();
+            try {
+                outputStream.close();
+            } catch (IOException e) {
+                complete = false;
+                if (failure == null) failure = e;
+                else failure.addSuppressed(e);
+            }
+        }
+
+        try {
+            if (complete) {
+                commit();
+            } else {
+                Files.deleteIfExists(temporaryFile);
+            }
+        } catch (IOException e) {
+            if (failure == null) failure = e;
+            else failure.addSuppressed(e);
+        }
+
+        if (failure != null) throw failure;
+    }
+
+    private void commit() throws IOException {
+        Path target = outputFile.toPath().toAbsolutePath();
+        try {
+            Files.move(
+                temporaryFile,
+                target,
+                StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING
+            );
+        } catch (AtomicMoveNotSupportedException e) {
+            // Some filesystems (and cross-device moves) cannot do this atomically.
+            Files.move(
+                temporaryFile,
+                target,
+                StandardCopyOption.REPLACE_EXISTING
+            );
         }
     }
 
     private void initializeWriter()
-        throws XMLStreamException, UnsupportedEncodingException, FactoryConfigurationError {
+        throws XMLStreamException, FactoryConfigurationError {
         out = XMLOutputFactory.newInstance().createXMLStreamWriter(
-            new OutputStreamWriter(outputStream, "utf-8")
+            new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)
         );
     }
 
     private void writeHeader(LiftHeader header) throws Exception {
         out.writeStartElement(LiftVocabulary.HEADER_LOCAL_NAME);
 
-        MultiText description = header.getDescription();
-        out.writeStartElement(LiftVocabulary.HEADER_DESCRIPTION_LOCAL_NAME);
-        if (description != null) {
-            MultiTextWriters.writeMultiText(out, description);
-        }
-        out.writeEndElement();
+        writeMultiTextElement(
+            out,
+            LiftVocabulary.HEADER_DESCRIPTION_LOCAL_NAME,
+            header.getDescription()
+        );
 
         List<FeatureSet> ranges = header.getFeatureSets();
         if (ranges != null && !ranges.isEmpty()) {
             out.writeStartElement(LiftVocabulary.HEADER_RANGES_LOCAL_NAME);
             for (FeatureSet r : ranges) {
-                writeHeaderRange(r);
+                writeHeaderRange(out, r, true);
             }
             out.writeEndElement();
         }
@@ -193,87 +260,118 @@ public class LiftWriterSession implements AutoCloseable {
         out.writeEndElement();
     }
 
-    private void writeHeaderRange(FeatureSet range) throws Exception {
-        out.writeStartElement(LiftVocabulary.HEADER_RANGE_LOCAL_NAME);
-        out.writeAttribute(LiftVocabulary.ID_ATTRIBUTE, range.getId());
+    /**
+     * Write a {@code <range>}.
+     *
+     * The same method serves the header and the external {@code .lift-ranges} file;
+     * they used to be two copies that had already drifted apart (the copy for the
+     * ranges file had lost the {@code href} handling).
+     *
+     * @param inHeader {@code true} inside {@code <header><ranges>}, where a range with
+     *        an {@code href} is only a reference and carries no content
+     */
+    private void writeHeaderRange(
+        XMLStreamWriter w,
+        FeatureSet range,
+        boolean inHeader
+    ) throws Exception {
+        w.writeStartElement(LiftVocabulary.HEADER_RANGE_LOCAL_NAME);
+        w.writeAttribute(LiftVocabulary.ID_ATTRIBUTE, range.getId());
         if (range.getGuid().isPresent()) {
-            out.writeAttribute(
+            w.writeAttribute(
                 LiftVocabulary.GUID_ATTRIBUTE,
                 range.getGuid().get()
             );
         }
-        if (range.getHref().isPresent()) {
-            out.writeAttribute(
+        boolean external = range.getHref().isPresent();
+        if (inHeader && external) {
+            w.writeAttribute(
                 LiftVocabulary.HREF_ATTRIBUTE,
                 range.getHref().get()
             );
         }
-        if (!range.getHref().isPresent()) {
-            AbstractPropertyWriters.writeAbstractExtensibleWithoutField(
-                out,
-                range
-            );
+        if (!inHeader || !external) {
+            AbstractPropertyWriters.writeAbstractExtensibleWithoutField(w, range);
             AbstractPropertyWriters.writeAbstractExtensibleWithField(
-                out,
-                range
+                w,
+                range,
+                version
             );
-            out.writeStartElement(LiftVocabulary.HEADER_DESCRIPTION_LOCAL_NAME);
-            MultiTextWriters.writeMultiText(out, range.getDescription());
-            out.writeEndElement();
-            out.writeStartElement(LiftVocabulary.LABEL_LOCAL_NAME);
-            MultiTextWriters.writeMultiText(out, range.getLabel());
-            out.writeEndElement();
-            out.writeStartElement(
-                LiftVocabulary.HEADER_RANGE_ABBREV_LOCAL_NAME
+            writeMultiTextElement(
+                w,
+                LiftVocabulary.HEADER_DESCRIPTION_LOCAL_NAME,
+                range.getDescription()
             );
-            MultiTextWriters.writeMultiText(out, range.getAbbrev());
-            out.writeEndElement();
+            writeMultiTextElement(
+                w,
+                LiftVocabulary.LABEL_LOCAL_NAME,
+                range.getLabel()
+            );
+            writeMultiTextElement(
+                w,
+                LiftVocabulary.HEADER_RANGE_ABBREV_LOCAL_NAME,
+                range.getAbbrev()
+            );
             for (Feature e : range.getFeatures().values()) {
-                writeHeaderRangeElement(e);
+                writeHeaderRangeElement(w, e);
             }
         }
-        out.writeEndElement();
+        w.writeEndElement();
     }
 
-    private void writeHeaderRangeElement(Feature el)
+    private void writeHeaderRangeElement(XMLStreamWriter w, Feature el)
         throws Exception {
-        out.writeStartElement(LiftVocabulary.HEADER_RANGE_ELEMENT_LOCAL_NAME);
-        out.writeAttribute(LiftVocabulary.ID_ATTRIBUTE, el.getId());
+        w.writeStartElement(LiftVocabulary.HEADER_RANGE_ELEMENT_LOCAL_NAME);
+        w.writeAttribute(LiftVocabulary.ID_ATTRIBUTE, el.getId());
         if (el.getSuperOrdinateFeature().isPresent()) {
-            out.writeAttribute("parent", el.getSuperOrdinateFeature().get().getId());
-        }
-        if (el.getGuid().isPresent()) {
-            out.writeAttribute(
-                LiftVocabulary.GUID_ATTRIBUTE,
-                el.getGuid().get()
+            w.writeAttribute(
+                LiftVocabulary.PARENT_ATTRIBUTE,
+                el.getSuperOrdinateFeature().get().getId()
             );
         }
-        AbstractPropertyWriters.writeAbstractExtensibleWithoutField(out, el);
-        AbstractPropertyWriters.writeAbstractExtensibleWithField(out, el);
+        if (el.getGuid().isPresent()) {
+            w.writeAttribute(LiftVocabulary.GUID_ATTRIBUTE, el.getGuid().get());
+        }
+        AbstractPropertyWriters.writeAbstractExtensibleWithoutField(w, el);
+        AbstractPropertyWriters.writeAbstractExtensibleWithField(w, el, version);
 
-        out.writeStartElement(LiftVocabulary.HEADER_DESCRIPTION_LOCAL_NAME);
-        MultiTextWriters.writeMultiText(out, el.getDescription());
-        out.writeEndElement();
+        writeMultiTextElement(
+            w,
+            LiftVocabulary.HEADER_DESCRIPTION_LOCAL_NAME,
+            el.getDescription()
+        );
+        writeMultiTextElement(w, LiftVocabulary.LABEL_LOCAL_NAME, el.getLabel());
+        writeMultiTextElement(
+            w,
+            LiftVocabulary.HEADER_RANGE_ABBREV_LOCAL_NAME,
+            el.getAbbrev()
+        );
 
-        out.writeStartElement(LiftVocabulary.LABEL_LOCAL_NAME);
-        MultiTextWriters.writeMultiText(out, el.getLabel());
-        out.writeEndElement();
+        w.writeEndElement();
+    }
 
-        out.writeStartElement(LiftVocabulary.HEADER_RANGE_ABBREV_LOCAL_NAME);
-        MultiTextWriters.writeMultiText(out, el.getAbbrev());
-        out.writeEndElement();
-
-        out.writeEndElement();
+    /**
+     * Write {@code <name>multitext</name>}, or nothing when the multitext is empty.
+     *
+     * description, label and abbrev are all optional in {@code range-content} and
+     * {@code range-element-content}; emitting them empty only adds noise.
+     */
+    private static void writeMultiTextElement(
+        XMLStreamWriter w,
+        String elementName,
+        MultiText mt
+    ) throws Exception {
+        if (mt == null || (mt.isEmpty() && mt.getAnnotations().isEmpty())) return;
+        w.writeStartElement(elementName);
+        MultiTextWriters.writeMultiText(w, mt);
+        w.writeEndElement();
     }
 
     private void writeRangesToExternalFiles(LiftHeader header)
         throws Exception {
-        if (outputFile == null) {
-            return;
-        }
-        File baseDir = outputFile.getParentFile();
+        File baseDir = outputFile.getAbsoluteFile().getParentFile();
         if (baseDir == null) {
-            baseDir = new File(".");
+            return;
         }
 
         Map<File, List<FeatureSet>> byHref = new LinkedHashMap<>();
@@ -283,6 +381,16 @@ public class LiftWriterSession implements AutoCloseable {
             }
             String href = r.getHref().get();
             if (href == null || href.isBlank()) {
+                continue;
+            }
+            if (!r.isExternalContentLoaded()) {
+                LOGGER.info(
+                    "Not rewriting the external ranges file of range '" +
+                        r.getId() +
+                        "' (" +
+                        href +
+                        "): its content was never loaded."
+                );
                 continue;
             }
             File targetFile = resolveHrefToFile(href, baseDir);
@@ -297,39 +405,64 @@ public class LiftWriterSession implements AutoCloseable {
         // TODO write Range that are not external
     }
 
-    private File resolveHrefToFile(String href, File baseDir) {
+    /**
+     * Resolve an {@code @href} taken from document content to a file inside the
+     * dictionary directory.
+     *
+     * The href comes from the document being saved, so it is untrusted: a
+     * {@code ../../..} path or an absolute {@code file:} URI would otherwise turn
+     * into a truncation target anywhere on the filesystem.
+     *
+     * @throws IOException if the href does not resolve inside {@code baseDir}
+     */
+    private File resolveHrefToFile(String href, File baseDir)
+        throws IOException {
         href = href.trim();
-        if (href.startsWith("file:///")) {
+        Path base = baseDir.toPath().toAbsolutePath().normalize();
+        Path resolved;
+        if (href.startsWith("file:/")) {
             try {
-                return new File(URI.create(href));
-            } catch (Exception ex) {
-                LOGGER.warning("Invalid file href: " + href);
+                resolved = Path.of(URI.create(href)).toAbsolutePath().normalize();
+            } catch (IllegalArgumentException | java.nio.file.FileSystemNotFoundException ex) {
+                throw new IOException("Invalid file href: " + href, ex);
             }
+        } else {
+            resolved = base.resolve(href).normalize();
         }
-        if (href.startsWith("file://")) {
-            try {
-                return new File(URI.create(href));
-            } catch (Exception ex) {
-                LOGGER.warning("Invalid file href: " + href);
-            }
+        if (!resolved.startsWith(base)) {
+            throw new IOException(
+                "Refusing to write a ranges file outside the dictionary directory: " +
+                    href +
+                    " resolves to " +
+                    resolved
+            );
         }
-        return new File(baseDir, href);
+        return resolved.toFile();
     }
 
     private void writeLiftRangesFile(File file, List<FeatureSet> ranges)
         throws Exception {
+        File parent = file.getParentFile();
+        if (parent != null) Files.createDirectories(parent.toPath());
         try (
-            FileOutputStream fos = new FileOutputStream(file);
-            OutputStreamWriter osw = new OutputStreamWriter(fos, "utf-8")
+            OutputStream fos = Files.newOutputStream(file.toPath());
+            OutputStreamWriter osw = new OutputStreamWriter(
+                fos,
+                StandardCharsets.UTF_8
+            )
         ) {
             XMLStreamWriter rangesOut =
                 XMLOutputFactory.newInstance().createXMLStreamWriter(osw);
-            rangesOut.writeStartDocument("utf-8", "1.0");
+            rangesOut.writeStartDocument(
+                StandardCharsets.UTF_8.name(),
+                XML_VERSION
+            );
             rangesOut.writeCharacters(NEW_LINE);
             rangesOut.writeStartElement(LiftVocabulary.LIFT_RANGES_ROOT);
             rangesOut.writeCharacters(NEW_LINE);
             for (FeatureSet r : ranges) {
-                writeHeaderRangeToWriter(rangesOut, r);
+                writeHeaderRange(rangesOut, r, false);
+                rangesOut.writeCharacters(NEW_LINE);
             }
             rangesOut.writeEndElement();
             rangesOut.writeEndDocument();
@@ -337,89 +470,53 @@ public class LiftWriterSession implements AutoCloseable {
         }
     }
 
-    private void writeHeaderRangeToWriter(
-        XMLStreamWriter w,
-        FeatureSet range
-    ) throws Exception {
-        w.writeStartElement(LiftVocabulary.HEADER_RANGE_LOCAL_NAME);
-        w.writeAttribute(LiftVocabulary.ID_ATTRIBUTE, range.getId());
-        if (range.getGuid().isPresent()) {
-            w.writeAttribute(
-                LiftVocabulary.GUID_ATTRIBUTE,
-                range.getGuid().get()
-            );
-        }
-        AbstractPropertyWriters.writeAbstractExtensibleWithoutField(w, range);
-        AbstractPropertyWriters.writeAbstractExtensibleWithField(w, range);
-        w.writeStartElement(LiftVocabulary.HEADER_DESCRIPTION_LOCAL_NAME);
-        MultiTextWriters.writeMultiText(w, range.getDescription());
-        w.writeEndElement();
-        w.writeStartElement(LiftVocabulary.LABEL_LOCAL_NAME);
-        MultiTextWriters.writeMultiText(w, range.getLabel());
-        w.writeEndElement();
-        w.writeStartElement(LiftVocabulary.HEADER_RANGE_ABBREV_LOCAL_NAME);
-        MultiTextWriters.writeMultiText(w, range.getAbbrev());
-        w.writeEndElement();
-        for (Feature el : range.getFeatures().values()) {
-            writeHeaderRangeElementToWriter(w, el);
-        }
-        w.writeEndElement();
-        w.writeCharacters(NEW_LINE);
-    }
-
-    private void writeHeaderRangeElementToWriter(
-        XMLStreamWriter w,
-        Feature el
-    ) throws Exception {
-        w.writeStartElement(LiftVocabulary.HEADER_RANGE_ELEMENT_LOCAL_NAME);
-        w.writeAttribute(LiftVocabulary.ID_ATTRIBUTE, el.getId());
-        if (el.getSuperOrdinateFeature().isPresent()) {
-            w.writeAttribute("parent", el.getSuperOrdinateFeature().get().getId());
-        }
-        if (el.getGuid().isPresent()) {
-            w.writeAttribute(LiftVocabulary.GUID_ATTRIBUTE, el.getGuid().get());
-        }
-        AbstractPropertyWriters.writeAbstractExtensibleWithoutField(w, el);
-        AbstractPropertyWriters.writeAbstractExtensibleWithField(w, el);
-        w.writeStartElement(LiftVocabulary.HEADER_DESCRIPTION_LOCAL_NAME);
-        MultiTextWriters.writeMultiText(w, el.getDescription());
-        w.writeEndElement();
-        w.writeStartElement(LiftVocabulary.LABEL_LOCAL_NAME);
-        MultiTextWriters.writeMultiText(w, el.getLabel());
-        w.writeEndElement();
-        w.writeStartElement(LiftVocabulary.HEADER_RANGE_ABBREV_LOCAL_NAME);
-        MultiTextWriters.writeMultiText(w, el.getAbbrev());
-        w.writeEndElement();
-        w.writeEndElement();
-        w.writeCharacters(NEW_LINE);
-    }
-
     private void writeHeaderFieldDescription(LiftFieldAndTraitDefinition f)
         throws Exception {
-        out.writeStartElement(
-            LiftVocabulary.HEADER_FIELD_DEFINITION_LOCAL_NAME
+        out.writeStartElement(LiftVocabulary.fieldDefinitionElement(version));
+        out.writeAttribute(
+            LiftVocabulary.fieldDefinitionNameAttribute(version),
+            f.getName()
         );
-        out.writeAttribute(LiftVocabulary.GUID_ATTRIBUTE, f.getName());
         if (f.getTargets().size() > 0) {
-            out.writeAttribute("class", f.getTargetAsString());
+            out.writeAttribute(
+                LiftVocabulary.CLASS_ATTRIBUTE,
+                f.getTargetAsString()
+            );
         }
-        if (f.getTypeStr().isPresent()) {
-            out.writeAttribute("type", f.getTypeStr().get());
+        if (f.getDeclaredTypeStr().isPresent()) {
+            out.writeAttribute(
+                LiftVocabulary.TYPE_ATTRIBUTE,
+                f.getDeclaredTypeStr().get()
+            );
         }
         if (f.getResolvedFeatureSet().isPresent()) {
-            out.writeAttribute("option-range", f.getResolvedFeatureSet().get().getId());
+            out.writeAttribute(
+                LiftVocabulary.OPTION_RANGE_ATTRIBUTE,
+                f.getResolvedFeatureSet().get().getId()
+            );
         }
         if (f.getWritingSystem().isPresent()) {
-            out.writeAttribute("writing-system", f.getWritingSystem().get());
+            out.writeAttribute(
+                LiftVocabulary.WRITING_SYSTEM_ATTRIBUTE,
+                f.getWritingSystem().get()
+            );
         }
 
-        out.writeStartElement(LiftVocabulary.HEADER_DESCRIPTION_LOCAL_NAME);
-        MultiTextWriters.writeMultiText(out, f.getDescription());
-        out.writeEndElement();
-
-        out.writeStartElement(LiftVocabulary.LABEL_LOCAL_NAME);
-        MultiTextWriters.writeMultiText(out, f.getLabel());
-        out.writeEndElement();
+        if (version == LiftVersion.V0_13) {
+            // 0.13 field-defn-content is plain multitext-content: no wrapper elements.
+            MultiTextWriters.writeMultiText(out, f.getDescription());
+        } else {
+            writeMultiTextElement(
+                out,
+                LiftVocabulary.HEADER_DESCRIPTION_LOCAL_NAME,
+                f.getDescription()
+            );
+            writeMultiTextElement(
+                out,
+                LiftVocabulary.LABEL_LOCAL_NAME,
+                f.getLabel()
+            );
+        }
 
         out.writeEndElement();
     }
@@ -440,8 +537,8 @@ public class LiftWriterSession implements AutoCloseable {
         }
         AbstractPropertyWriters.writeAbstractIdentifiable(out, entry);
         AbstractPropertyWriters.writeAbstractExtensibleWithoutField(out, entry);
-        AbstractPropertyWriters.writeAbstractNotable(out, entry);
-        AbstractPropertyWriters.writeAbstractExtensibleWithField(out, entry);
+        AbstractPropertyWriters.writeAbstractNotable(out, entry, version);
+        AbstractPropertyWriters.writeAbstractExtensibleWithField(out, entry, version);
 
         out.writeStartElement(LiftVocabulary.LEXICAL_UNIT_LOCAL_NAME);
         MultiTextWriters.writeMultiText(out, entry.getForms());
@@ -466,7 +563,7 @@ public class LiftWriterSession implements AutoCloseable {
     private void writePronunciation(LiftPronunciation p) throws Exception {
         out.writeStartElement(LiftVocabulary.PRONUNCIATION_LOCAL_NAME);
         AbstractPropertyWriters.writeAbstractExtensibleWithoutField(out, p);
-        AbstractPropertyWriters.writeAbstractExtensibleWithField(out, p);
+        AbstractPropertyWriters.writeAbstractExtensibleWithField(out, p, version);
         MultiTextWriters.writeMultiText(out, p.getPronunciation());
         p.getMedias().forEach(unchecked(this::writeMedia));
         out.writeEndElement();
@@ -475,19 +572,35 @@ public class LiftWriterSession implements AutoCloseable {
 
     private void writeMedia(LiftMedia m) throws Exception {
         out.writeStartElement(LiftVocabulary.MEDIA_LOCAL_NAME);
-        out.writeAttribute("href", m.getHref());
-        MultiTextWriters.writeMultiText(out, m.getLabel());
+        out.writeAttribute(LiftVocabulary.HREF_ATTRIBUTE, m.getHref());
+        writeUrlRefLabel(m.getLabel());
         out.writeEndElement();
         out.writeCharacters(NEW_LINE);
     }
 
+    /**
+     * Write the optional {@code <label>} of a {@code URLRef-content} element
+     * ({@code <media>}, {@code <illustration>}).
+     *
+     * The forms must be wrapped in {@code <label>}: written as bare children they
+     * are invalid, and on re-read the parser attaches them to the enclosing sense
+     * instead of to the media or illustration.
+     */
+    private void writeUrlRefLabel(MultiText label) throws Exception {
+        if (label == null || label.isEmpty()) return;
+        out.writeStartElement(LiftVocabulary.LABEL_LOCAL_NAME);
+        MultiTextWriters.writeMultiText(out, label);
+        out.writeEndElement();
+    }
+
     private void writeVariant(LiftVariant v) throws Exception {
         out.writeStartElement(LiftVocabulary.VARIANT_LOCAL_NAME);
-        if (v.getRefObject() != null) {
-            out.writeAttribute(LiftVocabulary.REF_ATTRIBUTE, v.getRefObject().getId().get());
-        }
+        refAttribute(v.getRefObject(), v.getRefId().orElse(null))
+            .ifPresent(unchecked(ref ->
+                out.writeAttribute(LiftVocabulary.REF_ATTRIBUTE, ref)
+            ));
         AbstractPropertyWriters.writeAbstractExtensibleWithoutField(out, v);
-        AbstractPropertyWriters.writeAbstractExtensibleWithField(out, v);
+        AbstractPropertyWriters.writeAbstractExtensibleWithField(out, v, version);
         v.getPronunciations().forEach(unchecked(this::writePronunciation));
         v.getRelations().forEach(unchecked(this::writeRelation));
         MultiTextWriters.writeMultiText(out, v.getForms());
@@ -501,12 +614,12 @@ public class LiftWriterSession implements AutoCloseable {
             LiftVocabulary.TYPE_ATTRIBUTE,
             r.getType().getId()
         );
-        if (r.getRefObject() != null) {
-            out.writeAttribute(
-                LiftVocabulary.REF_ATTRIBUTE,
-                r.getRefObject().getId().get()
-            );
-        }
+        // relation-content makes @ref required: write it even when the target is
+        // unknown, rather than emitting a relation the schema (and this reader) reject.
+        out.writeAttribute(
+            LiftVocabulary.REF_ATTRIBUTE,
+            refAttribute(r.getRefObject(), r.getRefId().orElse(null)).orElse("")
+        );
         if (r.getOrder().isPresent()) {
             out.writeAttribute(
                 LiftVocabulary.ORDER_ATTRIBUTE,
@@ -514,7 +627,7 @@ public class LiftWriterSession implements AutoCloseable {
             );
         }
         AbstractPropertyWriters.writeAbstractExtensibleWithoutField(out, r);
-        AbstractPropertyWriters.writeAbstractExtensibleWithField(out, r);
+        AbstractPropertyWriters.writeAbstractExtensibleWithField(out, r, version);
         if (!r.getUsage().isEmpty()) {
             out.writeStartElement(LiftVocabulary.USAGE_LOCAL_NAME);
             MultiTextWriters.writeMultiText(out, r.getUsage());
@@ -533,16 +646,24 @@ public class LiftWriterSession implements AutoCloseable {
             );
         }
         MultiTextWriters.writeMultiText(out, rev.getForms());
-        if (rev.getMain() != null) {
-            out.writeStartElement(LiftVocabulary.MAIN_LOCAL_NAME);
-            MultiTextWriters.writeMultiText(out, rev.getMain().getForms());
-            if (rev.getMain().getMain() != null) {
-                writeReversal(rev.getMain());
-            }
-            out.writeEndElement();
-        }
+        writeReversalMain(rev.getMain());
         out.writeEndElement();
         out.writeCharacters(NEW_LINE);
+    }
+
+    /**
+     * Write the {@code <main>} of a reversal.
+     *
+     * {@code reversal-main} nests {@code <main>} inside {@code <main>}; writing a
+     * whole {@code <reversal>} element there instead produced a document this very
+     * package could not read back.
+     */
+    private void writeReversalMain(LiftReversal main) throws Exception {
+        if (main == null) return;
+        out.writeStartElement(LiftVocabulary.MAIN_LOCAL_NAME);
+        MultiTextWriters.writeMultiText(out, main.getForms());
+        writeReversalMain(main.getMain());
+        out.writeEndElement();
     }
 
     private void writeEtymology(LiftEtymology e) throws Exception {
@@ -553,11 +674,14 @@ public class LiftWriterSession implements AutoCloseable {
                 e.getType().getId()
             );
         }
-        if (e.getSource() != null || !e.getSource().isEmpty()) {
-            out.writeAttribute(LiftVocabulary.SOURCE_ATTRIBUTE, e.getSource());
-        }
+        // etymology-content makes @source required, so write it even when empty:
+        // omitting it produces a document this package cannot read back.
+        out.writeAttribute(
+            LiftVocabulary.SOURCE_ATTRIBUTE,
+            e.getSource() == null ? "" : e.getSource()
+        );
         AbstractPropertyWriters.writeAbstractExtensibleWithoutField(out, e);
-        AbstractPropertyWriters.writeAbstractExtensibleWithField(out, e);
+        AbstractPropertyWriters.writeAbstractExtensibleWithField(out, e, version);
 
         MultiTextWriters.writeMultiText(out, e.getForms());
         MultiTextWriters.writeMultiText(
@@ -571,7 +695,15 @@ public class LiftWriterSession implements AutoCloseable {
     }
 
     private void writeSense(LiftSense sense) throws Exception {
-        out.writeStartElement(LiftVocabulary.SENSE_LOCAL_NAME);
+        writeSense(sense, LiftVocabulary.SENSE_LOCAL_NAME);
+    }
+
+    /**
+     * @param elementName {@code sense} at the top level, {@code subsense} when nested:
+     *        {@code sense-content} has no nested {@code <sense>}.
+     */
+    private void writeSense(LiftSense sense, String elementName) throws Exception {
+        out.writeStartElement(elementName);
         if (sense.getOrder().isPresent()) {
             out.writeAttribute(
                 LiftVocabulary.ORDER_ATTRIBUTE,
@@ -580,8 +712,8 @@ public class LiftWriterSession implements AutoCloseable {
         }
         AbstractPropertyWriters.writeAbstractIdentifiable(out, sense);
         AbstractPropertyWriters.writeAbstractExtensibleWithoutField(out, sense);
-        AbstractPropertyWriters.writeAbstractNotable(out, sense);
-        AbstractPropertyWriters.writeAbstractExtensibleWithField(out, sense);
+        AbstractPropertyWriters.writeAbstractNotable(out, sense, version);
+        AbstractPropertyWriters.writeAbstractExtensibleWithField(out, sense, version);
 
         MultiTextWriters.writeMultiText(
             out,
@@ -603,7 +735,9 @@ public class LiftWriterSession implements AutoCloseable {
         sense.getExamples().forEach(unchecked(this::writeExample));
         sense.getIllustrations().forEach(unchecked(this::writeIllustration));
         sense.getReversals().forEach(unchecked(this::writeReversal));
-        sense.getSenses().forEach(unchecked(this::writeSense));
+        sense.getSenses().forEach(
+            unchecked(sub -> writeSense(sub, LiftVocabulary.SUBSENSE_LOCAL_NAME))
+        );
 
         out.writeEndElement();
         out.writeCharacters(NEW_LINE);
@@ -626,8 +760,8 @@ public class LiftWriterSession implements AutoCloseable {
             }
         }
         AbstractPropertyWriters.writeAbstractExtensibleWithoutField(out, ex);
-        AbstractPropertyWriters.writeAbstractNotable(out, ex);
-        AbstractPropertyWriters.writeAbstractExtensibleWithField(out, ex);
+        AbstractPropertyWriters.writeAbstractNotable(out, ex, version);
+        AbstractPropertyWriters.writeAbstractExtensibleWithField(out, ex, version);
 
         MultiTextWriters.writeMultiText(out, ex.getExample());
 
@@ -648,43 +782,34 @@ public class LiftWriterSession implements AutoCloseable {
         if (il.getHref() != null) {
             out.writeAttribute(LiftVocabulary.HREF_ATTRIBUTE, il.getHref());
         }
-        MultiTextWriters.writeMultiText(out, il.getLabel());
+        writeUrlRefLabel(il.getLabel());
         out.writeEndElement();
         out.writeCharacters(NEW_LINE);
     }
 
     private void writeTrait(LiftTrait t) throws Exception {
-        out.writeStartElement(LiftVocabulary.TRAIT_LOCAL_NAME);
-        out.writeAttribute(LiftVocabulary.NAME_ATTRIBUTE, t.getSpecification().getName());
-        out.writeAttribute(LiftVocabulary.VALUE_ATTRIBUTE, t.getValue());
-        t.getAnnotations().forEach(unchecked(this::writeAnnotation));
-        out.writeEndElement();
+        AbstractPropertyWriters.writeTrait(out, t);
         out.writeCharacters(NEW_LINE);
     }
 
-    private void writeAnnotation(LiftAnnotation a) throws Exception {
-        out.writeStartElement(LiftVocabulary.ANNOTATION_LOCAL_NAME);
-        if (a.getType() != null) {
-            out.writeAttribute(LiftVocabulary.NAME_ATTRIBUTE, a.getType().getId());
+    /**
+     * The {@code @ref} of a variant or relation.
+     *
+     * {@code @ref} is required by the schema, so prefer the resolved target's id and
+     * fall back to the raw reference read from the document rather than omitting the
+     * attribute. Returns empty only when nothing at all is known.
+     */
+    private static java.util.Optional<String> refAttribute(
+        fr.cnrs.lacito.liftapi.model.AbstractIdentifiable target,
+        String rawRefId
+    ) {
+        if (target != null && target.getId().isPresent()) {
+            return target.getId();
         }
-        if (!a.getValue().isEmpty()) {
-            out.writeAttribute(
-                LiftVocabulary.VALUE_ATTRIBUTE,
-                a.getValue()
-            );
+        if (rawRefId != null && !rawRefId.isBlank()) {
+            return java.util.Optional.of(rawRefId);
         }
-        if (!a.getWho().isEmpty()) {
-            out.writeAttribute(LiftVocabulary.WHO_ATTRIBUTE, a.getWho());
-        }
-        if (!a.getWhen().isEmpty()) {
-            out.writeAttribute(
-                LiftVocabulary.WHEN_ATTRIBUTE,
-                a.getWhen()
-            );
-        }
-        MultiTextWriters.writeMultiText(out, a.getText());
-        out.writeEndElement();
-        out.writeCharacters(NEW_LINE);
+        return java.util.Optional.empty();
     }
 
     // Helper for unchecked exceptions in lambdas

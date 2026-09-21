@@ -70,7 +70,7 @@ public class FeatureSetBuilder
         return this;
     }
 
-    public FeatureSetBuilder witGuid(String guid) {
+    public FeatureSetBuilder withGuid(String guid) {
         element.setGuid(guid);
         return this;
     }

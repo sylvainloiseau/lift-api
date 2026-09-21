@@ -2,19 +2,24 @@ package fr.cnrs.lacito.liftapi;
 
 import java.util.logging.Logger;
 import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import fr.cnrs.lacito.liftapi.model.DuplicateIdException;
 
 public class LiftDictionaryLoaderTest {
 
-    private static final Logger LOGGER = Logger.getLogger(LiftDictionary.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(LiftDictionaryLoaderTest.class.getName());
 
     @Test
     public void loadAndValidateTinyLift () {
         String[] tiny = {"tiny1_entry.xml", "tiny.xml"};
         for (String t : tiny) {
             LiftDictionary lf = Utils.loadDictionaryForTest("lift/" + t);
+            assertFalse(
+                lf.getLiftDictionaryRegistry().getEntries().isEmpty(),
+                "No entry read from " + t
+            );
         }
     }
 

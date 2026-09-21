@@ -57,7 +57,11 @@ public class NoteBuilder extends AbstractLiftElementWithFieldBuilder<LiftNote, H
 
     public NoteBuilder withType(String type) {
         if (type == null || type.isBlank()) throw new IllegalArgumentException("Type cannot be null or empty.");
-        Feature f = dictionary.getHeader().getNoteTypeManager().getFeature(type);
+        // Create the type on demand, as this builder's own constructor already does.
+        Feature f = dictionary
+            .getHeader()
+            .getNoteTypeManager()
+            .getOrCreateFeature(type);
         super.withType(f);
         return this;
     }
