@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
-import fr.cnrs.lacito.liftapi.xml.LiftVersion;
+import fr.cnrs.lacito.liftapi.LiftVersion;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;

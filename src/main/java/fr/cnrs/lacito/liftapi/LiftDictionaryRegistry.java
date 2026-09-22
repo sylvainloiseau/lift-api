@@ -1,5 +1,6 @@
 package fr.cnrs.lacito.liftapi;
 
+import fr.cnrs.lacito.liftapi.internal.DictionaryMutator;
 import fr.cnrs.lacito.liftapi.model.AbstractExtensibleWithoutField;
 import fr.cnrs.lacito.liftapi.model.AbstractIdentifiable;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
@@ -28,9 +29,11 @@ import fr.cnrs.lacito.liftapi.model.LiftVariant;
 import fr.cnrs.lacito.liftapi.model.MultiText;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import javafx.beans.property.ReadOnlyListWrapper;
@@ -59,9 +62,52 @@ public class LiftDictionaryRegistry {
     private LiftDictionaryLanguagesManager metaLanguagesManager;
 
     /**
-     * Map from IDs (of referenced object) to objects pointing at them in the dictionary.
+     * Map from the LIFT id of a referenced component to the components pointing at it.
+     *
+     * Kept private: exposing the live map let any caller corrupt the reference counting
+     * that {@link #removeFromDictionary(AbstractLiftRoot)} relies on to refuse deleting
+     * a component that is still referenced.
      */
-    public Map<String, List<HasRefId>> refId2HasRefIdList = new HashMap<>();
+    private final Map<String, List<HasRefId>> refId2HasRefIdList = new HashMap<>();
+
+    /**
+     * The LIFT ids that at least one component in the dictionary refers to.
+     *
+     * @return an unmodifiable view
+     */
+    public Set<String> getReferencedTargetIds() {
+        return Collections.unmodifiableSet(refId2HasRefIdList.keySet());
+    }
+
+    /**
+     * The components referring to the given LIFT id.
+     *
+     * @param targetId the LIFT id of the referenced component
+     * @return an unmodifiable list, empty if nothing refers to {@code targetId}
+     */
+    public List<HasRefId> getReferencesTo(String targetId) {
+        List<HasRefId> sources = refId2HasRefIdList.get(targetId);
+        return sources == null
+            ? List.of()
+            : Collections.unmodifiableList(sources);
+    }
+
+    /** Whether any component refers to the given LIFT id. */
+    public boolean isReferenced(String targetId) {
+        List<HasRefId> sources = refId2HasRefIdList.get(targetId);
+        return sources != null && !sources.isEmpty();
+    }
+
+    private void addReference(String targetId, HasRefId source) {
+        refId2HasRefIdList
+            .computeIfAbsent(targetId, k -> new ArrayList<>())
+            .add(source);
+    }
+
+    private void removeReference(String targetId, HasRefId source) {
+        List<HasRefId> sources = refId2HasRefIdList.get(targetId);
+        if (sources != null) sources.removeIf(o -> o == source);
+    }
 
     protected final ObservableMap<String, LiftEntry> entriesByLiftId =
         FXCollections.observableHashMap();
@@ -359,51 +405,12 @@ public class LiftDictionaryRegistry {
      * LiftEntry#addSense(LiftSense sense)}) will also be added to the dictionary.
      */
     public void addToDictionaryLowLevel(AbstractLiftRoot node) {
-        // 1. Add the node to the register:
-        // register the node and it(s) multiText(s) in the registry
+        // 1. register the node and its MultiText(s)
         register(node);
-
-        // 2. recursively add its descendants
-        if (node instanceof LiftEntry e) {
-            e.getVariants().forEach(x -> addToDictionaryLowLevel(x));
-            e.getEtymologies().forEach(x -> addToDictionaryLowLevel(x));
-        }
-
-        if (node instanceof LiftSense s) {
-            s.getExamples().forEach(x -> addToDictionaryLowLevel(x));
-            s.getIllustrations().forEach(x -> addToDictionaryLowLevel(x));
-            // Reversals are handled below by the HasReversal branch, which LiftSense
-            // also matches: doing it here as well registers each reversal twice.
-        }
-
-        if (node instanceof AbstractExtensibleWithoutField a) {
-            a.getAnnotations().forEach(x -> addToDictionaryLowLevel(x));
-            a.getTraits().forEach(x -> addToDictionaryLowLevel(x));
-            if (node instanceof HasField b) {
-                b.getFields().values().forEach(x -> addToDictionaryLowLevel(x));
-            }
-        }
-
-        if (node instanceof HasNote n) {
-            n.getNotes()
-                .values()
-                .forEach(x -> addToDictionaryLowLevel(x));
-        }
-
-        if (node instanceof HasPronunciation n) {
-            n.getPronunciations().forEach(x -> addToDictionaryLowLevel(x));
-        }
-
-        if (node instanceof HasRelations n) {
-            n.getRelations().forEach(x -> addToDictionaryLowLevel(x));
-        }
-
-        if (node instanceof HasReversal r) {
-            r.getReversals().forEach(x -> addToDictionaryLowLevel(x));
-        }
-
-        if (node instanceof HasSense s) {
-            s.getSenses().forEach(x -> addToDictionaryLowLevel(x));
+        // 2. recursively add its descendants. The child enumeration lives in
+        // DictionaryMutator so that this traversal and unregisterRec cannot drift.
+        for (AbstractLiftRoot child : DictionaryMutator.childrenOf(node)) {
+            addToDictionaryLowLevel(child);
         }
     }
 
@@ -549,10 +556,7 @@ public class LiftDictionaryRegistry {
                 target = hasref.getRefObject().getId().get();
 
             if (target != null && !target.trim().isEmpty()) {
-                if (! refId2HasRefIdList.containsKey(target)) {
-                    refId2HasRefIdList.put(target, new ArrayList<HasRefId>());
-                }
-                refId2HasRefIdList.get(target).add(hasref);
+                addReference(target, hasref);
             }
         }
     }
@@ -704,14 +708,14 @@ public class LiftDictionaryRegistry {
                 .orElseThrow(() ->
                     new IllegalArgumentException("Reference ID is missing")
                 );
-            refId2HasRefIdList.get(target).removeIf(o -> o == r);
+            removeReference(target, r);
         } else if (node instanceof LiftVariant a) {
             final String target = a
                 .getRefObject().getId()
                 .orElseThrow(() ->
                     new IllegalArgumentException("Reference ID is missing")
                 );
-            refId2HasRefIdList.get(target).removeIf(o -> o == a);
+            removeReference(target, a);
 
         // 2. check that this node is not refered from another node
         } else if (node instanceof AbstractIdentifiable i) {
@@ -720,10 +724,7 @@ public class LiftDictionaryRegistry {
                 .orElseThrow(() ->
                     new IllegalArgumentException("Reference ID is missing")
                 );
-            if (
-                refId2HasRefIdList.containsKey(refId) &&
-                refId2HasRefIdList.get(refId).size() > 0
-            ) {
+            if (isReferenced(refId)) {
                 throw new IllegalStateException(
                     "Cannot delete this node: it is referenced from other nodes."
                 );
@@ -735,49 +736,10 @@ public class LiftDictionaryRegistry {
         // here would decrement every language counter twice.
         unregister(node);
 
-        // 4. recursively unregister the descendants that have no dedicated
-        // Has* interface below.
-        switch (node) {
-            case LiftEntry e -> {
-                e.getVariants().forEach(x -> unregisterRec(x));
-                e.getEtymologies().forEach(x -> unregisterRec(x));
-            }
-            case LiftSense s -> {
-                s.getExamples().forEach(x -> unregisterRec(x));
-                s.getIllustrations().forEach(x -> unregisterRec(x));
-            }
-            default -> {
-            }
-        }
-
-        if (node instanceof AbstractExtensibleWithoutField a) {
-            a.getAnnotations().forEach(x -> unregisterRec(x));
-            a.getTraits().forEach(x -> unregisterRec(x));
-            if (node instanceof HasField b) {
-                b.getFields().values().forEach(x -> unregisterRec(x));
-            }
-        }
-
-        if (node instanceof HasNote n) {
-            n.getNotes()
-                .values()
-                .forEach(x -> unregisterRec(x));
-        }
-
-        if (node instanceof HasPronunciation n) {
-            n.getPronunciations().forEach(x -> unregisterRec(x));
-        }
-
-        if (node instanceof HasRelations n) {
-            n.getRelations().forEach(x -> unregisterRec(x));
-        }
-
-        if (node instanceof HasReversal r) {
-            r.getReversals().forEach(x -> unregisterRec(x));
-        }
-
-        if (node instanceof HasSense s) {
-            s.getSenses().forEach(x -> unregisterRec(x));
+        // 4. recursively unregister its descendants, using the same child
+        // enumeration as addToDictionaryLowLevel so the two stay mirror images.
+        for (AbstractLiftRoot child : DictionaryMutator.childrenOf(node)) {
+            unregisterRec(child);
         }
     }
 
@@ -797,8 +759,7 @@ public class LiftDictionaryRegistry {
      */
     public void removeFromDictionary(AbstractLiftRoot node) {
         // remove the link parent -> self
-
-        // pb : should be made afer the second sine it can throw an exception.
+        // pb : should be made afer the second since it can throw an exception.
         node.detach();
 
         unregisterRec(node);

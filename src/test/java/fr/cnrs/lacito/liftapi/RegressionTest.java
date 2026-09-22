@@ -20,7 +20,7 @@ import fr.cnrs.lacito.liftapi.model.LiftNote;
 import fr.cnrs.lacito.liftapi.model.LiftRelation;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
-import fr.cnrs.lacito.liftapi.xml.LiftVersion;
+import fr.cnrs.lacito.liftapi.LiftVersion;
 
 import java.time.Duration;
 import java.util.HashSet;

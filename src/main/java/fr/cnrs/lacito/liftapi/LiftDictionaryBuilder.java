@@ -7,7 +7,6 @@ import fr.cnrs.lacito.liftapi.model.FeatureSet;
 import fr.cnrs.lacito.liftapi.model.Feature;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
-import fr.cnrs.lacito.liftapi.xml.LiftVersion;
 
 /**
  * This class offers a fluent API for creating a {@link LiftDictionary}.

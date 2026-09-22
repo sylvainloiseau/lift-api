@@ -2,6 +2,7 @@ package fr.cnrs.lacito.liftapi.builder;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
+import fr.cnrs.lacito.liftapi.internal.DictionaryMutator;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
 import fr.cnrs.lacito.liftapi.model.AbstractNotable;
 import fr.cnrs.lacito.liftapi.model.Feature;
@@ -115,47 +116,13 @@ public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot, U e
      * reference from the child towards itself).
      */
     protected void register() {
-        if(registered) {
+        if (registered) {
             throw new IllegalStateException("This builder has already been used.");
         }
-        // Register first: register() can throw (a duplicate LIFT id, for instance), and
-        // attaching the child to its parent beforehand would leave a half-built graph
-        // behind with a node the registry does not know about.
-        registry.register(this.element);
-        switch(element){
-            case LiftNote note -> {
-                ((AbstractNotable)parent).addNote(note);
-            }
-            case LiftEntry _ -> { }
-            case LiftSense sense -> {
-                ((HasSense)parent).addSense(sense);
-            }
-            case LiftVariant variant -> {
-                ((LiftEntry)parent).addVariant(variant);
-            }
-            case LiftPronunciation pronunciation -> {
-                ((HasPronunciation)parent).addPronunciation(pronunciation);
-            }
-            case LiftExample example -> {
-                ((LiftSense)parent).addExample(example);
-            }
-            case LiftField field -> {
-                ((HasField)parent).addField(field);
-            }
-            case LiftAnnotation annotation -> {
-                ((HasAnnotation)parent).addAnnotation(annotation);
-            }
-            case LiftTrait trait -> {
-                ((HasTrait)parent).addTrait(trait);
-            }
-            case LiftRelation relation -> {
-                ((HasRelations)parent).addRelation(relation);
-            }
-            case LiftEtymology etymology -> {
-                ((LiftEntry)parent).addEtymology(etymology);
-            }
-            default -> {throw new IllegalArgumentException("Unsupported element type: " + element);}
-        }
+        // Registering and wiring to the parent both happen in DictionaryMutator, the
+        // single place that knows the correct order (register first, so that a failed
+        // registration cannot leave a half-built graph behind).
+        dictionary.getMutator().attach(this.element, this.parent);
         this.registered = true;
     }
 }

@@ -1,6 +1,7 @@
 package fr.cnrs.lacito.liftapi;
 
 import fr.cnrs.lacito.liftapi.builder.DictionaryComponentBuilderFactory;
+import fr.cnrs.lacito.liftapi.internal.DictionaryMutator;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
@@ -9,7 +10,6 @@ import fr.cnrs.lacito.liftapi.model.MultiText;
 import fr.cnrs.lacito.liftapi.model.TextSpan;
 import fr.cnrs.lacito.liftapi.xml.LiftDictionaryXmlReader;
 import fr.cnrs.lacito.liftapi.xml.LiftWriterSession;
-import fr.cnrs.lacito.liftapi.xml.LiftVersion;
 import java.io.File;
 import java.util.HashSet;
 import java.util.List;
@@ -78,6 +78,8 @@ public final class LiftDictionary {
 
     private final LiftDictionaryCounterManager counter;
 
+    private final DictionaryMutator mutator;
+
     // TODO Ugly hack n°1
     public void turnOffLanguageManager() {
         registry.setLanguagesManager(null, null);
@@ -92,6 +94,19 @@ public final class LiftDictionary {
 
     public LiftDictionaryCounterManager getCounter() {
         return counter;
+    }
+
+    /**
+     * The mutation core of this dictionary.
+     *
+     * <b>Not public API.</b> {@link DictionaryMutator} lives in a package this module
+     * does not export, so this method is unreachable from outside the library - javac
+     * rejects any use of the returned value, including through {@code var}. It is
+     * {@code public} only so that the {@code builder} and {@code xml} packages can
+     * reach it from inside the module.
+     */
+    public DictionaryMutator getMutator() {
+        return mutator;
     }
 
     public DictionaryComponentBuilderFactory getComponentBuilder() {
@@ -168,6 +183,7 @@ public final class LiftDictionary {
 
     protected LiftDictionary() {
         this.registry = new LiftDictionaryRegistry();
+        this.mutator = new DictionaryMutator(this.registry);
         registry.setLanguagesManager(objectLanguagesManager, metaLanguagesManager);
         this.header = new LiftHeader();
         this.componentBuilder = new DictionaryComponentBuilderFactory(this);

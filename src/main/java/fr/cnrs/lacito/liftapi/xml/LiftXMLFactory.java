@@ -1,8 +1,11 @@
 package fr.cnrs.lacito.liftapi.xml;
 
+import fr.cnrs.lacito.liftapi.LiftVersion;
+
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDictionaryLanguagesManager;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
+import fr.cnrs.lacito.liftapi.internal.DictionaryMutator;
 import fr.cnrs.lacito.liftapi.model.*;
 import javafx.collections.ObservableList;
 
@@ -35,11 +38,13 @@ public final class LiftXMLFactory {
     protected LiftHeader header;
     private LiftDictionaryRegistry registry;
     private LiftDictionary dictionary;
+    private final DictionaryMutator mutator;
 
     public LiftXMLFactory(LiftDictionary dictionary) {
         this.dictionary = dictionary;
         this.header = dictionary.getHeader();
         this.registry = dictionary.getLiftDictionaryRegistry();
+        this.mutator = dictionary.getMutator();
 
         // TODO Ugly hack n°1
         this.dictionary.turnOffLanguageManager();
@@ -51,7 +56,7 @@ public final class LiftXMLFactory {
     }
 
     public void addEntryToDictionary(LiftEntry entry) {
-        registry.addToDictionaryLowLevel(entry);
+        mutator.adoptSubtree(entry);
     }
 
     public LiftEntry createEntry(Attributes attributes) {
@@ -642,14 +647,14 @@ public final class LiftXMLFactory {
     }
 
     private void dereferenceHasRefTargets() {
-	    for (String targetId : registry.refId2HasRefIdList.keySet()) {
+	    for (String targetId : registry.getReferencedTargetIds()) {
             AbstractIdentifiable target = registry.getEntryOrSenseByLiftId(targetId);
             if (target == null) {
                 throw new IllegalArgumentException(
                     "Reference id " + targetId + " not found in entries or senses."
                 );
             }
-            for (HasRefId source : registry.refId2HasRefIdList.get(targetId)) {
+            for (HasRefId source : registry.getReferencesTo(targetId)) {
                 source.setRefObject(target);
             }
         }

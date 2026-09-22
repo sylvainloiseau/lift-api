@@ -2,7 +2,7 @@ package fr.cnrs.lacito.liftapi.builder;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.model.Feature;
-import fr.cnrs.lacito.liftapi.xml.LiftVersion;
+import fr.cnrs.lacito.liftapi.LiftVersion;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;

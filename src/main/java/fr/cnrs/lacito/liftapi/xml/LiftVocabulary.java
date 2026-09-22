@@ -1,5 +1,7 @@
 package fr.cnrs.lacito.liftapi.xml;
 
+import fr.cnrs.lacito.liftapi.LiftVersion;
+
 /**
  * Represents the LIFT vocabulary, including constants for XML element and attribute names.
  */

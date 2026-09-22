@@ -1,5 +1,7 @@
 package fr.cnrs.lacito.liftapi.xml;
 
+import fr.cnrs.lacito.liftapi.LiftVersion;
+
 import javax.xml.stream.XMLStreamWriter;
 import fr.cnrs.lacito.liftapi.model.AbstractExtensibleWithField;
 import fr.cnrs.lacito.liftapi.model.AbstractExtensibleWithoutField;
