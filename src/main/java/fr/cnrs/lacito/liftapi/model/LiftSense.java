@@ -88,12 +88,39 @@ public final class LiftSense
         return getMainMultiText();
     }
 
-    protected void setGrammaticalInfo(GrammaticalInfo gi) {
+    /**
+     * Attach an existing grammatical information to this sense.
+     *
+     * Like every other {@code addX}/{@code setX} on the model, this only wires the two
+     * components together: registering the component in the dictionary is the builder's
+     * job. Use {@code DictionaryComponentBuilderFactory.grammaticalInfo(sense, pos)} to
+     * create one that is part of the dictionary.
+     *
+     * @param gi the grammatical information to attach
+     */
+    public void setGrammaticalInfo(GrammaticalInfo gi) {
         this.grammaticalInfo = Optional.of(gi);
+        gi.setParent(this);
     }
 
+    /**
+     * Create a grammatical information for the given part of speech and attach it.
+     *
+     * The component created here is <em>not</em> registered in the dictionary, because
+     * a sense has no way to reach it. Prefer
+     * {@code DictionaryComponentBuilderFactory.grammaticalInfo(sense, pos)}, which
+     * registers it; this overload exists for the XML reader, which registers the whole
+     * subtree once an entry is complete.
+     *
+     * @param value the part of speech
+     */
     public void setGrammaticalInfo(Feature value) {
-        this.setGrammaticalInfo(new GrammaticalInfo(value));
+        this.setGrammaticalInfo(GrammaticalInfo.create(value));
+    }
+
+    /** Drop the grammatical information of this sense (used by {@code detach()}). */
+    protected void clearGrammaticalInfo() {
+        this.grammaticalInfo = Optional.empty();
     }
 
     public void setParent(HasSense parent) {

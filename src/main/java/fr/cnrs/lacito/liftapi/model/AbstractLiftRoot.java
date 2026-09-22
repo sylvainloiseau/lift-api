@@ -15,6 +15,7 @@ import java.util.UUID;
 public abstract sealed class AbstractLiftRoot implements LiftObject
     permits
         AbstractExtensibleWithoutField,
+        GrammaticalInfo,
         LiftAnnotation,
         LiftIllustration,
         LiftMedia,
@@ -130,6 +131,10 @@ public abstract sealed class AbstractLiftRoot implements LiftObject
             case LiftAnnotation o -> { o.getParent()
                 .getAnnotations()
                 .removeIf(x -> x == this);
+                o.setParent(null);
+            }
+            case GrammaticalInfo o -> {
+                o.getParent().clearGrammaticalInfo();
                 o.setParent(null);
             }
             default -> throw new IllegalStateException(

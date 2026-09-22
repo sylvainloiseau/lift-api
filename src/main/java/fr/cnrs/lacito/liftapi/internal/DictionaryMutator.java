@@ -4,6 +4,7 @@ import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.model.AbstractExtensibleWithoutField;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
 import fr.cnrs.lacito.liftapi.model.AbstractNotable;
+import fr.cnrs.lacito.liftapi.model.GrammaticalInfo;
 import fr.cnrs.lacito.liftapi.model.HasAnnotation;
 import fr.cnrs.lacito.liftapi.model.HasField;
 import fr.cnrs.lacito.liftapi.model.HasNote;
@@ -20,6 +21,7 @@ import fr.cnrs.lacito.liftapi.model.LiftField;
 import fr.cnrs.lacito.liftapi.model.LiftNote;
 import fr.cnrs.lacito.liftapi.model.LiftPronunciation;
 import fr.cnrs.lacito.liftapi.model.LiftRelation;
+import fr.cnrs.lacito.liftapi.model.LiftReversal;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
@@ -111,19 +113,12 @@ public final class DictionaryMutator {
      * Note that it enumerates a node's <em>direct</em> children only; the callers
      * recurse.
      *
-     * Two kinds of component are deliberately absent, matching long-standing
-     * behaviour rather than endorsing it:
-     * <ul>
-     * <li>{@link fr.cnrs.lacito.liftapi.model.LiftMedia} held by a pronunciation.
-     *     The registry knows how to register a media, but nothing ever reaches one,
-     *     so {@code LiftDictionaryRegistry.getMedias()} is always empty.</li>
-     * <li>The traits carried by a {@code <grammatical-info>}. Its holder,
-     *     {@link fr.cnrs.lacito.liftapi.model.GrammaticalInfo}, is not an
-     *     {@link AbstractLiftRoot}, so it cannot appear in this list without a model
-     *     change.</li>
-     * </ul>
-     * Adding either is a behaviour change - more components registered, more language
-     * occurrences counted - and is left for a separate, deliberate decision.
+     * Every kind of component a node owns must appear here. Anything missing is
+     * silently dropped on load and silently left behind on delete: media held by a
+     * pronunciation, and the traits carried by a {@code <grammatical-info>}, were both
+     * absent for exactly that reason. {@code DictionaryCensusTest} guards against the
+     * next omission by comparing what a corpus contains with what the registry holds
+     * after loading it.
      *
      * @param node the component whose children are wanted
      * @return the direct children, in a stable order
@@ -139,8 +134,19 @@ public final class DictionaryMutator {
         if (node instanceof LiftSense s) {
             children.addAll(s.getExamples());
             children.addAll(s.getIllustrations());
+            s.getGrammaticalInfo().ifPresent(children::add);
             // Reversals come from the HasReversal branch below, which LiftSense also
             // matches: listing them here too would visit each one twice.
+        }
+
+        if (node instanceof GrammaticalInfo gi) {
+            // GrammaticalInfo is not an AbstractExtensibleWithoutField, so the branch
+            // below does not pick up the traits it carries.
+            children.addAll(gi.getTraits());
+        }
+
+        if (node instanceof LiftPronunciation p) {
+            children.addAll(p.getMedias());
         }
 
         if (node instanceof AbstractExtensibleWithoutField a) {
@@ -165,6 +171,12 @@ public final class DictionaryMutator {
 
         if (node instanceof HasReversal r) {
             children.addAll(r.getReversals());
+        }
+
+        if (node instanceof LiftReversal r && r.getMain() != null) {
+            // The <main> of a reversal is itself a LiftReversal, but it is held in a
+            // field of its own rather than in getReversals().
+            children.add(r.getMain());
         }
 
         if (node instanceof HasSense s) {
@@ -199,6 +211,8 @@ public final class DictionaryMutator {
             case LiftTrait trait -> ((HasTrait) parent).addTrait(trait);
             case LiftRelation relation -> ((HasRelations) parent).addRelation(relation);
             case LiftEtymology etymology -> ((LiftEntry) parent).addEtymology(etymology);
+            case GrammaticalInfo gi ->
+                ((LiftSense) parent).setGrammaticalInfo(gi);
             default -> throw new IllegalArgumentException(
                 "Unsupported element type: " + child
             );

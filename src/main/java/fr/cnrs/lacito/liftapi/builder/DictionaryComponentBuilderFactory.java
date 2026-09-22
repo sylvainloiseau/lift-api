@@ -183,6 +183,17 @@ public class DictionaryComponentBuilderFactory {
     }
 
     /**
+     * Create a builder for the grammatical information of a sense.
+     *
+     * @param parent the sense described
+     * @param partOfSpeech the part of speech, created in the header's grammatical-info
+     *        range if not declared there yet
+     */
+    public GrammaticalInfoBuilder grammaticalInfo(LiftSense parent, String partOfSpeech) {
+        return new GrammaticalInfoBuilder(dictionary, parent, partOfSpeech);
+    }
+
+    /**
      * Create a new trait builder.
      */
     public TraitBuilder trait(HasTrait parent,String name, String value) {

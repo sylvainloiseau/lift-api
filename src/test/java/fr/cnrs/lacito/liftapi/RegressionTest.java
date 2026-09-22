@@ -210,6 +210,92 @@ public class RegressionTest {
         assertFalse(d.getHeader().getInverseTypeManager().hasFeature("checked"));
     }
 
+    /**
+     * A component must be registered by its own builder, not by a later sweep over the
+     * parent's subtree. GrammaticalInfo had no builder, so the one a sense created
+     * through {@code withPartOfSpeech} never entered the dictionary - and neither did
+     * the traits hanging off it.
+     */
+    @Test
+    public void builderRegistersGrammaticalInfo() {
+        LiftEntry entry = dictionary
+            .getComponentBuilder()
+            .entry()
+            .withForm("tww", "nala")
+            .addSense(s -> s.withGloss("en", "to run").withPartOfSpeech("verb"))
+            .build();
+
+        LiftSense sense = entry.getSenses().get(0);
+        assertEquals(
+            "verb",
+            sense.getGrammaticalInfo().get().getGramInfoValue().getId()
+        );
+        assertEquals(
+            1,
+            dictionary.getLiftDictionaryRegistry().getGrammaticalInfos().size(),
+            "the grammatical information is not in the dictionary"
+        );
+        assertSame(
+            sense.getGrammaticalInfo().get(),
+            dictionary.getLiftDictionaryRegistry().getGrammaticalInfos().get(0)
+        );
+    }
+
+    @Test
+    public void builderRegistersTraitsCarriedByGrammaticalInfo() {
+        LiftEntry entry = dictionary
+            .getComponentBuilder()
+            .entry()
+            .withForm("tww", "nala")
+            .addSense(s ->
+                s
+                    .withGloss("en", "to run")
+                    .withPartOfSpeech(
+                        "verb",
+                        g -> g.addTrait("Verb-infl-class", "fo")
+                    )
+            )
+            .build();
+
+        LiftSense sense = entry.getSenses().get(0);
+        assertEquals(1, dictionary.getLiftDictionaryRegistry().getGrammaticalInfos().size());
+        assertEquals(1, sense.getGrammaticalInfo().get().getTraits().size());
+        assertEquals(
+            1,
+            dictionary.getLiftDictionaryRegistry().getTraits().size(),
+            "the trait carried by the grammatical information is not in the dictionary"
+        );
+    }
+
+    /** A sense holds one grammatical information; replacing it must not leak the old one. */
+    @Test
+    public void replacingGrammaticalInfoRemovesThePreviousOne() {
+        LiftEntry entry = dictionary
+            .getComponentBuilder()
+            .entry()
+            .withForm("tww", "nala")
+            .addSense(s -> s.withGloss("en", "to run").withPartOfSpeech("verb"))
+            .build();
+        LiftSense sense = entry.getSenses().get(0);
+
+        assertEquals(
+            1,
+            dictionary.getLiftDictionaryRegistry().getGrammaticalInfos().size()
+        );
+
+        dictionary.getComponentBuilder().grammaticalInfo(sense, "noun").build();
+
+        assertEquals(
+            "noun",
+            sense.getGrammaticalInfo().get().getGramInfoValue().getId()
+        );
+        assertEquals(
+            1,
+            dictionary.getLiftDictionaryRegistry().getGrammaticalInfos().size(),
+            "the replaced grammatical information is still registered"
+        );
+    }
+
     // ------------------------------------------------------------------
     // Model
     // ------------------------------------------------------------------

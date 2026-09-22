@@ -80,11 +80,25 @@ public final class SenseBuilder extends AbstractLiftElementWithFieldAndNoteAndId
      * Set the part of speech.
      */
     public SenseBuilder withPartOfSpeech(String pos) {
-        if (pos == null) {
-            throw new IllegalArgumentException("Part of speech cannot be null");
-        }
-        Feature gramInfo = dictionary.getHeader().getGrammaticalInfoManager().getOrCreateFeature(pos);
-        element.setGrammaticalInfo(gramInfo);
+        new GrammaticalInfoBuilder(dictionary, element, pos).build();
+        return this;
+    }
+
+    /**
+     * Set the part of speech, and configure the grammatical information further - to
+     * add the traits a {@code <grammatical-info>} may carry, for instance.
+     */
+    public SenseBuilder withPartOfSpeech(
+        String pos,
+        Consumer<GrammaticalInfoBuilder> config
+    ) {
+        GrammaticalInfoBuilder gb = new GrammaticalInfoBuilder(
+            dictionary,
+            element,
+            pos
+        );
+        config.accept(gb);
+        gb.build();
         return this;
     }
 

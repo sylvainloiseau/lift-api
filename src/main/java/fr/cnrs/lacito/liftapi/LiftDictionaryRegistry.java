@@ -5,6 +5,7 @@ import fr.cnrs.lacito.liftapi.model.AbstractExtensibleWithoutField;
 import fr.cnrs.lacito.liftapi.model.AbstractIdentifiable;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
 import fr.cnrs.lacito.liftapi.model.DuplicateIdException;
+import fr.cnrs.lacito.liftapi.model.GrammaticalInfo;
 import fr.cnrs.lacito.liftapi.model.HasField;
 import fr.cnrs.lacito.liftapi.model.HasNote;
 import fr.cnrs.lacito.liftapi.model.HasPronunciation;
@@ -149,6 +150,8 @@ public class LiftDictionaryRegistry {
         FXCollections.observableHashMap();
     private final ObservableMap<UUID, LiftAnnotation> annotationsById =
         FXCollections.observableHashMap();
+    private final ObservableMap<UUID, GrammaticalInfo> grammaticalInfosById =
+        FXCollections.observableHashMap();
     protected final ObservableMap<UUID, MultiText> objectTextById =
         FXCollections.observableHashMap();
     protected final ObservableMap<UUID, MultiText> metaTextById =
@@ -285,6 +288,14 @@ public class LiftDictionaryRegistry {
             this.<LiftEtymology>populateObservableList(LiftEtymology.class, etymologiesById);
         }
         return (ObservableList<LiftEtymology>) observableList.get(LiftEtymology.class).getReadOnlyProperty();
+    }
+
+    @SuppressWarnings("unchecked")
+    public ObservableList<GrammaticalInfo> getGrammaticalInfos() {
+        if (!observableList.containsKey(GrammaticalInfo.class)) {
+            this.<GrammaticalInfo>populateObservableList(GrammaticalInfo.class, grammaticalInfosById);
+        }
+        return (ObservableList<GrammaticalInfo>) observableList.get(GrammaticalInfo.class).getReadOnlyProperty();
     }
 
     @SuppressWarnings("unchecked")
@@ -446,9 +457,12 @@ public class LiftDictionaryRegistry {
         //     );
         // }
 
+        getNodesById(node).put(uuid, node);
+
+        // Only entries and senses carry a LIFT id of their own; every other kind of
+        // node needed nothing beyond the registration above.
         switch (node) {
             case LiftEntry e -> {
-                entriesById.put(e.getUUID(), e);
                 if (e.getId().isEmpty()) {
                     String uuidS = e.getUUID().toString();
                     e.setId(uuidS);
@@ -463,7 +477,6 @@ public class LiftDictionaryRegistry {
                 entries.add(e);
             }
             case LiftSense s -> {
-                sensesById.put(s.getUUID(), s);
                 if (s.getId().isEmpty()) {
                     String uuidS = s.getUUID().toString();
                     s.setId(uuidS);
@@ -478,21 +491,9 @@ public class LiftDictionaryRegistry {
                 sensesByLiftId.put(s.getId().get(), s);
                 senseLiftId2Uuid.put(s.getId().get(), s.getUUID());
             }
-            case LiftExample o -> { examplesById.put(o.getUUID(), o) ; }
-            case LiftVariant o -> { variantsById.put(o.getUUID(), o); }
-            case LiftTrait o -> { traitsById.put(o.getUUID(), o); }
-            case LiftReversal o -> { reversalsById.put(o.getUUID(), o); }
-            case LiftRelation o -> { relationsById.put(o.getUUID(), o); }
-            case LiftPronunciation o -> { pronunciationsById.put(o.getUUID(), o); }
-            case LiftNote o -> { notesById.put(o.getUUID(), o); }
-            case LiftMedia o -> { mediasById.put(o.getUUID(), o); }
-            case LiftIllustration o -> { illustrationsById.put(o.getUUID(), o); }
-            case LiftField o -> { fieldsById.put(o.getUUID(), o); }
-            case LiftEtymology o -> { etymologiesById.put(o.getUUID(), o); }
-            case LiftAnnotation o -> { annotationsById.put(o.getUUID(), o); }
-            default -> throw new IllegalStateException(
-                "Unknown type: " + node.getClass()
-            );
+            default -> {
+                // getNodesById above already rejected an unknown kind of node.
+            }
         }
         switch (node) {
             case LiftEntry e -> {
@@ -512,6 +513,9 @@ public class LiftDictionaryRegistry {
                 registerObjectMultiText(v.getForms());
             }
             case LiftTrait _ -> {
+            }
+            case GrammaticalInfo _ -> {
+                // no MultiText of its own, like a trait
             }
             case LiftReversal v -> {
                 registerObjectMultiText(v.getForms());
@@ -583,9 +587,24 @@ public class LiftDictionaryRegistry {
     }
 
     /**
-     * Remove a node from the registries, remove its UUID.
+     * The registry holding nodes of the same kind as {@code node}.
+     *
+     * The element type is captured by the type variable {@code T} rather than written
+     * as a wildcard: you can read from a {@code Map<UUID, ? extends AbstractLiftRoot>}
+     * but never {@code put} into one, because the compiler cannot prove the value
+     * matches the map's actual element type. With {@code T} it can, so callers get a
+     * map they may both read and write.
+     *
+     * The cast is unchecked but safe by construction: each branch below returns the map
+     * declared for exactly the runtime type matched, so the returned map only ever
+     * receives nodes of its own kind.
+     *
+     * @param node the node whose registry is wanted
+     * @return the registry for that kind of node, never {@code null}
+     * @throws IllegalStateException if the node is of an unknown kind
      */
-    protected void unregister(AbstractLiftRoot node) {
+    @SuppressWarnings("unchecked")
+    private <T extends AbstractLiftRoot> Map<UUID, T> getNodesById(T node) {
         Map<UUID, ? extends AbstractLiftRoot> map = null;
         switch (node) {
             case LiftEntry _ ->  map = entriesById;
@@ -602,10 +621,19 @@ public class LiftDictionaryRegistry {
             case LiftField _ ->  map = fieldsById;
             case LiftEtymology _ ->  map = etymologiesById;
             case LiftAnnotation _ ->  map = annotationsById;
+            case GrammaticalInfo _ ->  map = grammaticalInfosById;
             default -> throw new IllegalStateException(
                 "Unknown type: " + node.getClass()
             );
         }
+        return (Map<UUID, T>) map;
+    }
+
+    /**
+     * Remove a node from the registries, remove its UUID.
+     */
+    protected void unregister(AbstractLiftRoot node) {
+        Map<UUID, ? extends AbstractLiftRoot> map = getNodesById(node);
         if (!map.containsKey(node.getUUID())) {
             throw new IllegalArgumentException(
                 "Entry not found in registry: " + node.getUUID()
@@ -652,6 +680,9 @@ public class LiftDictionaryRegistry {
                 unregisterObjectMultiText(v.getForms());
             }
             case LiftTrait _ -> {
+            }
+            case GrammaticalInfo _ -> {
+                // no MultiText of its own, like a trait
             }
             case LiftReversal v -> {
                 unregisterObjectMultiText(v.getForms());
