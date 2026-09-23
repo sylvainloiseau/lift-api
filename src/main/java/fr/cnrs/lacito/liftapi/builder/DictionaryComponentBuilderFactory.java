@@ -33,14 +33,11 @@ import fr.cnrs.lacito.liftapi.model.LiftVariant;
  *      .build();
  * </pre>
  * 
- * Note that you cannot add an existing node to its parent with the fluent API. If you have,
- * say a LiftVariant {@code v} object that you want to add to a LiftEntry {@code e}, you 
- * should:
- * 
- * <ul>
- * <li>manually link the child to the parent ({@code e.addVariant(v)})</li>
- * <li> pass {@code v} to {@link LiftDictionaryRegistry#addToDictionaryLowLevel(AbstractLiftRoot)}.</li>
- * </ul>
+ * The builders create components. To add an <em>existing</em> component - one you
+ * detached, or built outside any dictionary - wire it to its parent with the model's
+ * own method ({@code e.addVariant(v)}): as long as {@code e} belongs to a dictionary,
+ * that registers {@code v} and everything under it. See the {@code model} package
+ * documentation for the attached/detached contract.
  *
  * The build() method will create and register the new Entry in the dictionary.
  * You may not need to assign the returned value to a variable:

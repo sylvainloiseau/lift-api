@@ -3,11 +3,9 @@ package fr.cnrs.lacito.liftapi.xml;
 import fr.cnrs.lacito.liftapi.LiftVersion;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
-import fr.cnrs.lacito.liftapi.LiftDictionaryLanguagesManager;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.internal.DictionaryMutator;
 import fr.cnrs.lacito.liftapi.model.*;
-import javafx.collections.ObservableList;
 
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -16,8 +14,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.xml.sax.Attributes;
 
@@ -45,9 +41,6 @@ public final class LiftXMLFactory {
         this.header = dictionary.getHeader();
         this.registry = dictionary.getLiftDictionaryRegistry();
         this.mutator = dictionary.getMutator();
-
-        // TODO Ugly hack n°1
-        this.dictionary.turnOffLanguageManager();
     }
 
     // TODO all these methods should be turned protected
@@ -68,18 +61,12 @@ public final class LiftXMLFactory {
     public LiftSense createSense(Attributes attributes, LiftSense s) {
         LiftSense sense = createSense(attributes);
         s.addSense(sense);
-        HasSense parent = s.getParent();
-        while (parent instanceof LiftSense parentSense) {
-            parent = parentSense.getParent();
-        }
-        sense.setParentEntry((LiftEntry) parent);
         return sense;
     }
 
     public LiftSense createSense(Attributes attributes, LiftEntry e) {
         LiftSense sense = createSense(attributes);
         e.addSense(sense);
-        sense.setParentEntry(e);
         return sense;
     }
 
@@ -611,39 +598,17 @@ public final class LiftXMLFactory {
         }
     }
 
+    /**
+     * The languages of the dictionary used to be collected here, in one pass over every
+     * MultiText, because the factory pushed a language manager into each MultiText as
+     * it was created - which started counting occurrences on an entry that was not yet
+     * part of the dictionary, and forced the whole parse to run with the dictionary's
+     * language managers switched off. Registration now assigns the manager, and learns
+     * the languages of the subtree it is adopting, so there is nothing left to do here
+     * and nothing left to switch off.
+     */
     protected void endDocument() {
         dereferenceHasRefTargets();
-
-        // TODO Ugly hack n°1
-        this.dictionary.turnOnLanguageManager();
-        createLanguages(registry.getMetaText(), dictionary.getMetaLanguageManager());
-        createLanguages(registry.getObjectText(), dictionary.getObjectLanguageManager());
-    }
-
-	private void createLanguages(ObservableList<MultiText> multiTexts, LiftDictionaryLanguagesManager languageManager) {
-        // Map<String, Long> languageCounts = multiTexts
-        //     .stream()
-        //     .flatMap(x -> x.getForms().stream())
-        //     .collect(Collectors.groupingBy(x -> x.getLang(), Collectors.counting()));;
-
-        // for (String lang : languageCounts.keySet()) {
-        //     languageManager.addLanguage(lang);
-        //     languageManager.setLanguageOccurrence(lang, languageCounts.get(lang));
-        // }
-        Set<String> languages = multiTexts
-             .stream()
-             .flatMap(
-                x -> x.getForms().stream()
-             )
-             .map(y -> y.getLang())
-             .collect(Collectors.toSet());
-
-        for (String lang : languages) {
-             languageManager.addLanguage(lang);
-        }
-        for (MultiText m : multiTexts) {
-            m.setLanguagesManager(languageManager);
-        }
     }
 
     private void dereferenceHasRefTargets() {

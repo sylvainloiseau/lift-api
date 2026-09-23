@@ -111,4 +111,20 @@ public final class LiftAnnotation extends AbstractLiftRoot implements HasType {
         return whenProperty;
     }
 
+
+    /**
+     * An annotation can hang off a component, but also off a {@link MultiText} or a
+     * {@link Form}, neither of which is an {@code AbstractLiftRoot}. In the
+     * {@code MultiText} case the chain continues through the text's own owner; in the
+     * {@code Form} case it stops here, which is the known reason form-level annotations
+     * are never registered (see {@code DictionaryCensusTest}).
+     */
+    @Override
+    public AbstractLiftRoot getParentNode() {
+        return switch (parent) {
+            case AbstractLiftRoot r -> r;
+            case MultiText m -> m.getParent();
+            case null, default -> null;
+        };
+    }
 }

@@ -131,4 +131,9 @@ public final class Feature extends AbstractExtensibleWithField {
         return getMainMultiText();
     }
 
+
+    @Override
+    public AbstractLiftRoot getParentNode() {
+        return parentFeatureSet;
+    }
 }

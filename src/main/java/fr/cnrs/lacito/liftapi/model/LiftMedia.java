@@ -33,4 +33,9 @@ public final class LiftMedia
     public MultiText getLabel() {
         return getMainMultiText();
     }
+
+    @Override
+    public AbstractLiftRoot getParentNode() {
+        return parent;
+    }
 }

@@ -143,6 +143,7 @@ public final class LiftVariant
     public void addPronunciation(LiftPronunciation pronounciation) {
         pronunciationsProperty.add(pronounciation);
         pronounciation.setParent(this);
+        adopted(pronounciation);
     }
 
     // TODO a bug from the LIFT data model: should'nt several variants with the same lang be possible?
@@ -160,6 +161,7 @@ public final class LiftVariant
     public void addRelation(LiftRelation relation) {
         this.relationsProperty.add(relation);
         relation.setParent(this);
+        adopted(relation);
     }
 
     public List<LiftRelation> getRelations() {
@@ -174,4 +176,9 @@ public final class LiftVariant
         return relationsProperty;
     }
 
+
+    @Override
+    public AbstractLiftRoot getParentNode() {
+        return parent;
+    }
 }

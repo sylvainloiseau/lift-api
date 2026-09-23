@@ -12,6 +12,10 @@ import java.util.function.IntSupplier;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 
+import fr.cnrs.lacito.liftapi.internal.DictionaryMutator;
+import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
+import fr.cnrs.lacito.liftapi.model.LiftEntry;
+
 import org.junit.jupiter.api.Test;
 import org.xml.sax.Attributes;
 import org.xml.sax.helpers.DefaultHandler;
@@ -68,6 +72,8 @@ public class DictionaryCensusTest {
         ElementCount inFile = countElements(file);
         LiftDictionaryRegistry registry = Utils.loadDictionaryForTest(file)
             .getLiftDictionaryRegistry();
+
+        assertEveryComponentIsRegistered(registry, resource);
 
         List<String> mismatches = new ArrayList<>();
 
@@ -135,6 +141,50 @@ public class DictionaryCensusTest {
                 resource +
                 " but missing from (or duplicated in) the registry"
         );
+    }
+
+    /**
+     * Every component hanging off an entry must carry a UUID.
+     *
+     * This is the general form of the whole class of bug the counts above catch case by
+     * case: a component sitting in the object graph that the dictionary knows nothing
+     * about. Counting per element type only catches an omission in the traversal;
+     * walking the graph catches any escape route, whatever the mechanism - a component
+     * wired in through a public {@code addX()}, a child kind nobody thought to
+     * enumerate, a registration silently skipped.
+     */
+    private static void assertEveryComponentIsRegistered(
+        LiftDictionaryRegistry registry,
+        String resource
+    ) {
+        List<String> unregistered = new ArrayList<>();
+        for (LiftEntry entry : registry.getEntries()) {
+            collectUnregistered(entry, entry, unregistered);
+        }
+        assertEquals(
+            List.of(),
+            unregistered,
+            "Components reachable from an entry of " +
+                resource +
+                " that were never registered"
+        );
+    }
+
+    private static void collectUnregistered(
+        AbstractLiftRoot node,
+        LiftEntry entry,
+        List<String> unregistered
+    ) {
+        if (node.getUUID() == null && unregistered.size() < 20) {
+            unregistered.add(
+                node.getClass().getSimpleName() +
+                    " under entry " +
+                    entry.getId().orElse("<no id>")
+            );
+        }
+        for (AbstractLiftRoot child : DictionaryMutator.childrenOf(node)) {
+            collectUnregistered(child, entry, unregistered);
+        }
     }
 
     private static void check(

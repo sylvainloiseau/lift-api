@@ -31,6 +31,7 @@ public abstract sealed class AbstractExtensibleWithField
         );
         fieldsProperty.put(name, f);
         f.setParent(this);
+        adopted(f);
     }
 
     @Override

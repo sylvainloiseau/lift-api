@@ -59,8 +59,14 @@ public class LiftDictionaryRegistry {
     private final LiftDictionaryUUIDManager uuidManager =
         new LiftDictionaryUUIDManager();
 
-    private LiftDictionaryLanguagesManager objectLanguagesManager;
-    private LiftDictionaryLanguagesManager metaLanguagesManager;
+    /**
+     * The dictionary these registries belong to.
+     *
+     * Held so that registration can reach the dictionary's language managers and stamp
+     * each entry with its owner, which is what
+     * {@link AbstractLiftRoot#getOwningDictionary()} resolves against.
+     */
+    private final LiftDictionary owner;
 
     /**
      * Map from the LIFT id of a referenced component to the components pointing at it.
@@ -383,10 +389,24 @@ public class LiftDictionaryRegistry {
         return entriesById;
     }
 
-    protected LiftDictionaryRegistry() {}
+    protected LiftDictionaryRegistry(LiftDictionary owner) {
+        if (owner == null) {
+            throw new IllegalArgumentException("owner cannot be null");
+        }
+        this.owner = owner;
+    }
 
+    /**
+     * Add an entry back at a known position: used when undoing a deletion.
+     *
+     * @throws IllegalArgumentException if the entry is already in this dictionary, or
+     *         if {@code index} is past the end of the entry list
+     */
     public void addToDictionaryLowLevel(LiftEntry e, int index) {
         if (index > entries.size()) throw new IllegalArgumentException("Index is greater than array size (" + index + ", " + entries.size() + ").");
+        if (e.getUUID() != null) throw new IllegalArgumentException(
+            "This entry is already registered; its position cannot be set this way."
+        );
         addToDictionaryLowLevel(e);
         // TODO ugly hack...
         entries.removeLast();
@@ -414,15 +434,67 @@ public class LiftDictionaryRegistry {
      *
      * All subnodes of the node (added with addX method, such as {@link
      * LiftEntry#addSense(LiftSense sense)}) will also be added to the dictionary.
+     *
+     * Adopting a subtree is idempotent for components this dictionary already holds, so
+     * a subtree that was detached without being unregistered - a move within the
+     * dictionary, an undo - can simply be attached again. A component carrying a UUID
+     * that this dictionary does not know is refused: it belongs to another dictionary,
+     * and must be released with {@link #removeFromDictionary(AbstractLiftRoot)} first.
+     *
+     * @throws IllegalArgumentException if {@code node} is not a {@link LiftEntry} and
+     *         has no parent, or if it belongs to another dictionary
      */
     public void addToDictionaryLowLevel(AbstractLiftRoot node) {
-        // 1. register the node and its MultiText(s)
-        register(node);
+        // This is where the "a node must have a parent" invariant can finally be
+        // stated: AbstractLiftRoot.getParentNode() makes the chain uniform, and by the
+        // time a subtree is adopted it is already wired to its parent. Registering an
+        // orphan would put a component in the registries that no traversal can ever
+        // reach again - not on delete, not on save.
+        if (!(node instanceof LiftEntry) && node.getParentNode() == null) {
+            throw new IllegalArgumentException(
+                "Only an entry may be adopted without a parent; " +
+                    node.getClass().getSimpleName() + " must be wired to its parent first."
+            );
+        }
+        adoptRecursively(node);
+    }
+
+    private void adoptRecursively(AbstractLiftRoot node) {
+        // 1. register the node and its MultiText(s), unless we already hold it
+        if (!isRegisteredHere(node)) {
+            register(node);
+        }
         // 2. recursively add its descendants. The child enumeration lives in
         // DictionaryMutator so that this traversal and unregisterRec cannot drift.
         for (AbstractLiftRoot child : DictionaryMutator.childrenOf(node)) {
-            addToDictionaryLowLevel(child);
+            adoptRecursively(child);
         }
+    }
+
+    /**
+     * Whether this dictionary already holds {@code node}.
+     *
+     * A UUID alone does not prove it: it only says the component was registered
+     * <em>somewhere</em>. The registry is asked for the mapping so that a component
+     * still owned by another dictionary is rejected rather than silently skipped, which
+     * would leave it wired into this dictionary but absent from every lookup.
+     *
+     * @throws IllegalArgumentException if the node carries a UUID this dictionary does
+     *         not know
+     */
+    private boolean isRegisteredHere(AbstractLiftRoot node) {
+        UUID uuid = node.getUUID();
+        if (uuid == null) {
+            return false;
+        }
+        if (getNodesById(node).get(uuid) == node) {
+            return true;
+        }
+        throw new IllegalArgumentException(
+            "This node is registered in another dictionary: " +
+                node.getClass().getSimpleName() + " " + uuid +
+                ". Release it with removeFromDictionary() before attaching it here."
+        );
     }
 
     /**
@@ -438,8 +510,14 @@ public class LiftDictionaryRegistry {
      * <li>Add a LIFT ID to the node (for entry and sense) if it doesn't have one.</li>
      * </ul>
      *
+     * The node must not already be registered; callers adopting a whole subtree go
+     * through {@link #addToDictionaryLowLevel(AbstractLiftRoot)}, which skips the
+     * components this dictionary already holds. The "a node other than an entry must
+     * have a parent" invariant is checked there too, because the builders deliberately
+     * register a component before wiring it (registration is what can fail, and wiring
+     * first would leave the parent holding a child the dictionary does not know about).
+     *
      * @throws IllegalArgumentException if the node already as an UUID
-     * @throws IllegalArgumentException (TODO) if the node is not a LiftEntry and has no parent
      */
     public void register(AbstractLiftRoot node) {
         if (node.getUUID() != null) {
@@ -450,19 +528,15 @@ public class LiftDictionaryRegistry {
         UUID uuid = getNewUUID();
         node.setUUID(uuid);
 
-        // TODO : put getParent in AbstractLiftRoot
-        // if (!(node instanceof LiftEntry)  && node.getParent() == null) {
-        //     throw new IllegalArgumentException(
-        //         "Node should have a parent"
-        //     );
-        // }
-
         getNodesById(node).put(uuid, node);
 
         // Only entries and senses carry a LIFT id of their own; every other kind of
         // node needed nothing beyond the registration above.
         switch (node) {
             case LiftEntry e -> {
+                // The one back reference from the component graph to the dictionary:
+                // everything below this entry resolves getOwningDictionary() through it.
+                e.setOwningDictionary(owner);
                 if (e.getId().isEmpty()) {
                     String uuidS = e.getUUID().toString();
                     e.setId(uuidS);
@@ -566,13 +640,25 @@ public class LiftDictionaryRegistry {
     }
 
     public void registerObjectMultiText(MultiText element) {
-        registerMultiText(element, objectTextById, objectLanguagesManager);
+        registerMultiText(element, objectTextById, owner.getObjectLanguageManager());
     }
 
     public void registerMetaMultiText(MultiText element) {
-        registerMultiText(element, metaTextById, metaLanguagesManager);
+        registerMultiText(element, metaTextById, owner.getMetaLanguageManager());
     }
 
+    /**
+     * Register a MultiText and hand it the language manager it must report to.
+     *
+     * A MultiText created through the builders is empty at this point, so the loop
+     * below does nothing and the manager keeps refusing forms in languages the
+     * dictionary does not declare - which is the guard the editing UI relies on. A
+     * MultiText that arrives already filled, on the other hand, comes from a subtree
+     * built outside the dictionary: the XML reader assembling an entry, or a component
+     * moved in from elsewhere. Its languages are part of what is being adopted, so they
+     * are declared here rather than rejected. This is what replaced the parse-wide
+     * "turn the language manager off and recount at the end" hack.
+     */
     private void registerMultiText(MultiText element,
         ObservableMap<UUID, MultiText> textById,
         LiftDictionaryLanguagesManager languagesManager
@@ -583,6 +669,11 @@ public class LiftDictionaryRegistry {
         UUID uuid = getNewUUID();
         element.setUUID(uuid);
         textById.put(uuid, element);
+        for (String lang : element.getLangs()) {
+            if (!languagesManager.hasLanguage(lang)) {
+                languagesManager.addLanguage(lang);
+            }
+        }
         element.setLanguagesManager(languagesManager);
     }
 
@@ -660,6 +751,9 @@ public class LiftDictionaryRegistry {
         // TODO inefficient
         if (node instanceof LiftEntry e) {
             entries.removeIf(x -> x == e);
+            // Mirrors register(): the subtree below this entry becomes detached, so
+            // mutating it no longer touches this dictionary.
+            e.setOwningDictionary(null);
         }
 
         switch (node) {
@@ -775,18 +869,24 @@ public class LiftDictionaryRegistry {
     }
 
     /**
-     * Completely remove a node from the dictionary.
+     * Completely remove a node from the dictionary: unlink it from its parent
+     * <em>and</em> unregister it.
      *
-     * The node will not be seen by its parent
-     * (for instance a sense will not be seen anymore by its parent entry).
+     * This is the counterpart of {@link AbstractLiftRoot#detach()}, and the difference
+     * between the two matters:
      *
-     * The node (and all its descendants) will be removed from the dictionary registry.
+     * <ul>
+     * <li>{@code detach()} only unlinks. The subtree keeps its UUIDs and stays in these
+     * registries, so it can be attached again somewhere else in <em>this</em>
+     * dictionary - a move, an undo - and re-attaching costs nothing.</li>
+     * <li>{@code removeFromDictionary()} also unregisters. The subtree comes back
+     * UUID-free and can be attached anywhere, including a different dictionary.</li>
+     * </ul>
      *
-     * The node will keep its reference towards its child, and the child towards the node.
+     * In both cases the node keeps its reference towards its children, and the children
+     * towards it.
      *
-     * This subtree can be registered again in this dictionary or another.
-     *
-     * @param node
+     * @param node the root of the subtree to remove
      */
     public void removeFromDictionary(AbstractLiftRoot node) {
         // remove the link parent -> self
@@ -802,12 +902,5 @@ public class LiftDictionaryRegistry {
 
     public int nEntries() {
         return entriesById.values().size();
-    }
-
-    protected void setLanguagesManager(
-            LiftDictionaryLanguagesManager objectLanguagesManager,
-            LiftDictionaryLanguagesManager metaLanguagesManager) {
-        this.objectLanguagesManager = objectLanguagesManager;
-        this.metaLanguagesManager = metaLanguagesManager;
     }
 }

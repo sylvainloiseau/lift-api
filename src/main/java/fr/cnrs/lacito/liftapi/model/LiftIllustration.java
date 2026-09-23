@@ -33,4 +33,9 @@ public final class LiftIllustration
     public String getHref() {
         return this.href;
     }
+
+    @Override
+    public AbstractLiftRoot getParentNode() {
+        return parent;
+    }
 }

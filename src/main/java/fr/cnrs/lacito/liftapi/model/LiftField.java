@@ -75,4 +75,9 @@ public final class LiftField extends AbstractExtensibleWithoutField {
         return new LiftField(name);
     }
 
+
+    @Override
+    public AbstractLiftRoot getParentNode() {
+        return parent;
+    }
 }

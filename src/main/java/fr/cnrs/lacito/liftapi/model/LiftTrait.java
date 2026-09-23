@@ -401,10 +401,16 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
     public void addAnnotation(LiftAnnotation a) {
         this.annotations.add(a);
         a.setParent(this);
+        adopted(a);
     }
 
     public List<LiftAnnotation> getAnnotations() {
         return annotations;
     }
 
+
+    @Override
+    public AbstractLiftRoot getParentNode() {
+        return (AbstractLiftRoot) parent;
+    }
 }

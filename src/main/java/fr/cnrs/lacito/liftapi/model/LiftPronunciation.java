@@ -37,6 +37,7 @@ public final class LiftPronunciation extends AbstractExtensibleWithField {
     public void addMedia(LiftMedia m) {
         mediasProperty.add(m);
         m.setParent(this);
+        adopted(m);
     }
 
     public ListProperty<LiftMedia> mediasProperty() {
@@ -45,5 +46,10 @@ public final class LiftPronunciation extends AbstractExtensibleWithField {
 
     public static LiftPronunciation create() {
         return new LiftPronunciation();
+    }
+
+    @Override
+    public AbstractLiftRoot getParentNode() {
+        return (AbstractLiftRoot) parent;
     }
 }

@@ -75,6 +75,11 @@ public final class DictionaryMutator {
      * registration is what can fail (a duplicate LIFT id, for instance). Wiring first
      * would leave the parent holding a child the dictionary does not know about.
      *
+     * The {@code addX} method that {@link #wire} calls is itself self-registering now
+     * (see {@code AbstractLiftRoot.adopted}), so the child is offered to the registry a
+     * second time; adoption is idempotent for a component this dictionary already
+     * holds, which is what makes the two safe to combine.
+     *
      * @param child the newly created component
      * @param parent the component it belongs to; ignored for a {@link LiftEntry},
      *        which has no parent
@@ -92,7 +97,13 @@ public final class DictionaryMutator {
      * The SAX reader assembles a whole {@code <entry>} - senses, examples, traits and
      * all - before the entry is complete, so it cannot register components one at a
      * time as the builders do. The parent and child references are already wired by
-     * the time this is called; only registration remains.
+     * the time this is called; only registration remains. While the entry is being
+     * built it belongs to no dictionary, so none of the {@code addX} calls along the
+     * way register anything: this single traversal still does all the work, and no
+     * builder is allocated during a parse.
+     *
+     * It is also the path every {@code addX} on an attached component takes, and it is
+     * idempotent for components already registered here.
      *
      * @param root the root of the subtree to adopt
      */

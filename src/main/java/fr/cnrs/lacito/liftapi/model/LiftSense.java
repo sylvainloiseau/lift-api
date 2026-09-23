@@ -66,14 +66,22 @@ public final class LiftSense
         return parent;
     }
 
-    private LiftEntry parentEntry;
-
+    /**
+     * The entry this sense belongs to, directly or through enclosing subsenses.
+     *
+     * This used to be a second, independently stored link, set by some callers and not
+     * by others, so a sense could disagree with itself about which entry it was in.
+     * It is now derived from the one parent chain and cannot desync.
+     *
+     * @return the enclosing entry, or {@code null} if this sense is not wired into one
+     */
     public LiftEntry getParentEntry() {
-        return parentEntry;
-    }
-
-    public void setParentEntry(LiftEntry parent) {
-        this.parentEntry = parent;
+        for (AbstractLiftRoot n = getParentNode(); n != null; n = n.getParentNode()) {
+            if (n instanceof LiftEntry e) {
+                return e;
+            }
+        }
+        return null;
     }
 
     public LiftSense() {}
@@ -91,26 +99,26 @@ public final class LiftSense
     /**
      * Attach an existing grammatical information to this sense.
      *
-     * Like every other {@code addX}/{@code setX} on the model, this only wires the two
-     * components together: registering the component in the dictionary is the builder's
-     * job. Use {@code DictionaryComponentBuilderFactory.grammaticalInfo(sense, pos)} to
-     * create one that is part of the dictionary.
+     * Like every other {@code addX}/{@code setX} on the model, this wires the two
+     * components together and then registers {@code gi} in the dictionary - but only if
+     * this sense is itself attached to one. On a detached sense it merely wires, and
+     * registration happens later, when the subtree is attached.
      *
      * @param gi the grammatical information to attach
      */
     public void setGrammaticalInfo(GrammaticalInfo gi) {
         this.grammaticalInfo = Optional.of(gi);
         gi.setParent(this);
+        adopted(gi);
     }
 
     /**
      * Create a grammatical information for the given part of speech and attach it.
      *
-     * The component created here is <em>not</em> registered in the dictionary, because
-     * a sense has no way to reach it. Prefer
-     * {@code DictionaryComponentBuilderFactory.grammaticalInfo(sense, pos)}, which
-     * registers it; this overload exists for the XML reader, which registers the whole
-     * subtree once an entry is complete.
+     * Note that this replaces any previous grammatical information without taking it
+     * out of the dictionary, which leaves a registered component nothing refers to.
+     * {@code DictionaryComponentBuilderFactory.grammaticalInfo(sense, pos)} handles
+     * that; this overload exists for the XML reader, which builds each sense once.
      *
      * @param value the part of speech
      */
@@ -131,27 +139,32 @@ public final class LiftSense
     public void addRelation(LiftRelation relation) {
         this.relationsProperty.add(relation);
         relation.setParent(this);
+        adopted(relation);
     }
 
     public void addExample(LiftExample example) {
         this.examplesProperty.add(example);
         example.setParent(this);
+        adopted(example);
     }
 
     @Override
     public void addSense(LiftSense sense) {
         subSensesProperty.add(sense);
         sense.setParent(this);
+        adopted(sense);
     }
 
     public void addIllustration(LiftIllustration illustration) {
         illustrationsProperty.add(illustration);
         illustration.setParent(this);
+        adopted(illustration);
     }
 
     public void addReversal(LiftReversal reversal) {
         reversalsProperty.add(reversal);
         reversal.setParent(this);
+        adopted(reversal);
     }
 
     public void setOrder(int order) {
@@ -204,5 +217,10 @@ public final class LiftSense
 
     public static LiftSense create() {
         return new LiftSense();
+    }
+
+    @Override
+    public AbstractLiftRoot getParentNode() {
+        return (AbstractLiftRoot) parent;
     }
 }

@@ -57,6 +57,7 @@ public final class LiftReversal
     public void addReversal(LiftReversal reversal) {
         reversalsProperty.add(reversal);
         reversal.setParent(this);
+        adopted(reversal);
     }
 
     public List<LiftReversal> getReversals() {
@@ -82,8 +83,19 @@ public final class LiftReversal
         return main;
     }
 
+    /**
+     * Set the {@code <main>} of this reversal.
+     *
+     * The back reference was missing here, which left the nested reversal unreachable
+     * from its own parent even though {@code childrenOf} reaches it from above: it
+     * could be registered but never detached.
+     */
     public void setMain(LiftReversal main) {
         this.main = main;
+        if (main != null) {
+            main.setParent(this);
+            adopted(main);
+        }
     }
 
     public ObjectProperty<Feature> typeProperty() {
@@ -94,4 +106,9 @@ public final class LiftReversal
         this.parent = parent;
     }
 
+
+    @Override
+    public AbstractLiftRoot getParentNode() {
+        return (AbstractLiftRoot) parent;
+    }
 }

@@ -308,4 +308,9 @@ public final class FeatureSet extends AbstractExtensibleWithField {
             }
         );
     }
+
+    @Override
+    public AbstractLiftRoot getParentNode() {
+        return parent;
+    }
 }

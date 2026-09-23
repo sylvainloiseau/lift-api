@@ -80,4 +80,9 @@ public final class LiftNote
         return new LiftNote();
     }
 
+
+    @Override
+    public AbstractLiftRoot getParentNode() {
+        return parent;
+    }
 }

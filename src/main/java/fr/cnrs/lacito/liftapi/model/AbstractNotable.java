@@ -40,6 +40,7 @@ public abstract sealed class AbstractNotable
         }
         notesProperty.put(type.getId(), n);
         n.setParent(this);
+        adopted(n);
     }
 
     /**

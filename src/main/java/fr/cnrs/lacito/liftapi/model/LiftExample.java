@@ -114,4 +114,9 @@ public final class LiftExample extends AbstractNotable {
     public MultiText getOrCreateTranslation(Feature type) {
         return translationsProperty.computeIfAbsent(type, t -> new MultiText(this));
     }
+
+    @Override
+    public AbstractLiftRoot getParentNode() {
+        return parent;
+    }
 }

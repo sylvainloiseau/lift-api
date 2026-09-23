@@ -415,4 +415,15 @@ public final class LiftHeader extends AbstractLiftRoot {
     public FeatureSet getAnnotationTypeManager() {
         return annotationTypesManager;
     }
+
+    /**
+     * The header is a root of its own: it hangs off the dictionary, not off an entry,
+     * and is therefore never part of the registry.
+     *
+     * @return always {@code null}
+     */
+    @Override
+    public AbstractLiftRoot getParentNode() {
+        return null;
+    }
 }

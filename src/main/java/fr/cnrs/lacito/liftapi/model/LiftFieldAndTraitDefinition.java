@@ -253,4 +253,9 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
             ", definitionType=" + definitionType +
             '}';
     }
+
+    @Override
+    public AbstractLiftRoot getParentNode() {
+        return parent;
+    }
 }

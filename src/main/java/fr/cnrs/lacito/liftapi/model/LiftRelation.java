@@ -95,4 +95,9 @@ public final class LiftRelation
     public static LiftRelation create() {
         return new LiftRelation();
     }
+
+    @Override
+    public AbstractLiftRoot getParentNode() {
+        return (AbstractLiftRoot) parent;
+    }
 }

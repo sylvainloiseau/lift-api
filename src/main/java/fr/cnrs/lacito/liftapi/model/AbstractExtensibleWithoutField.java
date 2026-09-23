@@ -33,11 +33,13 @@ public abstract sealed class AbstractExtensibleWithoutField
     public void addTrait(LiftTrait t) {
         traitsProperty.add(t);
         t.setParent(this);
+        adopted(t);
     }
 
     public void addAnnotation(LiftAnnotation a) {
         annotationsProperty.add(a);
         a.setParent(this);
+        adopted(a);
     }
 
     public void setDateCreated(String value) {

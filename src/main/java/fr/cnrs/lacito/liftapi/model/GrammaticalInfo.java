@@ -39,8 +39,8 @@ public final class GrammaticalInfo
     /**
      * Create a grammatical information for the given part of speech.
      *
-     * Wiring it to a sense and registering it in the dictionary is the job of
-     * {@code GrammaticalInfoBuilder}; this only allocates the component.
+     * This only allocates the component: it is detached, and stays inert until it is
+     * wired to a sense that belongs to a dictionary.
      *
      * @param value the part of speech
      * @return the new component, attached to nothing
@@ -74,6 +74,7 @@ public final class GrammaticalInfo
     public void addTrait(LiftTrait t) {
         traits.add(t);
         t.setParent(this);
+        adopted(t);
     }
 
     @Override
@@ -107,5 +108,10 @@ public final class GrammaticalInfo
         throw new UnsupportedOperationException(
             "GrammaticalInfo does not have a main MultiText"
         );
+    }
+
+    @Override
+    public AbstractLiftRoot getParentNode() {
+        return parent;
     }
 }

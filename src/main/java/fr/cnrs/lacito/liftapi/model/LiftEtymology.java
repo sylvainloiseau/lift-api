@@ -124,4 +124,9 @@ public final class LiftEtymology
     public static LiftEtymology create(Feature type, String source) {
         return new LiftEtymology(type, source);
     }
+
+    @Override
+    public AbstractLiftRoot getParentNode() {
+        return parent;
+    }
 }

@@ -1,3 +1,29 @@
+Two things remain open, both recorded in the code rather than just in this conversation:
+
+- Form-level annotations — an <annotation> inside a <form>/<gloss> is held by the Form, which isn’t an AbstractLiftRoot, so nothing can reach it. Never registered; its MultiText never counts toward the dictionary’s languages. Documented on DictionaryCensusTest, whose SAX counter excludes precisely those annotations so the rest of the assertion stays strict.
+- The node→MultiTexts switch is still duplicated between register() and unregister() — the last surviving pair of the kind that caused the original defects. Extracting it the way childrenOf was extracted would also be the natural route to fixing the annotation gap.
+
+
+The two creation channels (builder, and the "low-level" one used by the SaxHandler) are
+no longer a way to get an inconsistent dictionary, and it cost nothing at parse time.
+Rather than forcing every component through a builder, the invariant moved to attach
+time: `addX()` registers its argument if, and only if, the receiver is attached to a
+dictionary (`AbstractLiftRoot.getOwningDictionary()` / `adopted()`). During a parse an
+entry is detached until `</entry>`, so no `addX()` registers anything and the single
+`adoptSubtree` traversal still does all the work — no builder is allocated. Loading
+20240828Lift.lift is unchanged (min 19 / median 21-23 ms before, min 16-17 / median
+22-23 ms after, 15 runs each).
+
+Still worth revisiting: whether `addX()` should become package-private by moving the
+mutation core into `model`. The attach-time invariant already makes an unregistered
+component sitting in the tree impossible; visibility lockdown would additionally stop
+someone from building a *detached* component on purpose, and that is something we want
+to keep supporting (cut/paste, undo, moving a sense between entries, and the SAX
+parser's own build-then-adopt pattern all depend on it).
+
+more clear: wire for parent<->child, register for uuid in the dictionary
+
+
 - in the builder: element should not be in super constructor since it prevents checking argument or computing value before creating the element
 - mode : strict vs discoverable
     - on field and trait creation; cf. code on both class on setParent :

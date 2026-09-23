@@ -64,7 +64,7 @@ public final class LiftDictionary {
 
     protected final LiftHeader header;
 
-    private LiftDictionaryRegistry registry;
+    private final LiftDictionaryRegistry registry;
 
     protected LiftVersion liftVersion = DEFAULT_VERSION;
 
@@ -79,16 +79,6 @@ public final class LiftDictionary {
     private final LiftDictionaryCounterManager counter;
 
     private final DictionaryMutator mutator;
-
-    // TODO Ugly hack n°1
-    public void turnOffLanguageManager() {
-        registry.setLanguagesManager(null, null);
-    }
-
-    // TODO Ugly hack n°1
-    public void turnOnLanguageManager() {
-        registry.setLanguagesManager(objectLanguagesManager, metaLanguagesManager);
-    }
 
     // Getters/Setters
 
@@ -182,9 +172,11 @@ public final class LiftDictionary {
     // Constructors
 
     protected LiftDictionary() {
-        this.registry = new LiftDictionaryRegistry();
+        // The registry reads the language managers and stamps entries with their owner
+        // through this reference. Both managers are field initialisers, so they are
+        // already in place by the time this constructor body runs.
+        this.registry = new LiftDictionaryRegistry(this);
         this.mutator = new DictionaryMutator(this.registry);
-        registry.setLanguagesManager(objectLanguagesManager, metaLanguagesManager);
         this.header = new LiftHeader();
         this.componentBuilder = new DictionaryComponentBuilderFactory(this);
         counter = new LiftDictionaryCounterManager(this);
