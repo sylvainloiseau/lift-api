@@ -43,23 +43,24 @@ import javafx.collections.ObservableMap;
 /**
  * The single place where a dictionary is modified.
  *
- * Adding a component means doing two distinct things: wiring the parent and child
- * references to each other, and registering the component in the dictionary's indexes.
- * There are also two ways components get created - the fluent {@code builder} package
- * and the lower-level {@code xml} factory used while parsing - and they used to perform
- * those two jobs independently, in different orders, with their own copy of the "walk
- * the children" logic. Every copy was free to drift from the others, and they did:
- * children attached before a failed registration left a half-built graph, reversals were
- * registered twice, and MultiTexts were unregistered twice, corrupting the language
- * counters.
+ * This package is module-private, so it cannot be reached from outside the library. In order
+ * to modify a dictionary, use the model API in {@code fr.cnrs.lacito.liftapi.model} or the
+ * builder API in {@code fr.cnrs.lacito.liftapi.builder}.
+ *
+ * Please note the following terminological choices:
+ * <ul>
+ * <li><em>wiring</em> means creating the parent-child references between components</li>
+ * <li><em>registring</em> means adding the component to the dictionary's internal indexes</li>
+ * <li><em>attaching</em> means wiring+registering</li>
+ * <li><em>adding</em> </li>
+ * <li><em>adopting</em> means wiring and registering subcomponents if needed, idempotent</li>
+ * </ul>
  *
  * This class is the common core every path goes through. In particular
  * {@link #childrenOf(AbstractLiftRoot)} is the <em>only</em> definition of what a
- * component's children are, so the add and remove traversals cannot disagree again.
+ * component's children are, so the add and remove traversals cannot disagree.
  *
- * <h2>How callers reach it</h2>
- *
- * They mostly do not. The two operations the rest of the library needs are
+ * The two operations the rest of the library needs are
  * {@link #adoptSubtree(AbstractLiftRoot)} and {@link #releaseSubtree(AbstractLiftRoot)},
  * and both are called for you:
  *
@@ -524,8 +525,10 @@ public final class DictionaryMutator {
             case LiftIllustration i -> List.of(i.getLabel());
             case LiftField f -> List.of(f.getText());
             case LiftAnnotation a -> List.of(a.getText());
-            case LiftEntry _, LiftVariant _, LiftTrait _, GrammaticalInfo _,
-                 LiftReversal _, LiftPronunciation _, LiftEtymology _ -> List.of();
+            case LiftEntry e -> List.of(e.getCitations());
+            case LiftVariant _, LiftTrait _, GrammaticalInfo _,
+                 LiftReversal _, LiftPronunciation _ -> List.of();
+            case LiftEtymology y -> List.of(y.getGlosses());
             default -> throw new IllegalStateException(
                 "Unknown type: " + node.getClass()
             );
