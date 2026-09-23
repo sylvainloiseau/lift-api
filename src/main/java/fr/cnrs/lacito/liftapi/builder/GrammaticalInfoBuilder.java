@@ -103,10 +103,7 @@ public final class GrammaticalInfoBuilder
         // A sense holds a single grammatical information. Take any previous one out of
         // the dictionary first, so that replacing it does not leave a registered
         // component nothing refers to.
-        parent
-            .getGrammaticalInfo()
-            .filter(existing -> existing.getUUID() != null)
-            .ifPresent(registry::removeFromDictionary);
+        parent.deleteGrammaticalInfo();
         super.register();
         return element;
     }

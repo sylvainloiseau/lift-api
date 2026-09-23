@@ -181,4 +181,34 @@ public final class LiftVariant
     public AbstractLiftRoot getParentNode() {
         return parent;
     }
+
+    // --------------------------------------------------------
+    // Deleting sub-components
+    // --------------------------------------------------------
+
+    /**
+     * Remove a pronunciation from this variant, unregistering it if this variant
+     * belongs to a dictionary.
+     *
+     * @param pronounciation a pronunciation of this variant
+     */
+    @Override
+    public void deletePronunciation(LiftPronunciation pronounciation) {
+        requireChild(pronounciation, pronunciationsProperty.contains(pronounciation));
+        orphaned(pronounciation);
+        pronounciation.detach();
+    }
+
+    /**
+     * Remove a relation from this variant, unregistering it if this variant belongs to
+     * a dictionary.
+     *
+     * @param relation a relation of this variant
+     */
+    @Override
+    public void deleteRelation(LiftRelation relation) {
+        requireChild(relation, relationsProperty.contains(relation));
+        orphaned(relation);
+        relation.detach();
+    }
 }

@@ -52,4 +52,20 @@ public final class LiftPronunciation extends AbstractExtensibleWithField {
     public AbstractLiftRoot getParentNode() {
         return (AbstractLiftRoot) parent;
     }
+
+    // --------------------------------------------------------
+    // Deleting sub-components
+    // --------------------------------------------------------
+
+    /**
+     * Remove a media from this pronunciation, unregistering it if this pronunciation
+     * belongs to a dictionary.
+     *
+     * @param m a media of this pronunciation
+     */
+    public void deleteMedia(LiftMedia m) {
+        requireChild(m, mediasProperty.contains(m));
+        orphaned(m);
+        m.detach();
+    }
 }

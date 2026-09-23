@@ -413,4 +413,21 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
     public AbstractLiftRoot getParentNode() {
         return (AbstractLiftRoot) parent;
     }
+
+    // --------------------------------------------------------
+    // Deleting sub-components
+    // --------------------------------------------------------
+
+    /**
+     * Remove an annotation from this trait, unregistering it if this trait belongs to a
+     * dictionary.
+     *
+     * @param a an annotation of this trait
+     */
+    @Override
+    public void deleteAnnotation(LiftAnnotation a) {
+        requireChild(a, annotations.contains(a));
+        orphaned(a);
+        a.detach();
+    }
 }

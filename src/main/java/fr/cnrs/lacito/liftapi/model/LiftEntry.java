@@ -212,4 +212,87 @@ public final class LiftEntry
     public AbstractLiftRoot getParentNode() {
         return null;
     }
+
+    // --------------------------------------------------------
+    // Deleting sub-components
+    // --------------------------------------------------------
+
+    /**
+     * Add a sense at a given position among this entry's senses.
+     *
+     * Same contract as {@link #addSense(LiftSense)}; the position matters when undoing
+     * a deletion, where the sense has to go back where it was.
+     *
+     * @param index where to insert the sense
+     * @param sense the sense to add
+     */
+    @Override
+    public void addSense(int index, LiftSense sense) {
+        this.sensesProperty.add(index, sense);
+        sense.setParent(this);
+        adopted(sense);
+    }
+
+    /**
+     * Remove a pronunciation from this entry, unregistering it if this entry belongs to
+     * a dictionary.
+     *
+     * @param pronunciation a pronunciation of this entry
+     */
+    @Override
+    public void deletePronunciation(LiftPronunciation pronunciation) {
+        requireChild(pronunciation, pronunciationsProperty.contains(pronunciation));
+        orphaned(pronunciation);
+        pronunciation.detach();
+    }
+
+    /**
+     * Remove a variant from this entry, unregistering it if this entry belongs to a
+     * dictionary.
+     *
+     * @param variant a variant of this entry
+     */
+    public void deleteVariant(LiftVariant variant) {
+        requireChild(variant, variantsProperty.contains(variant));
+        orphaned(variant);
+        variant.detach();
+    }
+
+    /**
+     * Remove a sense from this entry, unregistering it - and everything under it - if
+     * this entry belongs to a dictionary.
+     *
+     * @param sense a sense of this entry
+     */
+    @Override
+    public void deleteSense(LiftSense sense) {
+        requireChild(sense, sensesProperty.contains(sense));
+        orphaned(sense);
+        sense.detach();
+    }
+
+    /**
+     * Remove a relation from this entry, unregistering it if this entry belongs to a
+     * dictionary.
+     *
+     * @param relation a relation of this entry
+     */
+    @Override
+    public void deleteRelation(LiftRelation relation) {
+        requireChild(relation, relationsProperty.contains(relation));
+        orphaned(relation);
+        relation.detach();
+    }
+
+    /**
+     * Remove an etymology from this entry, unregistering it if this entry belongs to a
+     * dictionary.
+     *
+     * @param etymology an etymology of this entry
+     */
+    public void deleteEtymology(LiftEtymology etymology) {
+        requireChild(etymology, etymologiesProperty.contains(etymology));
+        orphaned(etymology);
+        etymology.detach();
+    }
 }

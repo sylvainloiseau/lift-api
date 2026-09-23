@@ -18,6 +18,7 @@ import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
 import fr.cnrs.lacito.liftapi.model.LiftNote;
 import fr.cnrs.lacito.liftapi.model.LiftRelation;
+import fr.cnrs.lacito.liftapi.model.LiftReversal;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
 import fr.cnrs.lacito.liftapi.LiftVersion;
@@ -53,6 +54,38 @@ public class RegressionTest {
     // ------------------------------------------------------------------
     // Builders
     // ------------------------------------------------------------------
+
+    /**
+     * {@code DictionaryMutator.wire} had no branch for a reversal, so building one
+     * through the fluent API always threw "Unsupported element type" - after the
+     * reversal had already been registered, leaving it in the indexes with no parent.
+     */
+    @Test
+    public void aReversalCanBeBuiltThroughTheFluentApi() {
+        dictionary.getHeader().getInverseTypeManager().addFeature("headword");
+        LiftEntry entry = dictionary
+            .getComponentBuilder()
+            .entry()
+            .withForm("tww", "nala")
+            .build();
+        LiftSense sense = dictionary
+            .getComponentBuilder()
+            .sense(entry)
+            .withGloss("en", "sun")
+            .build();
+
+        LiftReversal reversal = dictionary
+            .getComponentBuilder()
+            .reversal(sense)
+            .withType("headword")
+            .build();
+
+        assertSame(sense, reversal.getParent());
+        assertTrue(sense.getReversals().contains(reversal));
+        assertTrue(
+            dictionary.getLiftDictionaryRegistry().getReversals().contains(reversal)
+        );
+    }
 
     /** {@code withId} used to call {@code withGuid}, so the id was replaced by a UUID. */
     @Test
@@ -430,7 +463,7 @@ public class RegressionTest {
         );
     }
 
-    /** {@code unregisterRec} used to unregister each MultiText twice. */
+    /** Releasing a subtree used to unregister each MultiText twice. */
     @Test
     public void deletingAnEntryDecrementsEachLanguageOnce() {
         dictionary.getComponentBuilder().entry().withForm("tww", "one").build();
@@ -445,7 +478,7 @@ public class RegressionTest {
             dictionary.getObjectLanguageManager().getLanguageOccurrence("tww")
         );
 
-        dictionary.getLiftDictionaryRegistry().removeFromDictionary(second);
+        dictionary.removeEntry(second);
 
         assertEquals(
             1,
@@ -468,7 +501,7 @@ public class RegressionTest {
             .withForm("tww", "nala")
             .build();
 
-        dictionary.getLiftDictionaryRegistry().removeFromDictionary(entry);
+        dictionary.removeEntry(entry);
         assertEquals(
             0,
             dictionary.getObjectLanguageManager().getLanguageOccurrence("tww")

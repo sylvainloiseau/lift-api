@@ -1,14 +1,18 @@
 package fr.cnrs.lacito.liftapi.internal;
 
-import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
+import fr.cnrs.lacito.liftapi.LiftDictionary;
+import fr.cnrs.lacito.liftapi.LiftDictionaryLanguagesManager;
 import fr.cnrs.lacito.liftapi.model.AbstractExtensibleWithoutField;
+import fr.cnrs.lacito.liftapi.model.AbstractIdentifiable;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
 import fr.cnrs.lacito.liftapi.model.AbstractNotable;
+import fr.cnrs.lacito.liftapi.model.DuplicateIdException;
 import fr.cnrs.lacito.liftapi.model.GrammaticalInfo;
 import fr.cnrs.lacito.liftapi.model.HasAnnotation;
 import fr.cnrs.lacito.liftapi.model.HasField;
 import fr.cnrs.lacito.liftapi.model.HasNote;
 import fr.cnrs.lacito.liftapi.model.HasPronunciation;
+import fr.cnrs.lacito.liftapi.model.HasRefId;
 import fr.cnrs.lacito.liftapi.model.HasRelations;
 import fr.cnrs.lacito.liftapi.model.HasReversal;
 import fr.cnrs.lacito.liftapi.model.HasSense;
@@ -18,6 +22,8 @@ import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftEtymology;
 import fr.cnrs.lacito.liftapi.model.LiftExample;
 import fr.cnrs.lacito.liftapi.model.LiftField;
+import fr.cnrs.lacito.liftapi.model.LiftIllustration;
+import fr.cnrs.lacito.liftapi.model.LiftMedia;
 import fr.cnrs.lacito.liftapi.model.LiftNote;
 import fr.cnrs.lacito.liftapi.model.LiftPronunciation;
 import fr.cnrs.lacito.liftapi.model.LiftRelation;
@@ -25,47 +31,81 @@ import fr.cnrs.lacito.liftapi.model.LiftReversal;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
+import fr.cnrs.lacito.liftapi.model.MultiText;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import javafx.collections.ObservableMap;
 
 /**
- * The single place where a component is joined to a dictionary.
+ * The single place where a dictionary is modified.
  *
  * Adding a component means doing two distinct things: wiring the parent and child
- * references to each other, and registering the component in the dictionary's
- * registry. There are also two ways components get created - the fluent
- * {@code builder} package and the lower-level {@code xml} factory used while parsing -
- * and they used to perform those two jobs independently, in different orders, with
- * their own copy of the "walk the children" logic. Every copy was free to drift from
- * the others, and they did: children attached before a failed registration left a
- * half-built graph, reversals were registered twice, and MultiTexts were unregistered
- * twice, corrupting the language counters.
+ * references to each other, and registering the component in the dictionary's indexes.
+ * There are also two ways components get created - the fluent {@code builder} package
+ * and the lower-level {@code xml} factory used while parsing - and they used to perform
+ * those two jobs independently, in different orders, with their own copy of the "walk
+ * the children" logic. Every copy was free to drift from the others, and they did:
+ * children attached before a failed registration left a half-built graph, reversals were
+ * registered twice, and MultiTexts were unregistered twice, corrupting the language
+ * counters.
  *
- * This class is the common core both paths now go through. In particular
+ * This class is the common core every path goes through. In particular
  * {@link #childrenOf(AbstractLiftRoot)} is the <em>only</em> definition of what a
  * component's children are, so the add and remove traversals cannot disagree again.
+ *
+ * <h2>How callers reach it</h2>
+ *
+ * They mostly do not. The two operations the rest of the library needs are
+ * {@link #adoptSubtree(AbstractLiftRoot)} and {@link #releaseSubtree(AbstractLiftRoot)},
+ * and both are called for you:
+ *
+ * <ul>
+ * <li>{@code parent.addX(child)} on the model calls {@code adoptSubtree} through
+ * {@code AbstractLiftRoot.adopted}, and {@code parent.deleteX(child)} calls
+ * {@code releaseSubtree} through {@code AbstractLiftRoot.orphaned} - in both cases only
+ * when {@code parent} actually belongs to a dictionary.</li>
+ * <li>An entry has no parent, so {@code LiftDictionary.addEntry} and
+ * {@code LiftDictionary.removeEntry} call them directly.</li>
+ * </ul>
  *
  * <h2>Not public API</h2>
  *
  * The package {@code fr.cnrs.lacito.liftapi.internal} is deliberately not exported by
  * {@code module-info.java}. The members here are {@code public} only because javac
  * requires it for access from the sibling packages inside this module; no consumer of
- * the library can reach them.
+ * the library can reach them. That is what lets every mutating operation be gathered
+ * here rather than spread over the exported classes.
  */
 public final class DictionaryMutator {
 
-    private final LiftDictionaryRegistry registry;
+    private final DictionaryRegisters registers;
 
-    public DictionaryMutator(LiftDictionaryRegistry registry) {
-        if (registry == null) {
-            throw new IllegalArgumentException("registry cannot be null");
+    /**
+     * The dictionary being mutated.
+     *
+     * Held so that registration can reach its language managers and stamp each entry
+     * with its owner, which is what {@code AbstractLiftRoot.getOwningDictionary()}
+     * resolves against.
+     */
+    private final LiftDictionary owner;
+
+    public DictionaryMutator(LiftDictionary owner, DictionaryRegisters registers) {
+        if (owner == null) {
+            throw new IllegalArgumentException("owner cannot be null");
         }
-        this.registry = registry;
+        if (registers == null) {
+            throw new IllegalArgumentException("registers cannot be null");
+        }
+        this.owner = owner;
+        this.registers = registers;
     }
 
     // ------------------------------------------------------------------
-    // Creation paths
+    // Joining a dictionary
     // ------------------------------------------------------------------
 
     /**
@@ -75,10 +115,10 @@ public final class DictionaryMutator {
      * registration is what can fail (a duplicate LIFT id, for instance). Wiring first
      * would leave the parent holding a child the dictionary does not know about.
      *
-     * The {@code addX} method that {@link #wire} calls is itself self-registering now
-     * (see {@code AbstractLiftRoot.adopted}), so the child is offered to the registry a
-     * second time; adoption is idempotent for a component this dictionary already
-     * holds, which is what makes the two safe to combine.
+     * The {@code addX} method that {@link #wire} calls is itself self-registering (see
+     * {@code AbstractLiftRoot.adopted}), so the child is offered to the dictionary a
+     * second time; adoption is idempotent for a component this dictionary already holds,
+     * which is what makes the two safe to combine.
      *
      * @param child the newly created component
      * @param parent the component it belongs to; ignored for a {@link LiftEntry},
@@ -86,34 +126,411 @@ public final class DictionaryMutator {
      * @return {@code child}, for chaining
      */
     public <T extends AbstractLiftRoot> T attach(T child, Object parent) {
-        registry.register(child);
+        register(child);
         wire(child, parent);
         return child;
     }
 
     /**
-     * Add an already-built subtree to the dictionary: used by the XML factory.
+     * Register a subtree, and everything under it, in this dictionary.
      *
-     * The SAX reader assembles a whole {@code <entry>} - senses, examples, traits and
-     * all - before the entry is complete, so it cannot register components one at a
-     * time as the builders do. The parent and child references are already wired by
-     * the time this is called; only registration remains. While the entry is being
-     * built it belongs to no dictionary, so none of the {@code addX} calls along the
-     * way register anything: this single traversal still does all the work, and no
+     * This is the path every {@code addX} on an attached component takes, and the one
+     * the XML reader takes for a whole {@code <entry>}. The SAX reader assembles an
+     * entry - senses, examples, traits and all - before the entry is complete, so it
+     * cannot register components one at a time as the builders do; while the entry is
+     * being built it belongs to no dictionary, so none of the {@code addX} calls along
+     * the way register anything, and this single traversal still does all the work. No
      * builder is allocated during a parse.
      *
-     * It is also the path every {@code addX} on an attached component takes, and it is
-     * idempotent for components already registered here.
+     * The parent and child references are expected to be wired already; only
+     * registration happens here.
+     *
+     * Adoption is idempotent for components this dictionary already holds, so a subtree
+     * that was detached without being unregistered - a move within the dictionary, an
+     * undo - can simply be attached again. A component carrying a UUID this dictionary
+     * does not know is refused: it belongs to another dictionary, and must be released
+     * with {@link #releaseSubtree(AbstractLiftRoot)} first.
      *
      * @param root the root of the subtree to adopt
+     * @throws IllegalArgumentException if {@code root} is not a {@link LiftEntry} and
+     *         has no parent, or if it belongs to another dictionary
      */
     public void adoptSubtree(AbstractLiftRoot root) {
-        registry.addToDictionaryLowLevel(root);
+        // This is where the "a node must have a parent" invariant can finally be
+        // stated: AbstractLiftRoot.getParentNode() makes the chain uniform, and by the
+        // time a subtree is adopted it is already wired to its parent. Registering an
+        // orphan would put a component in the indexes that no traversal can ever reach
+        // again - not on delete, not on save.
+        if (!(root instanceof LiftEntry) && root.getParentNode() == null) {
+            throw new IllegalArgumentException(
+                "Only an entry may be adopted without a parent; " +
+                    root.getClass().getSimpleName() + " must be wired to its parent first."
+            );
+        }
+        adoptRecursively(root);
+    }
+
+    /**
+     * Adopt an entry and put it at a known position in the entry list.
+     *
+     * Entries keep the order they have in the document, so undoing the deletion of one
+     * has to restore where it was, not just that it existed.
+     *
+     * @param entry the entry to adopt
+     * @param index its position among the entries
+     * @throws IllegalArgumentException if the entry is already in this dictionary, or if
+     *         {@code index} is past the end of the entry list
+     */
+    public void adoptEntryAt(LiftEntry entry, int index) {
+        if (index > registers.entries.size()) throw new IllegalArgumentException(
+            "Index is greater than array size (" + index + ", " + registers.entries.size() + ")."
+        );
+        if (entry.getUUID() != null) throw new IllegalArgumentException(
+            "This entry is already registered; its position cannot be set this way."
+        );
+        adoptSubtree(entry);
+        // register() appended it; move it to where it belongs.
+        registers.entries.removeLast();
+        registers.entries.add(index, entry);
+    }
+
+    private void adoptRecursively(AbstractLiftRoot node) {
+        // 1. register the node and its MultiText(s), unless we already hold it
+        if (!isRegisteredHere(node)) {
+            register(node);
+        }
+        // 2. recursively add its descendants, using the same child enumeration as
+        // releaseSubtree so the two stay mirror images.
+        for (AbstractLiftRoot child : childrenOf(node)) {
+            adoptRecursively(child);
+        }
+    }
+
+    /**
+     * Whether this dictionary already holds {@code node}.
+     *
+     * A UUID alone does not prove it: it only says the component was registered
+     * <em>somewhere</em>. The index is asked for the mapping so that a component still
+     * owned by another dictionary is rejected rather than silently skipped, which would
+     * leave it wired into this dictionary but absent from every lookup.
+     *
+     * @throws IllegalArgumentException if the node carries a UUID this dictionary does
+     *         not know
+     */
+    private boolean isRegisteredHere(AbstractLiftRoot node) {
+        UUID uuid = node.getUUID();
+        if (uuid == null) {
+            return false;
+        }
+        if (registers.nodesById(node).get(uuid) == node) {
+            return true;
+        }
+        throw new IllegalArgumentException(
+            "This node is registered in another dictionary: " +
+                node.getClass().getSimpleName() + " " + uuid +
+                ". Release it from that dictionary before attaching it here."
+        );
+    }
+
+    /**
+     * Non-recursively register one node.
+     *
+     * Registering a node in the dictionary means:
+     *
+     * <ul>
+     * <li>giving it a UUID</li>
+     * <li>recording the mapping (node, UUID) in the index for its kind</li>
+     * <li>counting it against the components it refers to (see {@link HasRefId})</li>
+     * <li>giving it a LIFT id (entries and senses only) if it does not have one</li>
+     * <li>registering the MultiTexts it owns, which is what puts their languages on the
+     * dictionary's language managers</li>
+     * </ul>
+     *
+     * @throws IllegalArgumentException if the node already has a UUID, i.e. it is
+     *         already registered somewhere
+     */
+    private void register(AbstractLiftRoot node) {
+        if (node.getUUID() != null) {
+            throw new IllegalArgumentException(
+                "This node seems to have already been registered in a dictionary."
+            );
+        }
+        UUID uuid = registers.newUUID();
+        node.setUUID(uuid);
+
+        registers.nodesById(node).put(uuid, node);
+
+        // Only entries and senses carry a LIFT id of their own; every other kind of
+        // node needed nothing beyond the registration above.
+        switch (node) {
+            case LiftEntry e -> {
+                // The one back reference from the component graph to the dictionary:
+                // everything below this entry resolves getOwningDictionary() through it.
+                e.setOwningDictionary(owner);
+                if (e.getId().isEmpty()) {
+                    e.setId(uuid.toString());
+                }
+                if (registers.entriesByLiftId.containsKey(e.getId().get())) {
+                    throw new DuplicateIdException(
+                        "Duplicate lift id: " + e.getId().get()
+                    );
+                }
+                registers.entriesByLiftId.put(e.getId().get(), e);
+                registers.entryLiftId2Uuid.put(e.getId().get(), e.getUUID());
+                registers.entries.add(e);
+            }
+            case LiftSense s -> {
+                if (s.getId().isEmpty()) {
+                    s.setId(uuid.toString());
+                }
+                // Same guard as for entries: without it a file with two senses
+                // sharing an id silently loses one of them.
+                if (registers.sensesByLiftId.containsKey(s.getId().get())) {
+                    throw new DuplicateIdException(
+                        "Duplicate lift id: " + s.getId().get()
+                    );
+                }
+                registers.sensesByLiftId.put(s.getId().get(), s);
+                registers.senseLiftId2Uuid.put(s.getId().get(), s.getUUID());
+            }
+            default -> {
+                // nodesById above already rejected an unknown kind of node.
+            }
+        }
+
+        for (MultiText text : objectTextsOf(node)) {
+            registerMultiText(
+                text,
+                registers.objectTextById,
+                owner.getObjectLanguageManager()
+            );
+        }
+        for (MultiText text : metaTextsOf(node)) {
+            registerMultiText(
+                text,
+                registers.metaTextById,
+                owner.getMetaLanguageManager()
+            );
+        }
+
+        if (node instanceof HasRefId hasref) {
+            String target = null;
+
+            // TODO : which is available here, depending on high/low level ?
+            // Try to avoid the test
+            if (hasref.getRefId().isPresent() )
+                target = hasref.getRefId().get();
+            else if (hasref.getRefObject() != null && hasref.getRefObject().getId().isPresent())
+                target = hasref.getRefObject().getId().get();
+
+            if (target != null && !target.trim().isEmpty()) {
+                registers.addReference(target, hasref);
+            }
+        }
+    }
+
+    /**
+     * Register a MultiText and hand it the language manager it must report to.
+     *
+     * A MultiText created through the builders is empty at this point, so the loop
+     * below does nothing and the manager keeps refusing forms in languages the
+     * dictionary does not declare - which is the guard the editing UI relies on. A
+     * MultiText that arrives already filled, on the other hand, comes from a subtree
+     * built outside the dictionary: the XML reader assembling an entry, or a component
+     * moved in from elsewhere. Its languages are part of what is being adopted, so they
+     * are declared here rather than rejected. This is what replaced the parse-wide
+     * "turn the language manager off and recount at the end" hack.
+     */
+    private void registerMultiText(MultiText element,
+        ObservableMap<UUID, MultiText> textById,
+        LiftDictionaryLanguagesManager languagesManager
+        ) {
+        if (element.getUUID() != null) {
+            throw new IllegalArgumentException("UUID already set");
+        }
+        UUID uuid = registers.newUUID();
+        element.setUUID(uuid);
+        textById.put(uuid, element);
+        for (String lang : element.getLangs()) {
+            if (!languagesManager.hasLanguage(lang)) {
+                languagesManager.addLanguage(lang);
+            }
+        }
+        element.setLanguagesManager(languagesManager);
     }
 
     // ------------------------------------------------------------------
-    // The one traversal
+    // Leaving a dictionary
     // ------------------------------------------------------------------
+
+    /**
+     * Unregister a subtree, and everything under it, from this dictionary.
+     *
+     * The mirror of {@link #adoptSubtree(AbstractLiftRoot)}: the components come back
+     * UUID-free, their texts stop counting towards the dictionary's languages, and the
+     * subtree can then be attached anywhere, including in a different dictionary.
+     *
+     * Only registration is undone here. Unlinking the subtree from its parent is the
+     * job of {@code parent.deleteX(child)}, which calls this first - so that a refusal
+     * (a component still referred to from elsewhere) leaves the dictionary exactly as it
+     * was rather than half-unlinked.
+     *
+     * @param root the root of the subtree to release
+     * @throws IllegalStateException if the subtree is still referred to from elsewhere
+     */
+    public void releaseSubtree(AbstractLiftRoot root) {
+        // 1. First, manage reference counting
+        if (root instanceof LiftRelation r) {
+            final String target = r
+                .getRefObject().getId()
+                .orElseThrow(() ->
+                    new IllegalArgumentException("Reference ID is missing")
+                );
+            registers.removeReference(target, r);
+        } else if (root instanceof LiftVariant a) {
+            final String target = a
+                .getRefObject().getId()
+                .orElseThrow(() ->
+                    new IllegalArgumentException("Reference ID is missing")
+                );
+            registers.removeReference(target, a);
+
+        // 2. check that this node is not refered from another node
+        } else if (root instanceof AbstractIdentifiable i) {
+            final String refId = i
+                .getId()
+                .orElseThrow(() ->
+                    new IllegalArgumentException("Reference ID is missing")
+                );
+            if (registers.isReferenced(refId)) {
+                throw new IllegalStateException(
+                    "Cannot delete this node: it is referenced from other nodes."
+                );
+            }
+        }
+
+        // 3. remove this node from the indexes.
+        // unregister() already unregisters the node's own MultiTexts; doing it again
+        // here would decrement every language counter twice.
+        unregister(root);
+
+        // 4. recursively unregister its descendants, using the same child
+        // enumeration as adoptSubtree so the two stay mirror images.
+        for (AbstractLiftRoot child : childrenOf(root)) {
+            releaseSubtree(child);
+        }
+    }
+
+    /**
+     * Remove one node from the indexes and clear its UUID.
+     */
+    private void unregister(AbstractLiftRoot node) {
+        Map<UUID, ? extends AbstractLiftRoot> map = registers.nodesById(node);
+        if (!map.containsKey(node.getUUID())) {
+            throw new IllegalArgumentException(
+                "Entry not found in registry: " + node.getUUID()
+            );
+        }
+        map.remove(node.getUUID());
+
+        node.setUUID(null);
+
+        if (node instanceof AbstractIdentifiable identifiable) {
+            String liftId = identifiable.getId().get();
+            switch (identifiable) {
+                case LiftEntry _ ->  {
+                    registers.entriesByLiftId.remove(liftId);
+                    registers.entryLiftId2Uuid.remove(liftId);
+                }
+                case LiftSense _ ->  {
+                    registers.sensesByLiftId.remove(liftId);
+                    registers.senseLiftId2Uuid.remove(liftId);
+                }
+            }
+        }
+
+        // TODO inefficient
+        if (node instanceof LiftEntry e) {
+            registers.entries.removeIf(x -> x == e);
+            // Mirrors register(): the subtree below this entry becomes detached, so
+            // mutating it no longer touches this dictionary.
+            e.setOwningDictionary(null);
+        }
+
+        for (MultiText text : objectTextsOf(node)) {
+            unregisterMultiText(text, registers.objectTextById);
+        }
+        for (MultiText text : metaTextsOf(node)) {
+            unregisterMultiText(text, registers.metaTextById);
+        }
+    }
+
+    private void unregisterMultiText(
+        MultiText element,
+        ObservableMap<UUID, MultiText> textById
+    ) {
+        textById.remove(element.getUUID());
+        element.unregister();
+        element.setUUID(null);
+        element.setLanguagesManager(null);
+    }
+
+    // ------------------------------------------------------------------
+    // The two traversals
+    // ------------------------------------------------------------------
+
+    /**
+     * The MultiTexts of {@code node} that hold object-language material.
+     *
+     * Enumerating a node's texts used to be written out twice, once in the register
+     * switch and once in the unregister switch, and a kind of text present in one and
+     * missing from the other silently corrupted the language counters. Like
+     * {@link #childrenOf(AbstractLiftRoot)}, this is now stated once.
+     *
+     * @param node the component whose texts are wanted
+     * @return its object-language texts, possibly empty
+     */
+    public static List<MultiText> objectTextsOf(AbstractLiftRoot node) {
+        return switch (node) {
+            case LiftEntry e -> List.of(e.getMainMultiText());
+            case LiftExample e -> List.of(e.getExample());
+            case LiftVariant v -> List.of(v.getForms());
+            case LiftReversal r -> List.of(r.getForms());
+            case LiftPronunciation p -> List.of(p.getPronunciation());
+            case LiftEtymology e -> List.of(e.getForms());
+            case LiftSense _, LiftTrait _, GrammaticalInfo _, LiftRelation _,
+                 LiftNote _, LiftMedia _, LiftIllustration _, LiftField _,
+                 LiftAnnotation _ -> List.of();
+            default -> throw new IllegalStateException(
+                "Unknown type: " + node.getClass()
+            );
+        };
+    }
+
+    /**
+     * The MultiTexts of {@code node} that hold meta-language material.
+     *
+     * @param node the component whose texts are wanted
+     * @return its meta-language texts, possibly empty
+     * @see #objectTextsOf(AbstractLiftRoot)
+     */
+    public static List<MultiText> metaTextsOf(AbstractLiftRoot node) {
+        return switch (node) {
+            case LiftSense s -> List.of(s.getMainMultiText(), s.getDefinition());
+            case LiftExample e -> List.copyOf(e.getTranslations().values());
+            case LiftRelation r -> List.of(r.getUsage());
+            case LiftNote n -> List.of(n.getText());
+            case LiftMedia m -> List.of(m.getLabel());
+            case LiftIllustration i -> List.of(i.getLabel());
+            case LiftField f -> List.of(f.getText());
+            case LiftAnnotation a -> List.of(a.getText());
+            case LiftEntry _, LiftVariant _, LiftTrait _, GrammaticalInfo _,
+                 LiftReversal _, LiftPronunciation _, LiftEtymology _ -> List.of();
+            default -> throw new IllegalStateException(
+                "Unknown type: " + node.getClass()
+            );
+        };
+    }
 
     /**
      * The components owned by {@code node}, i.e. those that join and leave the
@@ -222,6 +639,7 @@ public final class DictionaryMutator {
             case LiftTrait trait -> ((HasTrait) parent).addTrait(trait);
             case LiftRelation relation -> ((HasRelations) parent).addRelation(relation);
             case LiftEtymology etymology -> ((LiftEntry) parent).addEtymology(etymology);
+            case LiftReversal reversal -> ((HasReversal) parent).addReversal(reversal);
             case GrammaticalInfo gi ->
                 ((LiftSense) parent).setGrammaticalInfo(gi);
             default -> throw new IllegalArgumentException(

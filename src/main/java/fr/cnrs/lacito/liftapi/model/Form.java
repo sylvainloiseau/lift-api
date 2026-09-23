@@ -151,6 +151,18 @@ public final class Form implements HasAnnotation {
         a.setParent(this);
     }
 
+    /**
+     * A {@code Form} is not an {@code AbstractLiftRoot}, so the annotations it holds are
+     * never registered in a dictionary (see {@code DictionaryCensusTest}); this only has
+     * a link to undo.
+     */
+    @Override
+    public void deleteAnnotation(LiftAnnotation a) {
+        if (annotations.removeIf(x -> x == a)) {
+            a.setParent(null);
+        }
+    }
+
     public List<LiftAnnotation> getAnnotations() {
         return annotations;
     }

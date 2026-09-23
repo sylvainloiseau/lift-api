@@ -111,4 +111,34 @@ public final class LiftReversal
     public AbstractLiftRoot getParentNode() {
         return (AbstractLiftRoot) parent;
     }
+
+    // --------------------------------------------------------
+    // Deleting sub-components
+    // --------------------------------------------------------
+
+    /**
+     * Remove a nested reversal, unregistering it - and everything under it - if this
+     * reversal belongs to a dictionary.
+     *
+     * @param reversal a reversal held by this one
+     */
+    @Override
+    public void deleteReversal(LiftReversal reversal) {
+        requireChild(reversal, reversalsProperty.contains(reversal));
+        orphaned(reversal);
+        reversal.detach();
+    }
+
+    /**
+     * Remove the {@code <main>} of this reversal, unregistering it if this reversal
+     * belongs to a dictionary. Does nothing if there is none.
+     */
+    public void deleteMain() {
+        if (main == null) {
+            return;
+        }
+        LiftReversal removed = main;
+        orphaned(removed);
+        removed.detach();
+    }
 }

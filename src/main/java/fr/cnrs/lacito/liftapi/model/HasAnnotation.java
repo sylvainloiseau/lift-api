@@ -11,5 +11,14 @@ public sealed interface HasAnnotation
     permits AbstractExtensibleWithoutField, Form, LiftTrait, MultiText
 {
     public void addAnnotation(LiftAnnotation a);
+
+    /**
+     * Removes an annotation from this object, and from the dictionary if this object
+     * belongs to one.
+     *
+     * @param a an annotation of this object.
+     */
+    public void deleteAnnotation(LiftAnnotation a);
+
     public List<LiftAnnotation> getAnnotations();
 }

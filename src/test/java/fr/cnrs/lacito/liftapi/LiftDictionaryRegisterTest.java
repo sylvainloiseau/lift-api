@@ -94,17 +94,10 @@ public class LiftDictionaryRegisterTest {
         ).build();
 
         // the "e" entry cannot be removed since it is referenced from the "source" node.
-        LiftDictionaryRegistry registry =
-            dictionary.getLiftDictionaryRegistry();
-        assertThrows(IllegalStateException.class, () -> {
-            registry
-                .removeFromDictionary(e);
-        });
-        
+        assertThrows(IllegalStateException.class, () -> dictionary.removeEntry(e));
+
         // the e entry can now be removed
-        registry
-                .removeFromDictionary(source);
-        registry
-                .removeFromDictionary(e);
+        dictionary.removeEntry(source);
+        dictionary.removeEntry(e);
     }
 }

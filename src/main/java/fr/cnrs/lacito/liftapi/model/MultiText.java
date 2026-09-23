@@ -138,6 +138,18 @@ public final class MultiText
     }
 
     /**
+     * A {@code MultiText} is not an {@code AbstractLiftRoot}, so the annotations it
+     * holds are never registered in a dictionary (see {@code DictionaryCensusTest});
+     * this only has a link to undo.
+     */
+    @Override
+    public void deleteAnnotation(LiftAnnotation a) {
+        if (annotations.removeIf(x -> x == a)) {
+            a.setParent(null);
+        }
+    }
+
+    /**
      * JavaFX observable access to underlying forms map.
      */
     public MapProperty<String, Form> formsProperty() {

@@ -1,7 +1,7 @@
 Two things remain open, both recorded in the code rather than just in this conversation:
 
 - Form-level annotations — an <annotation> inside a <form>/<gloss> is held by the Form, which isn’t an AbstractLiftRoot, so nothing can reach it. Never registered; its MultiText never counts toward the dictionary’s languages. Documented on DictionaryCensusTest, whose SAX counter excludes precisely those annotations so the rest of the assertion stays strict.
-- The node→MultiTexts switch is still duplicated between register() and unregister() — the last surviving pair of the kind that caused the original defects. Extracting it the way childrenOf was extracted would also be the natural route to fixing the annotation gap.
+- (done) The node→MultiTexts switch was duplicated between register() and unregister(); it is now stated once, as `DictionaryMutator.objectTextsOf` / `metaTextsOf`, the way `childrenOf` was. Two gaps it made visible are still open: `LiftEtymology.getGlosses()` and `LiftEntry.getCitations()` are MultiTexts that no registration path has ever touched, so their languages never count.
 
 
 The two creation channels (builder, and the "low-level" one used by the SaxHandler) are

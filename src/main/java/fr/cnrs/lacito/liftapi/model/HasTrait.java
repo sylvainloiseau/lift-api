@@ -16,6 +16,14 @@ public sealed interface HasTrait extends LiftObject
     public void addTrait(LiftTrait t);
 
     /**
+     * Removes a trait from this component, and from the dictionary if this component
+     * belongs to one.
+     *
+     * @param t a trait of this component.
+     */
+    public void deleteTrait(LiftTrait t);
+
+    /**
      * Returns the list of traits of this component.
      *
      * @return the list of traits.

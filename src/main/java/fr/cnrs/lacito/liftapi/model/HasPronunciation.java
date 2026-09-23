@@ -21,4 +21,12 @@ public sealed interface HasPronunciation extends LiftObject permits LiftEntry, L
      */
     public void addPronunciation(LiftPronunciation pronounciation);
 
+    /**
+     * Removes a pronunciation from this component, and from the dictionary if this
+     * component belongs to one.
+     *
+     * @param pronounciation a pronunciation of this component.
+     */
+    public void deletePronunciation(LiftPronunciation pronounciation);
+
 }

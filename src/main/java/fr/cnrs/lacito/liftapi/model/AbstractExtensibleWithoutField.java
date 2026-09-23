@@ -73,4 +73,34 @@ public abstract sealed class AbstractExtensibleWithoutField
     public ListProperty<LiftTrait> traitsProperty() {
         return traitsProperty;
     }
+
+    // --------------------------------------------------------
+    // Deleting sub-components
+    // --------------------------------------------------------
+
+    /**
+     * Remove a trait from this component, unregistering it if this component belongs to
+     * a dictionary.
+     *
+     * @param t a trait of this component
+     */
+    @Override
+    public void deleteTrait(LiftTrait t) {
+        requireChild(t, traitsProperty.contains(t));
+        orphaned(t);
+        t.detach();
+    }
+
+    /**
+     * Remove an annotation from this component, unregistering it if this component
+     * belongs to a dictionary.
+     *
+     * @param a an annotation of this component
+     */
+    @Override
+    public void deleteAnnotation(LiftAnnotation a) {
+        requireChild(a, annotationsProperty.contains(a));
+        orphaned(a);
+        a.detach();
+    }
 }

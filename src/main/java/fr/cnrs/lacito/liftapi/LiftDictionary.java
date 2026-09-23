@@ -2,7 +2,7 @@ package fr.cnrs.lacito.liftapi;
 
 import fr.cnrs.lacito.liftapi.builder.DictionaryComponentBuilderFactory;
 import fr.cnrs.lacito.liftapi.internal.DictionaryMutator;
-import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
+import fr.cnrs.lacito.liftapi.internal.DictionaryRegisters;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftHeader;
@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 /// Functionalities include:
 ///
 /// - create dictionary from an XML document ([LiftDictionary#loadDictionaryFromFile(File f)]) or from scratch ([LiftDictionary#makeBuilder()])
-/// - add components to the dictionary with the fluent API ([LiftDictionary#getComponentBuilder()]), delete components ([LiftDictionaryRegistry#removeFromDictionary(AbstractLiftRoot node)])
+/// - add components to the dictionary with the fluent API ([LiftDictionary#getComponentBuilder()]) or with the `addX` methods of the components themselves, delete them with the matching `deleteX` methods ([LiftDictionary#addEntry(LiftEntry)] and [LiftDictionary#removeEntry(LiftEntry)] for entries, which have no parent)
 /// - lookup into dictionary content ([LiftDictionary#getEntryByForm(String lang, String form)], [LiftDictionary#searchInMetaLanguage(String lang, String searched)], [LiftDictionary#searchInObjectLanguage(String lang, String searched)])
 /// - manage languages ([LiftDictionary#getObjectLanguageManager()], [LiftDictionary#getMetaLanguageManager()])
 ///
@@ -63,6 +63,15 @@ public final class LiftDictionary {
     private File source;
 
     protected final LiftHeader header;
+
+    /**
+     * The indexes over this dictionary's components.
+     *
+     * They are shared, as one object, between the read-only view handed to callers
+     * ({@link #getLiftDictionaryRegistry()}) and the mutation core ({@link #getMutator()}).
+     * The type is not exported, so holding it here exposes nothing.
+     */
+    private final DictionaryRegisters registers;
 
     private final LiftDictionaryRegistry registry;
 
@@ -172,17 +181,84 @@ public final class LiftDictionary {
     // Constructors
 
     protected LiftDictionary() {
-        // The registry reads the language managers and stamps entries with their owner
-        // through this reference. Both managers are field initialisers, so they are
-        // already in place by the time this constructor body runs.
-        this.registry = new LiftDictionaryRegistry(this);
-        this.mutator = new DictionaryMutator(this.registry);
+        // One set of indexes, two views on it: the registry can only read them, the
+        // mutator is the only thing that writes them. The mutator reads the language
+        // managers and stamps entries with their owner through the reference to this
+        // dictionary; both managers are field initialisers, so they are already in place
+        // by the time this constructor body runs.
+        this.registers = new DictionaryRegisters();
+        this.registry = new LiftDictionaryRegistry(this.registers);
+        this.mutator = new DictionaryMutator(this, this.registers);
         this.header = new LiftHeader();
         this.componentBuilder = new DictionaryComponentBuilderFactory(this);
         counter = new LiftDictionaryCounterManager(this);
     }
 
     // Public methods
+
+    // ------------------------------------------------------------------
+    // Adding and removing entries
+    // ------------------------------------------------------------------
+
+    /**
+     * Add an entry, and everything under it, to this dictionary.
+     *
+     * Every other kind of component joins a dictionary through its parent -
+     * {@code sense.addExample(example)} registers the example because the sense is part
+     * of a dictionary. An entry has no parent, so this is the one case that needs a
+     * method of its own.
+     *
+     * The entry may be freshly built, or one that was taken out of this dictionary
+     * earlier (undoing a deletion), or one built outside any dictionary - the XML
+     * reader adds every {@code <entry>} it parses this way.
+     *
+     * @param entry the entry to add
+     * @throws IllegalArgumentException if the entry still belongs to another dictionary
+     * @throws fr.cnrs.lacito.liftapi.model.DuplicateIdException if its LIFT id is
+     *         already used here
+     */
+    public void addEntry(LiftEntry entry) {
+        if (entry == null) {
+            throw new IllegalArgumentException("entry cannot be null");
+        }
+        mutator.adoptSubtree(entry);
+    }
+
+    /**
+     * Add an entry at a given position among the entries.
+     *
+     * Entries keep the order they have in the document, so undoing the deletion of one
+     * has to restore where it was, not just that it existed.
+     *
+     * @param entry the entry to add
+     * @param index its position among the entries
+     * @throws IllegalArgumentException if the entry is already in a dictionary, or if
+     *         {@code index} is past the end of the entry list
+     */
+    public void addEntry(LiftEntry entry, int index) {
+        if (entry == null) {
+            throw new IllegalArgumentException("entry cannot be null");
+        }
+        mutator.adoptEntryAt(entry, index);
+    }
+
+    /**
+     * Remove an entry, and everything under it, from this dictionary.
+     *
+     * The mirror of {@link #addEntry(LiftEntry)}, and the entry-level counterpart of the
+     * {@code deleteX} methods on the model. The entry object itself is not destroyed: it
+     * comes back UUID-free, with its own children still wired to it, and can be added
+     * again here or to another dictionary.
+     *
+     * @param entry the entry to remove
+     * @throws IllegalStateException if some component still refers to it
+     */
+    public void removeEntry(LiftEntry entry) {
+        if (entry == null) {
+            throw new IllegalArgumentException("entry cannot be null");
+        }
+        mutator.releaseSubtree(entry);
+    }
 
     /**
      * Save the dictionary at the location it was read.
@@ -215,7 +291,7 @@ public final class LiftDictionary {
 
     @Deprecated
     public int entryCount() {
-        return this.registry.entriesById.size();
+        return this.registers.entriesById.size();
     }
 
     public Map<String, Long> getGramInfoCounter() {
@@ -260,7 +336,7 @@ public final class LiftDictionary {
     // access to content of the dictionary
 
     public List<LiftEntry> getEntryByForm(String lang, String form) {
-        return registry.entriesById
+        return registers.entriesById
             .values()
             .stream()
             .filter(x -> x.getForms().containsLang(lang))
@@ -271,14 +347,14 @@ public final class LiftDictionary {
     }
 
     public List<MultiText> searchInMetaLanguage(String lang, String regexp) {
-        return searchInLanguage(lang, regexp, registry.metaTextById);
+        return searchInLanguage(lang, regexp, registers.metaTextById);
     }
 
     public List<MultiText> searchInObjectLanguage(
         String lang,
         String regexp
     ) {
-        return searchInLanguage(lang, regexp, registry.objectTextById);
+        return searchInLanguage(lang, regexp, registers.objectTextById);
     }
 
     private List<MultiText> searchInLanguage(

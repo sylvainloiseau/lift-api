@@ -22,15 +22,23 @@
  * <h2>The one rule</h2>
  *
  * <blockquote>
- * An {@code addX()} method registers its argument if, and only if, the receiver is
- * attached.
+ * {@code addX()} registers its argument, and {@code deleteX()} unregisters it, if and
+ * only if the receiver is attached.
  * </blockquote>
  *
  * So {@code sense.addExample(example)} on a sense that belongs to a dictionary registers
- * the example and everything under it, in that dictionary. The same call on a detached
- * sense only wires the two together, and the example is registered later, when whatever
- * subtree it is in is attached. Nothing else needs to be called, and no component can
- * end up sitting in the tree without the dictionary knowing about it.
+ * the example and everything under it, in that dictionary, and
+ * {@code sense.deleteExample(example)} takes the whole subtree back out. The same calls
+ * on a detached sense only wire and unwire. Nothing else needs to be called, and no
+ * component can end up sitting in the tree without the dictionary knowing about it - or,
+ * in the mirror case, left in the dictionary's indexes after being cut out of the tree.
+ *
+ * These two are the whole mutation API for components. A lexical entry is the one
+ * exception, because it has no parent to add it to or delete it from:
+ * {@code LiftDictionary.addEntry(entry)} and {@code LiftDictionary.removeEntry(entry)}
+ * do that job. Everything that actually writes the dictionary's indexes lives in
+ * {@code fr.cnrs.lacito.liftapi.internal}, a package this module does not export, so it
+ * cannot be reached - or got wrong - from outside the library.
  *
  * Two consequences follow, and both are deliberate:
  *
@@ -54,14 +62,14 @@
  * <li>{@link AbstractLiftRoot#detach()} unlinks a component from its parent and
  * <em>keeps it registered</em>. Use it to move a subtree within the same dictionary;
  * attaching it again somewhere else costs nothing, because adoption is idempotent for
- * components the dictionary already holds.</li>
- * <li>{@code LiftDictionaryRegistry.removeFromDictionary(node)} unlinks
- * <em>and</em> unregisters. The subtree comes back UUID-free and can be attached
- * anywhere, including in a different dictionary.</li>
+ * components the dictionary already holds. A subtree left in that state must be
+ * re-attached or removed as a whole - editing it in place is refused, because a
+ * component deleted from it could not be taken out of the indexes it is still in.</li>
+ * <li>{@code parent.deleteX(child)} unlinks <em>and</em> unregisters. The subtree comes
+ * back UUID-free and can be attached anywhere, including in a different dictionary.</li>
  * </ul>
  *
  * Attaching a component that is still registered in <em>another</em> dictionary is
- * refused, rather than silently accepted: release it with
- * {@code removeFromDictionary} first.
+ * refused, rather than silently accepted: delete it from its current parent first.
  */
 package fr.cnrs.lacito.liftapi.model;

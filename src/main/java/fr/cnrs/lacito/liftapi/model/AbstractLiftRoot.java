@@ -19,9 +19,9 @@ import java.util.UUID;
  * A component is <em>attached</em> when walking its parent chain
  * ({@link #getParentNode()}) reaches a {@link LiftEntry} that belongs to a dictionary;
  * otherwise it is <em>detached</em>. {@link #getOwningDictionary()} answers the
- * question, and it is the single rule governing registration: an {@code addX()} method
- * registers its argument if, and only if, the receiver is attached. See the
- * {@code package-info} of this package for the full contract.
+ * question, and it is the single rule governing registration: {@code addX()} registers
+ * its argument, and {@code deleteX()} unregisters it, if and only if the receiver is
+ * attached. See the {@code package-info} of this package for the full contract.
  */
 public abstract sealed class AbstractLiftRoot implements LiftObject
     permits
@@ -114,6 +114,63 @@ public abstract sealed class AbstractLiftRoot implements LiftObject
         return child;
     }
 
+    /**
+     * Unregister {@code child} from this component's dictionary, if there is one.
+     *
+     * The mirror of {@link #adopted(AbstractLiftRoot)}: every {@code deleteX()} method
+     * calls this before unlinking, so that a component cannot be taken out of the tree
+     * while staying in the dictionary's indexes - the same defect as {@code addX()}
+     * leaving a component out of them, only in reverse.
+     *
+     * Unregistering happens first precisely because it is the half that can fail: a
+     * component still referred to from elsewhere is refused, and the tree is then left
+     * exactly as it was rather than half-unlinked.
+     *
+     * @param child the component about to be unlinked from this one
+     * @throws IllegalStateException if this component is detached but {@code child} is
+     *         still registered somewhere, which no caller can mean
+     */
+    protected final void orphaned(AbstractLiftRoot child) {
+        LiftDictionary dictionary = getOwningDictionary();
+        if (dictionary != null) {
+            dictionary.getMutator().releaseSubtree(child);
+        } else if (child.getUUID() != null) {
+            // The subtree was detached from its dictionary without being unregistered
+            // (see detach()). Editing it in that state would strand the child in indexes
+            // it can no longer be reached from.
+            throw new IllegalStateException(
+                "This " + getClass().getSimpleName() + " is detached but still " +
+                    "registered: attach it again, or remove the whole subtree from its " +
+                    "dictionary, before deleting anything from it."
+            );
+        }
+    }
+
+    /**
+     * Guard for the {@code deleteX} methods: a component can only be deleted from the
+     * parent that actually holds it.
+     *
+     * Without this, {@code someEntry.deleteSense(aSenseOfAnotherEntry)} would
+     * unregister a component that is still wired into a different part of the
+     * dictionary.
+     *
+     * @param child the component the caller wants to delete
+     * @param held whether this component currently holds it
+     */
+    protected final void requireChild(AbstractLiftRoot child, boolean held) {
+        if (child == null) {
+            throw new IllegalArgumentException(
+                "the component to delete cannot be null"
+            );
+        }
+        if (!held) {
+            throw new IllegalArgumentException(
+                child.getClass().getSimpleName() + " is not held by this " +
+                    getClass().getSimpleName() + ": it cannot be deleted from it."
+            );
+        }
+    }
+
     // TODO should be protected, but it is used in the builder, which is in another package. We should move the builder to the same package as the model
     public void setUUID(UUID uuid) {
         this.uuid = uuid;
@@ -128,12 +185,13 @@ public abstract sealed class AbstractLiftRoot implements LiftObject
      * parent of this node to null.
      *
      * Detaching does <em>not</em> unregister: the node keeps its UUID and stays in the
-     * dictionary's registries, so that it can be attached again elsewhere in the same
+     * dictionary's indexes, so that it can be attached again elsewhere in the same
      * dictionary (a move, an undo) without going through registration twice. To take a
      * subtree out of a dictionary entirely - to delete it, or to hand it to another
-     * dictionary - use
-     * {@link fr.cnrs.lacito.liftapi.LiftDictionaryRegistry#removeFromDictionary(AbstractLiftRoot)},
-     * which detaches and unregisters.
+     * dictionary - call the matching {@code deleteX} on its parent
+     * ({@code sense.deleteExample(example)}), or
+     * {@link fr.cnrs.lacito.liftapi.LiftDictionary#removeEntry(LiftEntry)} for an entry.
+     * Those unregister as well as unlink.
      *
      * Detaching a node that has no parent is a no-op.
      */

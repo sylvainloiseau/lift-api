@@ -4,7 +4,6 @@ import fr.cnrs.lacito.liftapi.LiftVersion;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
-import fr.cnrs.lacito.liftapi.internal.DictionaryMutator;
 import fr.cnrs.lacito.liftapi.model.*;
 
 import java.time.ZonedDateTime;
@@ -34,13 +33,11 @@ public final class LiftXMLFactory {
     protected LiftHeader header;
     private LiftDictionaryRegistry registry;
     private LiftDictionary dictionary;
-    private final DictionaryMutator mutator;
 
     public LiftXMLFactory(LiftDictionary dictionary) {
         this.dictionary = dictionary;
         this.header = dictionary.getHeader();
         this.registry = dictionary.getLiftDictionaryRegistry();
-        this.mutator = dictionary.getMutator();
     }
 
     // TODO all these methods should be turned protected
@@ -49,7 +46,10 @@ public final class LiftXMLFactory {
     }
 
     public void addEntryToDictionary(LiftEntry entry) {
-        mutator.adoptSubtree(entry);
+        // The entry is complete by now - senses, examples, traits and all - and was
+        // built detached, so none of the addX calls along the way registered anything.
+        // This one call does the whole subtree.
+        dictionary.addEntry(entry);
     }
 
     public LiftEntry createEntry(Attributes attributes) {

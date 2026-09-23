@@ -48,4 +48,24 @@ public abstract sealed class AbstractExtensibleWithField
     public MapProperty<String, LiftField> fieldsProperty() {
         return fieldsProperty;
     }
+
+    // --------------------------------------------------------
+    // Deleting sub-components
+    // --------------------------------------------------------
+
+    /**
+     * Remove a field from this component, unregistering it if this component belongs to
+     * a dictionary.
+     *
+     * @param f a field of this component
+     */
+    @Override
+    public void deleteField(LiftField f) {
+        requireChild(
+            f,
+            f != null && fieldsProperty.get(f.getSpecification().getName()) == f
+        );
+        orphaned(f);
+        f.detach();
+    }
 }

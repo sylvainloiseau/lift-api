@@ -76,4 +76,24 @@ public abstract sealed class AbstractNotable
     public MapProperty<String, LiftNote> notesProperty() {
         return notesProperty;
     }
+
+    // --------------------------------------------------------
+    // Deleting sub-components
+    // --------------------------------------------------------
+
+    /**
+     * Remove a note from this component, unregistering it if this component belongs to
+     * a dictionary.
+     *
+     * @param note a note of this component
+     */
+    @Override
+    public void deleteNote(LiftNote note) {
+        requireChild(
+            note,
+            note != null && notesProperty.get(note.getType().getId()) == note
+        );
+        orphaned(note);
+        note.detach();
+    }
 }

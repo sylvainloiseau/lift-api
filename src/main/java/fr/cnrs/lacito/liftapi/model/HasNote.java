@@ -18,6 +18,14 @@ public sealed interface HasNote
     public void addNote(LiftNote note) throws DuplicateTypeException;
 
     /**
+     * Removes a note from this component, and from the dictionary if this component
+     * belongs to one.
+     *
+     * @param note a note of this component.
+     */
+    public void deleteNote(LiftNote note);
+
+    /**
      * Returns the note of the given type.
      *
      * @param type the type of the note to return.

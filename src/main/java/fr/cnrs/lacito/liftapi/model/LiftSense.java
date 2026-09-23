@@ -223,4 +223,110 @@ public final class LiftSense
     public AbstractLiftRoot getParentNode() {
         return (AbstractLiftRoot) parent;
     }
+
+    // --------------------------------------------------------
+    // Deleting sub-components
+    // --------------------------------------------------------
+
+    /**
+     * Add a subsense at a given position.
+     *
+     * @param index where to insert the subsense
+     * @param sense the subsense to add
+     */
+    @Override
+    public void addSense(int index, LiftSense sense) {
+        subSensesProperty.add(index, sense);
+        sense.setParent(this);
+        adopted(sense);
+    }
+
+    /**
+     * Add an example at a given position.
+     *
+     * @param index where to insert the example
+     * @param example the example to add
+     */
+    public void addExample(int index, LiftExample example) {
+        this.examplesProperty.add(index, example);
+        example.setParent(this);
+        adopted(example);
+    }
+
+    /**
+     * Remove a relation from this sense, unregistering it if this sense belongs to a
+     * dictionary.
+     *
+     * @param relation a relation of this sense
+     */
+    @Override
+    public void deleteRelation(LiftRelation relation) {
+        requireChild(relation, relationsProperty.contains(relation));
+        orphaned(relation);
+        relation.detach();
+    }
+
+    /**
+     * Remove an example from this sense, unregistering it - and everything under it -
+     * if this sense belongs to a dictionary.
+     *
+     * @param example an example of this sense
+     */
+    public void deleteExample(LiftExample example) {
+        requireChild(example, examplesProperty.contains(example));
+        orphaned(example);
+        example.detach();
+    }
+
+    /**
+     * Remove a subsense from this sense, unregistering it - and everything under it -
+     * if this sense belongs to a dictionary.
+     *
+     * @param sense a subsense of this sense
+     */
+    @Override
+    public void deleteSense(LiftSense sense) {
+        requireChild(sense, subSensesProperty.contains(sense));
+        orphaned(sense);
+        sense.detach();
+    }
+
+    /**
+     * Remove an illustration from this sense, unregistering it if this sense belongs to
+     * a dictionary.
+     *
+     * @param illustration an illustration of this sense
+     */
+    public void deleteIllustration(LiftIllustration illustration) {
+        requireChild(illustration, illustrationsProperty.contains(illustration));
+        orphaned(illustration);
+        illustration.detach();
+    }
+
+    /**
+     * Remove a reversal from this sense, unregistering it - and everything under it -
+     * if this sense belongs to a dictionary.
+     *
+     * @param reversal a reversal of this sense
+     */
+    @Override
+    public void deleteReversal(LiftReversal reversal) {
+        requireChild(reversal, reversalsProperty.contains(reversal));
+        orphaned(reversal);
+        reversal.detach();
+    }
+
+    /**
+     * Remove this sense's grammatical information, unregistering it - and the traits it
+     * carries - if this sense belongs to a dictionary.
+     *
+     * Does nothing if the sense has none. This is the counterpart of
+     * {@link #setGrammaticalInfo(GrammaticalInfo)}, which holds at most one.
+     */
+    public void deleteGrammaticalInfo() {
+        grammaticalInfo.ifPresent(gi -> {
+            orphaned(gi);
+            gi.detach();
+        });
+    }
 }

@@ -114,4 +114,21 @@ public final class GrammaticalInfo
     public AbstractLiftRoot getParentNode() {
         return parent;
     }
+
+    // --------------------------------------------------------
+    // Deleting sub-components
+    // --------------------------------------------------------
+
+    /**
+     * Remove a trait from this grammatical information, unregistering it if this
+     * component belongs to a dictionary.
+     *
+     * @param t a trait of this grammatical information
+     */
+    @Override
+    public void deleteTrait(LiftTrait t) {
+        requireChild(t, traits.contains(t));
+        orphaned(t);
+        t.detach();
+    }
 }

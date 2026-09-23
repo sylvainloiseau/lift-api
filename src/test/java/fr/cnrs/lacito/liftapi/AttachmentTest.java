@@ -154,7 +154,7 @@ public class AttachmentTest {
         example.getExample().add(new Form("qyz", "he runs fast"));
         sense.addExample(example);
 
-        registry.addToDictionaryLowLevel(entry);
+        d.addEntry(entry);
 
         assertNotNull(entry.getUUID());
         assertNotNull(sense.getUUID());
@@ -170,9 +170,12 @@ public class AttachmentTest {
         LiftDictionary d = dictionary();
         LiftSense orphan = new LiftSense();
 
+        // A component other than an entry can only reach a dictionary through its
+        // parent, so there is no public way to register an orphan. Checked here at the
+        // level where the invariant is stated.
         assertThrows(
             IllegalArgumentException.class,
-            () -> d.getLiftDictionaryRegistry().addToDictionaryLowLevel(orphan)
+            () -> d.getMutator().adoptSubtree(orphan)
         );
     }
 
@@ -217,9 +220,9 @@ public class AttachmentTest {
         LiftEntry to = entry(target, "walk");
         LiftSense sense = sense(source, from, "to run");
 
-        source.getLiftDictionaryRegistry().removeFromDictionary(sense);
+        from.deleteSense(sense);
 
-        assertNull(sense.getUUID(), "removeFromDictionary() also unregisters");
+        assertNull(sense.getUUID(), "deleteSense() also unregisters");
         assertFalse(source.getLiftDictionaryRegistry().getSenses().contains(sense));
 
         to.addSense(sense);

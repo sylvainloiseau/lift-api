@@ -15,6 +15,14 @@ public sealed interface HasReversal extends LiftObject permits LiftSense, LiftRe
     public void addReversal(LiftReversal reversal);
 
     /**
+     * Removes a reversal from this component, and from the dictionary if this component
+     * belongs to one.
+     *
+     * @param reversal a reversal of this component.
+     */
+    public void deleteReversal(LiftReversal reversal);
+
+    /**
      * Returns the list of reversals of this component.
      *
      * @return the list of reversals.

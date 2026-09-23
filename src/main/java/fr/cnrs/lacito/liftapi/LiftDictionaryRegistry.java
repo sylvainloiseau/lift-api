@@ -1,18 +1,10 @@
 package fr.cnrs.lacito.liftapi;
 
-import fr.cnrs.lacito.liftapi.internal.DictionaryMutator;
-import fr.cnrs.lacito.liftapi.model.AbstractExtensibleWithoutField;
+import fr.cnrs.lacito.liftapi.internal.DictionaryRegisters;
 import fr.cnrs.lacito.liftapi.model.AbstractIdentifiable;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
-import fr.cnrs.lacito.liftapi.model.DuplicateIdException;
 import fr.cnrs.lacito.liftapi.model.GrammaticalInfo;
-import fr.cnrs.lacito.liftapi.model.HasField;
-import fr.cnrs.lacito.liftapi.model.HasNote;
-import fr.cnrs.lacito.liftapi.model.HasPronunciation;
 import fr.cnrs.lacito.liftapi.model.HasRefId;
-import fr.cnrs.lacito.liftapi.model.HasRelations;
-import fr.cnrs.lacito.liftapi.model.HasReversal;
-import fr.cnrs.lacito.liftapi.model.HasSense;
 import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftEtymology;
@@ -29,8 +21,6 @@ import fr.cnrs.lacito.liftapi.model.LiftTrait;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
 import fr.cnrs.lacito.liftapi.model.MultiText;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,38 +34,50 @@ import javafx.collections.ObservableList;
 import javafx.collections.ObservableMap;
 
 /**
- * Managing registers of all the nodes belonging to a dictionary.
+ * A read-only view of everything a dictionary contains.
  *
- * Offers two main functionalities:
+ * It offers unmodifiable, observable collections of every kind of component -
+ * {@code getEntries()}, {@code getSenses()}, {@code getExamples()}, ... - plus lookup by
+ * LIFT id and the reference counting used to tell whether a component is still pointed
+ * at from somewhere else.
  *
- * - unmodifiable collections for all the components of a LIFT dictionary {@code
- * getEntries()}, {@code getSenses()}, {@code getExamples()}, ...
+ * <h2>Nothing here mutates the dictionary</h2>
  *
- * - function for removing components from the dictionary {@code removeFromDictionary(AbstractLiftRoot node)}
- *   - Adding nodes to dictionary should be made using the ComponentBuilder API (see {@link LiftDictionary#getComponentBuilder()})
+ * Changing a dictionary is done through the components themselves:
+ *
+ * <ul>
+ * <li>{@code parent.addX(child)} wires a component in and, if {@code parent} belongs to
+ * a dictionary, registers it there; {@code parent.deleteX(child)} is its mirror. See the
+ * {@code fr.cnrs.lacito.liftapi.model} package documentation.</li>
+ * <li>{@link LiftDictionary#getComponentBuilder()} is the fluent way to create one.</li>
+ * <li>An entry has no parent, so {@link LiftDictionary#addEntry(LiftEntry)} and
+ * {@link LiftDictionary#removeEntry(LiftEntry)} handle that one case.</li>
+ * </ul>
+ *
+ * The code that writes these indexes lives in {@code fr.cnrs.lacito.liftapi.internal},
+ * a package this module does not export, so it is unreachable from outside the library.
  */
 public class LiftDictionaryRegistry {
 
-    private final LiftDictionaryUUIDManager uuidManager =
-        new LiftDictionaryUUIDManager();
-
     /**
-     * The dictionary these registries belong to.
+     * The indexes themselves, shared with the mutation core.
      *
-     * Held so that registration can reach the dictionary's language managers and stamp
-     * each entry with its owner, which is what
-     * {@link AbstractLiftRoot#getOwningDictionary()} resolves against.
+     * The field is private and its type is not exported, so this class can hand out
+     * unmodifiable views of the indexes without any caller being able to reach the live
+     * collections behind them.
      */
-    private final LiftDictionary owner;
+    private final DictionaryRegisters registers;
 
-    /**
-     * Map from the LIFT id of a referenced component to the components pointing at it.
-     *
-     * Kept private: exposing the live map let any caller corrupt the reference counting
-     * that {@link #removeFromDictionary(AbstractLiftRoot)} relies on to refuse deleting
-     * a component that is still referenced.
-     */
-    private final Map<String, List<HasRefId>> refId2HasRefIdList = new HashMap<>();
+    LiftDictionaryRegistry(DictionaryRegisters registers) {
+        if (registers == null) {
+            throw new IllegalArgumentException("registers cannot be null");
+        }
+        this.registers = registers;
+    }
+
+    // -----------------------------------------------------------------------
+    // References between components
+    // -----------------------------------------------------------------------
 
     /**
      * The LIFT ids that at least one component in the dictionary refers to.
@@ -83,7 +85,7 @@ public class LiftDictionaryRegistry {
      * @return an unmodifiable view
      */
     public Set<String> getReferencedTargetIds() {
-        return Collections.unmodifiableSet(refId2HasRefIdList.keySet());
+        return registers.referencedTargetIds();
     }
 
     /**
@@ -93,109 +95,72 @@ public class LiftDictionaryRegistry {
      * @return an unmodifiable list, empty if nothing refers to {@code targetId}
      */
     public List<HasRefId> getReferencesTo(String targetId) {
-        List<HasRefId> sources = refId2HasRefIdList.get(targetId);
-        return sources == null
-            ? List.of()
-            : Collections.unmodifiableList(sources);
+        return registers.referencesTo(targetId);
     }
 
     /** Whether any component refers to the given LIFT id. */
     public boolean isReferenced(String targetId) {
-        List<HasRefId> sources = refId2HasRefIdList.get(targetId);
-        return sources != null && !sources.isEmpty();
+        return registers.isReferenced(targetId);
     }
 
-    private void addReference(String targetId, HasRefId source) {
-        refId2HasRefIdList
-            .computeIfAbsent(targetId, k -> new ArrayList<>())
-            .add(source);
-    }
-
-    private void removeReference(String targetId, HasRefId source) {
-        List<HasRefId> sources = refId2HasRefIdList.get(targetId);
-        if (sources != null) sources.removeIf(o -> o == source);
-    }
-
-    protected final ObservableMap<String, LiftEntry> entriesByLiftId =
-        FXCollections.observableHashMap();
-
-    protected final ObservableMap<String, LiftSense> sensesByLiftId =
-        FXCollections.observableHashMap();
-
-    protected Map<String, UUID> entryLiftId2Uuid = new HashMap<>(200);
-
-    protected Map<String, UUID> senseLiftId2Uuid = new HashMap<>(200);
-
-    protected final ObservableMap<UUID, LiftEntry> entriesById =
-        FXCollections.observableHashMap();
-
-    private final ObservableMap<UUID, LiftSense> sensesById =
-        FXCollections.observableHashMap();
-
-    protected final ObservableMap<UUID, LiftExample> examplesById =
-        FXCollections.observableHashMap();
-    private final ObservableMap<UUID, LiftVariant> variantsById =
-        FXCollections.observableHashMap();
-    protected final ObservableMap<UUID, LiftTrait> traitsById =
-        FXCollections.observableHashMap();
-    private final ObservableMap<UUID, LiftReversal> reversalsById =
-        FXCollections.observableHashMap();
-    protected final ObservableMap<UUID, LiftRelation> relationsById =
-        FXCollections.observableHashMap();
-    private final ObservableMap<UUID, LiftPronunciation> pronunciationsById =
-        FXCollections.observableHashMap();
-    protected final ObservableMap<UUID, LiftNote> notesById =
-        FXCollections.observableHashMap();
-    private final ObservableMap<UUID, LiftMedia> mediasById =
-        FXCollections.observableHashMap();
-    private final ObservableMap<UUID, LiftIllustration> illustrationsById =
-        FXCollections.observableHashMap();
-    protected final ObservableMap<UUID, LiftField> fieldsById =
-        FXCollections.observableHashMap();
-    protected final ObservableMap<UUID, LiftEtymology> etymologiesById =
-        FXCollections.observableHashMap();
-    private final ObservableMap<UUID, LiftAnnotation> annotationsById =
-        FXCollections.observableHashMap();
-    private final ObservableMap<UUID, GrammaticalInfo> grammaticalInfosById =
-        FXCollections.observableHashMap();
-    protected final ObservableMap<UUID, MultiText> objectTextById =
-        FXCollections.observableHashMap();
-    protected final ObservableMap<UUID, MultiText> metaTextById =
-        FXCollections.observableHashMap();
+    // -----------------------------------------------------------------------
+    // Lookup by LIFT id
+    // -----------------------------------------------------------------------
 
     /**
      * The ID on a {@link HasRefId} component may point towards an entry or a sense.
      */
     public AbstractIdentifiable getEntryOrSenseByLiftId(String liftId) {
-        boolean inEntries = entriesByLiftId.containsKey(liftId);
-        boolean inSenses = sensesByLiftId.containsKey(liftId);
+        boolean inEntries = registers.entriesByLiftId.containsKey(liftId);
+        boolean inSenses = registers.sensesByLiftId.containsKey(liftId);
         if (inEntries && inSenses) {
             throw new IllegalStateException("Cannot have the same liftId for a sense and an entries");
         }
         if (inEntries) {
-            return entriesByLiftId.get(liftId);
+            return registers.entriesByLiftId.get(liftId);
         } else if (inSenses) {
-            return sensesByLiftId.get(liftId);
+            return registers.sensesByLiftId.get(liftId);
         } else {
             return null;
         }
     }
 
-    private ObservableList<LiftEntry> entries = FXCollections.observableArrayList();
-    private ObservableList<LiftEntry> entriesReadOnly = FXCollections.unmodifiableObservableList(entries);
+    // -----------------------------------------------------------------------
+    // Entries
+    // -----------------------------------------------------------------------
+
+    private ObservableList<LiftEntry> entriesReadOnly;
 
     public ObservableList<LiftEntry> getEntries() {
-        // In the particular case of entries, we
-        // do not use an list listining to the xById map, instead we register the entry
-        // directlyf into the list in order to keep the orders of the entries in the dictionary.
+        // In the particular case of entries, we do not use a list listening to the
+        // xById map: the entries are held in a list of their own in order to keep the
+        // order they have in the dictionary.
+        if (entriesReadOnly == null) {
+            entriesReadOnly =
+                FXCollections.unmodifiableObservableList(registers.entries);
+        }
         return entriesReadOnly;
     }
 
+    private ObservableMap<UUID, LiftEntry> entriesByIdReadOnly;
+
+    public Map<UUID, LiftEntry> getEntriesById() {
+        if (entriesByIdReadOnly == null) {
+            entriesByIdReadOnly =
+                FXCollections.unmodifiableObservableMap(registers.entriesById);
+        }
+        return entriesByIdReadOnly;
+    }
+
+    public int nEntries() {
+        return registers.entriesById.size();
+    }
+
     // -----------------------------------------------------------------------
-    // -----------------------------------------------------------------------
+    // One observable list per kind of component
     // -----------------------------------------------------------------------
 
-    Map<
+    private final Map<
       Class< ? extends AbstractLiftRoot>,
       ReadOnlyListWrapper<? extends AbstractLiftRoot>
     > observableList = new HashMap<>();
@@ -203,7 +168,7 @@ public class LiftDictionaryRegistry {
     @SuppressWarnings("unchecked")
     public ObservableList<LiftSense> getSenses() {
         if (!observableList.containsKey(LiftSense.class)) {
-            this.<LiftSense>populateObservableList(LiftSense.class, sensesById);
+            this.<LiftSense>populateObservableList(LiftSense.class, registers.sensesById);
         }
         return (ObservableList<LiftSense>) observableList.get(LiftSense.class).getReadOnlyProperty();
     }
@@ -211,7 +176,7 @@ public class LiftDictionaryRegistry {
     @SuppressWarnings("unchecked")
     public ObservableList<LiftExample> getExamples() {
         if (!observableList.containsKey(LiftExample.class)) {
-            this.<LiftExample>populateObservableList(LiftExample.class, examplesById);
+            this.<LiftExample>populateObservableList(LiftExample.class, registers.examplesById);
         }
         return (ObservableList<LiftExample>) observableList.get(LiftExample.class).getReadOnlyProperty();
     }
@@ -219,7 +184,7 @@ public class LiftDictionaryRegistry {
     @SuppressWarnings("unchecked")
     public ObservableList<LiftVariant> getVariants() {
         if (!observableList.containsKey(LiftVariant.class)) {
-            this.<LiftVariant>populateObservableList(LiftVariant.class, variantsById);
+            this.<LiftVariant>populateObservableList(LiftVariant.class, registers.variantsById);
         }
         return (ObservableList<LiftVariant>) observableList.get(LiftVariant.class).getReadOnlyProperty();
     }
@@ -227,7 +192,7 @@ public class LiftDictionaryRegistry {
     @SuppressWarnings("unchecked")
     public ObservableList<LiftTrait> getTraits() {
         if (!observableList.containsKey(LiftTrait.class)) {
-            this.<LiftTrait>populateObservableList(LiftTrait.class, traitsById);
+            this.<LiftTrait>populateObservableList(LiftTrait.class, registers.traitsById);
         }
         return (ObservableList<LiftTrait>) observableList.get(LiftTrait.class).getReadOnlyProperty();
     }
@@ -235,7 +200,7 @@ public class LiftDictionaryRegistry {
     @SuppressWarnings("unchecked")
     public ObservableList<LiftReversal> getReversals() {
         if (!observableList.containsKey(LiftReversal.class)) {
-            this.<LiftReversal>populateObservableList(LiftReversal.class, reversalsById);
+            this.<LiftReversal>populateObservableList(LiftReversal.class, registers.reversalsById);
         }
         return (ObservableList<LiftReversal>) observableList.get(LiftReversal.class).getReadOnlyProperty();
     }
@@ -243,7 +208,7 @@ public class LiftDictionaryRegistry {
     @SuppressWarnings("unchecked")
     public ObservableList<LiftRelation> getRelations() {
         if (!observableList.containsKey(LiftRelation.class)) {
-            this.<LiftRelation>populateObservableList(LiftRelation.class, relationsById);
+            this.<LiftRelation>populateObservableList(LiftRelation.class, registers.relationsById);
         }
         return (ObservableList<LiftRelation>) observableList.get(LiftRelation.class).getReadOnlyProperty();
     }
@@ -251,7 +216,7 @@ public class LiftDictionaryRegistry {
     @SuppressWarnings("unchecked")
     public ObservableList<LiftPronunciation> getPronunciations() {
         if (!observableList.containsKey(LiftPronunciation.class)) {
-            this.<LiftPronunciation>populateObservableList(LiftPronunciation.class, pronunciationsById);
+            this.<LiftPronunciation>populateObservableList(LiftPronunciation.class, registers.pronunciationsById);
         }
         return (ObservableList<LiftPronunciation>) observableList.get(LiftPronunciation.class).getReadOnlyProperty();
     }
@@ -259,7 +224,7 @@ public class LiftDictionaryRegistry {
     @SuppressWarnings("unchecked")
     public ObservableList<LiftNote> getNotes() {
         if (!observableList.containsKey(LiftNote.class)) {
-            this.<LiftNote>populateObservableList(LiftNote.class, notesById);
+            this.<LiftNote>populateObservableList(LiftNote.class, registers.notesById);
         }
         return (ObservableList<LiftNote>) observableList.get(LiftNote.class).getReadOnlyProperty();
     }
@@ -267,7 +232,7 @@ public class LiftDictionaryRegistry {
     @SuppressWarnings("unchecked")
     public ObservableList<LiftMedia> getMedias() {
         if (!observableList.containsKey(LiftMedia.class)) {
-            this.<LiftMedia>populateObservableList(LiftMedia.class, mediasById);
+            this.<LiftMedia>populateObservableList(LiftMedia.class, registers.mediasById);
         }
         return (ObservableList<LiftMedia>) observableList.get(LiftMedia.class).getReadOnlyProperty();
     }
@@ -275,7 +240,7 @@ public class LiftDictionaryRegistry {
     @SuppressWarnings("unchecked")
     public ObservableList<LiftIllustration> getIllustrations() {
         if (!observableList.containsKey(LiftIllustration.class)) {
-            this.<LiftIllustration>populateObservableList(LiftIllustration.class, illustrationsById);
+            this.<LiftIllustration>populateObservableList(LiftIllustration.class, registers.illustrationsById);
         }
         return (ObservableList<LiftIllustration>) observableList.get(LiftIllustration.class).getReadOnlyProperty();
     }
@@ -283,7 +248,7 @@ public class LiftDictionaryRegistry {
     @SuppressWarnings("unchecked")
     public ObservableList<LiftField> getFields() {
         if (!observableList.containsKey(LiftField.class)) {
-            this.<LiftField>populateObservableList(LiftField.class, fieldsById);
+            this.<LiftField>populateObservableList(LiftField.class, registers.fieldsById);
         }
         return (ObservableList<LiftField>) observableList.get(LiftField.class).getReadOnlyProperty();
     }
@@ -291,7 +256,7 @@ public class LiftDictionaryRegistry {
     @SuppressWarnings("unchecked")
     public ObservableList<LiftEtymology> getEtymologies() {
         if (!observableList.containsKey(LiftEtymology.class)) {
-            this.<LiftEtymology>populateObservableList(LiftEtymology.class, etymologiesById);
+            this.<LiftEtymology>populateObservableList(LiftEtymology.class, registers.etymologiesById);
         }
         return (ObservableList<LiftEtymology>) observableList.get(LiftEtymology.class).getReadOnlyProperty();
     }
@@ -299,7 +264,7 @@ public class LiftDictionaryRegistry {
     @SuppressWarnings("unchecked")
     public ObservableList<GrammaticalInfo> getGrammaticalInfos() {
         if (!observableList.containsKey(GrammaticalInfo.class)) {
-            this.<GrammaticalInfo>populateObservableList(GrammaticalInfo.class, grammaticalInfosById);
+            this.<GrammaticalInfo>populateObservableList(GrammaticalInfo.class, registers.grammaticalInfosById);
         }
         return (ObservableList<GrammaticalInfo>) observableList.get(GrammaticalInfo.class).getReadOnlyProperty();
     }
@@ -307,7 +272,7 @@ public class LiftDictionaryRegistry {
     @SuppressWarnings("unchecked")
     public ObservableList<LiftAnnotation> getAnnotations() {
         if (!observableList.containsKey(LiftAnnotation.class)) {
-            this.<LiftAnnotation>populateObservableList(LiftAnnotation.class, annotationsById);
+            this.<LiftAnnotation>populateObservableList(LiftAnnotation.class, registers.annotationsById);
         }
         return (ObservableList<LiftAnnotation>) observableList.get(LiftAnnotation.class).getReadOnlyProperty();
     }
@@ -329,9 +294,9 @@ public class LiftDictionaryRegistry {
             observableList.put(clazz, x);
     }
 
-// ---------
-// ---------
-// ---------
+    // -----------------------------------------------------------------------
+    // Texts
+    // -----------------------------------------------------------------------
 
     private ObservableList<MultiText> objectText = null;
     private ObservableList<MultiText> objectTextReadOnly = null;
@@ -340,10 +305,10 @@ public class LiftDictionaryRegistry {
         if (objectText == null) {
             objectText = FXCollections.observableList(
                 FXCollections.observableArrayList(
-                    objectTextById.values()
+                    registers.objectTextById.values()
                 )
             );
-            objectTextById.addListener(
+            registers.objectTextById.addListener(
                 (MapChangeListener<UUID, MultiText>) change -> {
                     if (change.wasAdded()) {
                         objectText.add(change.getValueAdded());
@@ -352,8 +317,8 @@ public class LiftDictionaryRegistry {
                     }
                 }
             );
+            objectTextReadOnly = FXCollections.unmodifiableObservableList(objectText);
         }
-        objectTextReadOnly = FXCollections.unmodifiableObservableList(objectText);
         return objectTextReadOnly;
     }
 
@@ -364,10 +329,10 @@ public class LiftDictionaryRegistry {
         if (metaText == null) {
             metaText = FXCollections.observableList(
                 FXCollections.observableArrayList(
-                    metaTextById.values()
+                    registers.metaTextById.values()
                 )
             );
-            metaTextById.addListener(
+            registers.metaTextById.addListener(
                 (MapChangeListener<UUID, MultiText>) change -> {
                     if (change.wasAdded()) {
                         metaText.add(change.getValueAdded());
@@ -376,531 +341,8 @@ public class LiftDictionaryRegistry {
                     }
                 }
             );
+            metaTextReadOnly = FXCollections.unmodifiableObservableList(metaText);
         }
-        metaTextReadOnly = FXCollections.unmodifiableObservableList(metaText);
         return metaTextReadOnly;
-    }
-
-    // -----------------------------------------------------------------------
-    // -----------------------------------------------------------------------
-    // -----------------------------------------------------------------------
-
-    public Map<UUID, LiftEntry> getEntriesById() {
-        return entriesById;
-    }
-
-    protected LiftDictionaryRegistry(LiftDictionary owner) {
-        if (owner == null) {
-            throw new IllegalArgumentException("owner cannot be null");
-        }
-        this.owner = owner;
-    }
-
-    /**
-     * Add an entry back at a known position: used when undoing a deletion.
-     *
-     * @throws IllegalArgumentException if the entry is already in this dictionary, or
-     *         if {@code index} is past the end of the entry list
-     */
-    public void addToDictionaryLowLevel(LiftEntry e, int index) {
-        if (index > entries.size()) throw new IllegalArgumentException("Index is greater than array size (" + index + ", " + entries.size() + ").");
-        if (e.getUUID() != null) throw new IllegalArgumentException(
-            "This entry is already registered; its position cannot be set this way."
-        );
-        addToDictionaryLowLevel(e);
-        // TODO ugly hack...
-        entries.removeLast();
-        entries.add(index, e);
-    }
-
-    /**
-     * Add a node (and its descendants) to the directory using the low-level
-     * API. This interface is intended for :
-     *
-     * - unmarshalling efficiently the dictionary.
-     * - inserting into the dictionary a node you haven't created (undoing a suppression, moving a node from a parent to another, etc.)
-     *
-     * If you are creating a node from scratch, the high-level (fluent) API ({@link
-     * LiftDictionary#getComponentBuilder()}) should be preferred.
-     *
-     * The relation parent / child is not manager here:
-     * <ul>
-     * <li> if you use addToDictionaryLowLevel
-     * for inserting a LiftExemple into the dictionary, in addition to calling this method,
-     * you still have to set the parent ({@link LiftExample#setParent}) of this
-     * example and add this example to its parent ({@link LiftSense#addExample(LiftExample)}).</li>
-     * <li> In the case of a LiftEntry, though, nothing more need to be done.</li>
-     * </ul>
-     *
-     * All subnodes of the node (added with addX method, such as {@link
-     * LiftEntry#addSense(LiftSense sense)}) will also be added to the dictionary.
-     *
-     * Adopting a subtree is idempotent for components this dictionary already holds, so
-     * a subtree that was detached without being unregistered - a move within the
-     * dictionary, an undo - can simply be attached again. A component carrying a UUID
-     * that this dictionary does not know is refused: it belongs to another dictionary,
-     * and must be released with {@link #removeFromDictionary(AbstractLiftRoot)} first.
-     *
-     * @throws IllegalArgumentException if {@code node} is not a {@link LiftEntry} and
-     *         has no parent, or if it belongs to another dictionary
-     */
-    public void addToDictionaryLowLevel(AbstractLiftRoot node) {
-        // This is where the "a node must have a parent" invariant can finally be
-        // stated: AbstractLiftRoot.getParentNode() makes the chain uniform, and by the
-        // time a subtree is adopted it is already wired to its parent. Registering an
-        // orphan would put a component in the registries that no traversal can ever
-        // reach again - not on delete, not on save.
-        if (!(node instanceof LiftEntry) && node.getParentNode() == null) {
-            throw new IllegalArgumentException(
-                "Only an entry may be adopted without a parent; " +
-                    node.getClass().getSimpleName() + " must be wired to its parent first."
-            );
-        }
-        adoptRecursively(node);
-    }
-
-    private void adoptRecursively(AbstractLiftRoot node) {
-        // 1. register the node and its MultiText(s), unless we already hold it
-        if (!isRegisteredHere(node)) {
-            register(node);
-        }
-        // 2. recursively add its descendants. The child enumeration lives in
-        // DictionaryMutator so that this traversal and unregisterRec cannot drift.
-        for (AbstractLiftRoot child : DictionaryMutator.childrenOf(node)) {
-            adoptRecursively(child);
-        }
-    }
-
-    /**
-     * Whether this dictionary already holds {@code node}.
-     *
-     * A UUID alone does not prove it: it only says the component was registered
-     * <em>somewhere</em>. The registry is asked for the mapping so that a component
-     * still owned by another dictionary is rejected rather than silently skipped, which
-     * would leave it wired into this dictionary but absent from every lookup.
-     *
-     * @throws IllegalArgumentException if the node carries a UUID this dictionary does
-     *         not know
-     */
-    private boolean isRegisteredHere(AbstractLiftRoot node) {
-        UUID uuid = node.getUUID();
-        if (uuid == null) {
-            return false;
-        }
-        if (getNodesById(node).get(uuid) == node) {
-            return true;
-        }
-        throw new IllegalArgumentException(
-            "This node is registered in another dictionary: " +
-                node.getClass().getSimpleName() + " " + uuid +
-                ". Release it with removeFromDictionary() before attaching it here."
-        );
-    }
-
-    /**
-     * Non-recursively add the node. Should not be called directly: use the
-     * fluent API instead ({@link LiftDictionary#getComponentBuilder()}).
-     *
-     * Register the node in the dictionary :
-     *
-     * <ul>
-     * <li>Add a UUID to the node</li>
-     * <li>Register the maping (node, UUID) in collections used internally</li>
-     * <li>Increment a counter for component referenced from another ones (LiftRelation, etc. : see HasRef).</li>
-     * <li>Add a LIFT ID to the node (for entry and sense) if it doesn't have one.</li>
-     * </ul>
-     *
-     * The node must not already be registered; callers adopting a whole subtree go
-     * through {@link #addToDictionaryLowLevel(AbstractLiftRoot)}, which skips the
-     * components this dictionary already holds. The "a node other than an entry must
-     * have a parent" invariant is checked there too, because the builders deliberately
-     * register a component before wiring it (registration is what can fail, and wiring
-     * first would leave the parent holding a child the dictionary does not know about).
-     *
-     * @throws IllegalArgumentException if the node already as an UUID
-     */
-    public void register(AbstractLiftRoot node) {
-        if (node.getUUID() != null) {
-            throw new IllegalArgumentException(
-                "This node seems to have already been registered in a dictionary."
-            );
-        }
-        UUID uuid = getNewUUID();
-        node.setUUID(uuid);
-
-        getNodesById(node).put(uuid, node);
-
-        // Only entries and senses carry a LIFT id of their own; every other kind of
-        // node needed nothing beyond the registration above.
-        switch (node) {
-            case LiftEntry e -> {
-                // The one back reference from the component graph to the dictionary:
-                // everything below this entry resolves getOwningDictionary() through it.
-                e.setOwningDictionary(owner);
-                if (e.getId().isEmpty()) {
-                    String uuidS = e.getUUID().toString();
-                    e.setId(uuidS);
-                }
-                if (entriesByLiftId.containsKey(e.getId().get())) {
-                    throw new DuplicateIdException(
-                        "Duplicate lift id: " + e.getId().get()
-                    );
-                }
-                entriesByLiftId.put(e.getId().get(), e);
-                entryLiftId2Uuid.put(e.getId().get(), e.getUUID());
-                entries.add(e);
-            }
-            case LiftSense s -> {
-                if (s.getId().isEmpty()) {
-                    String uuidS = s.getUUID().toString();
-                    s.setId(uuidS);
-                }
-                // Same guard as for entries: without it a file with two senses
-                // sharing an id silently loses one of them.
-                if (sensesByLiftId.containsKey(s.getId().get())) {
-                    throw new DuplicateIdException(
-                        "Duplicate lift id: " + s.getId().get()
-                    );
-                }
-                sensesByLiftId.put(s.getId().get(), s);
-                senseLiftId2Uuid.put(s.getId().get(), s.getUUID());
-            }
-            default -> {
-                // getNodesById above already rejected an unknown kind of node.
-            }
-        }
-        switch (node) {
-            case LiftEntry e -> {
-                registerObjectMultiText(e.getMainMultiText());
-            }
-            case LiftSense s -> {
-                registerMetaMultiText(s.getMainMultiText());
-                registerMetaMultiText(s.getDefinition());
-            }
-            case LiftExample e -> {
-                registerObjectMultiText(e.getExample());
-                e.getTranslations()
-                    .values()
-                    .forEach(x -> registerMetaMultiText(x));
-            }
-            case LiftVariant v -> {
-                registerObjectMultiText(v.getForms());
-            }
-            case LiftTrait _ -> {
-            }
-            case GrammaticalInfo _ -> {
-                // no MultiText of its own, like a trait
-            }
-            case LiftReversal v -> {
-                registerObjectMultiText(v.getForms());
-            }
-            case LiftRelation r -> {
-                registerMetaMultiText(r.getUsage());
-            }
-            case LiftPronunciation p -> {
-                registerObjectMultiText(p.getPronunciation());
-            }
-            case LiftNote n -> {
-                registerMetaMultiText(n.getText());
-            }
-            case LiftMedia m -> {
-                registerMetaMultiText(m.getLabel());
-            }
-            case LiftIllustration i -> {
-                registerMetaMultiText(i.getLabel());
-            }
-            case LiftField f -> {
-                registerMetaMultiText(f.getText());
-            }
-            case LiftEtymology e -> {
-                registerObjectMultiText(e.getForms());
-            }
-            case LiftAnnotation a -> {
-                registerMetaMultiText(a.getText());
-            }
-            default -> throw new IllegalStateException(
-                "Unknown type: " + node.getClass()
-            );
-        }
-
-        if (node instanceof HasRefId hasref) {
-            String target = null;
-
-            // TODO : which is available here, depending on high/low level ?
-            // Try to avoid the test
-            if (hasref.getRefId().isPresent() )
-                target = hasref.getRefId().get();
-            else if (hasref.getRefObject() != null && hasref.getRefObject().getId().isPresent())
-                target = hasref.getRefObject().getId().get();
-
-            if (target != null && !target.trim().isEmpty()) {
-                addReference(target, hasref);
-            }
-        }
-    }
-
-    public void registerObjectMultiText(MultiText element) {
-        registerMultiText(element, objectTextById, owner.getObjectLanguageManager());
-    }
-
-    public void registerMetaMultiText(MultiText element) {
-        registerMultiText(element, metaTextById, owner.getMetaLanguageManager());
-    }
-
-    /**
-     * Register a MultiText and hand it the language manager it must report to.
-     *
-     * A MultiText created through the builders is empty at this point, so the loop
-     * below does nothing and the manager keeps refusing forms in languages the
-     * dictionary does not declare - which is the guard the editing UI relies on. A
-     * MultiText that arrives already filled, on the other hand, comes from a subtree
-     * built outside the dictionary: the XML reader assembling an entry, or a component
-     * moved in from elsewhere. Its languages are part of what is being adopted, so they
-     * are declared here rather than rejected. This is what replaced the parse-wide
-     * "turn the language manager off and recount at the end" hack.
-     */
-    private void registerMultiText(MultiText element,
-        ObservableMap<UUID, MultiText> textById,
-        LiftDictionaryLanguagesManager languagesManager
-        ) {
-        if (element.getUUID() != null) {
-            throw new IllegalArgumentException("UUID already set");
-        }
-        UUID uuid = getNewUUID();
-        element.setUUID(uuid);
-        textById.put(uuid, element);
-        for (String lang : element.getLangs()) {
-            if (!languagesManager.hasLanguage(lang)) {
-                languagesManager.addLanguage(lang);
-            }
-        }
-        element.setLanguagesManager(languagesManager);
-    }
-
-    /**
-     * The registry holding nodes of the same kind as {@code node}.
-     *
-     * The element type is captured by the type variable {@code T} rather than written
-     * as a wildcard: you can read from a {@code Map<UUID, ? extends AbstractLiftRoot>}
-     * but never {@code put} into one, because the compiler cannot prove the value
-     * matches the map's actual element type. With {@code T} it can, so callers get a
-     * map they may both read and write.
-     *
-     * The cast is unchecked but safe by construction: each branch below returns the map
-     * declared for exactly the runtime type matched, so the returned map only ever
-     * receives nodes of its own kind.
-     *
-     * @param node the node whose registry is wanted
-     * @return the registry for that kind of node, never {@code null}
-     * @throws IllegalStateException if the node is of an unknown kind
-     */
-    @SuppressWarnings("unchecked")
-    private <T extends AbstractLiftRoot> Map<UUID, T> getNodesById(T node) {
-        Map<UUID, ? extends AbstractLiftRoot> map = null;
-        switch (node) {
-            case LiftEntry _ ->  map = entriesById;
-            case LiftSense _ ->  map = sensesById;
-            case LiftExample _ ->  map = examplesById;
-            case LiftVariant _ ->  map = variantsById;
-            case LiftTrait _ ->  map = traitsById;
-            case LiftReversal _ ->  map = reversalsById;
-            case LiftRelation _ ->  map = relationsById;
-            case LiftPronunciation _ ->  map = pronunciationsById;
-            case LiftNote _ ->  map = notesById;
-            case LiftMedia _ ->  map = mediasById;
-            case LiftIllustration _ ->  map = illustrationsById;
-            case LiftField _ ->  map = fieldsById;
-            case LiftEtymology _ ->  map = etymologiesById;
-            case LiftAnnotation _ ->  map = annotationsById;
-            case GrammaticalInfo _ ->  map = grammaticalInfosById;
-            default -> throw new IllegalStateException(
-                "Unknown type: " + node.getClass()
-            );
-        }
-        return (Map<UUID, T>) map;
-    }
-
-    /**
-     * Remove a node from the registries, remove its UUID.
-     */
-    protected void unregister(AbstractLiftRoot node) {
-        Map<UUID, ? extends AbstractLiftRoot> map = getNodesById(node);
-        if (!map.containsKey(node.getUUID())) {
-            throw new IllegalArgumentException(
-                "Entry not found in registry: " + node.getUUID()
-            );
-        }
-        map.remove(node.getUUID());
-
-        node.setUUID(null);
-
-        if (node instanceof AbstractIdentifiable identifiable) {
-            String liftId = identifiable.getId().get();
-            switch (identifiable) {
-                case LiftEntry _ ->  {
-                    entriesByLiftId.remove(liftId);
-                    entryLiftId2Uuid.remove(liftId);
-                }
-                case LiftSense _ ->  {
-                    sensesByLiftId.remove(liftId);
-                    senseLiftId2Uuid.remove(liftId);
-                }
-            }
-        }
-
-        // TODO inefficient
-        if (node instanceof LiftEntry e) {
-            entries.removeIf(x -> x == e);
-            // Mirrors register(): the subtree below this entry becomes detached, so
-            // mutating it no longer touches this dictionary.
-            e.setOwningDictionary(null);
-        }
-
-        switch (node) {
-            case LiftEntry e -> {
-                unregisterObjectMultiText(e.getMainMultiText());
-            }
-            case LiftSense s -> {
-                unregisterMetaMultiText(s.getMainMultiText());
-                unregisterMetaMultiText(s.getDefinition());
-            }
-            case LiftExample e -> {
-                unregisterObjectMultiText(e.getExample());
-                e.getTranslations()
-                    .values()
-                    .forEach(x -> unregisterMetaMultiText(x));
-            }
-            case LiftVariant v -> {
-                unregisterObjectMultiText(v.getForms());
-            }
-            case LiftTrait _ -> {
-            }
-            case GrammaticalInfo _ -> {
-                // no MultiText of its own, like a trait
-            }
-            case LiftReversal v -> {
-                unregisterObjectMultiText(v.getForms());
-            }
-            case LiftRelation r -> {
-                unregisterMetaMultiText(r.getUsage());
-            }
-            case LiftPronunciation p -> {
-                unregisterObjectMultiText(p.getPronunciation());
-            }
-            case LiftNote n -> {
-                unregisterMetaMultiText(n.getText());
-            }
-            case LiftMedia m -> {
-                unregisterMetaMultiText(m.getLabel());
-            }
-            case LiftIllustration i -> {
-                unregisterMetaMultiText(i.getLabel());
-            }
-            case LiftField f -> {
-                unregisterMetaMultiText(f.getText());
-            }
-            case LiftEtymology e -> {
-                unregisterObjectMultiText(e.getForms());
-            }
-            case LiftAnnotation a -> {
-                unregisterMetaMultiText(a.getText());
-            }
-            default -> throw new IllegalStateException(
-                "Unknown type: " + node.getClass()
-            );
-        }
-    }
-
-    protected void unregisterObjectMultiText(MultiText node) {
-        objectTextById.remove(node.getUUID());
-        node.unregister();
-        node.setUUID(null);
-        node.setLanguagesManager(null);
-    }
-
-    protected void unregisterMetaMultiText(MultiText node) {
-        metaTextById.remove(node.getUUID());
-        node.unregister();
-        node.setUUID(null);
-        node.setLanguagesManager(null);
-    }
-
-    protected void unregisterRec(AbstractLiftRoot node) {
-        // 1. First, manage reference counting
-        if (node instanceof LiftRelation r) {
-            final String target = r
-                .getRefObject().getId()
-                .orElseThrow(() ->
-                    new IllegalArgumentException("Reference ID is missing")
-                );
-            removeReference(target, r);
-        } else if (node instanceof LiftVariant a) {
-            final String target = a
-                .getRefObject().getId()
-                .orElseThrow(() ->
-                    new IllegalArgumentException("Reference ID is missing")
-                );
-            removeReference(target, a);
-
-        // 2. check that this node is not refered from another node
-        } else if (node instanceof AbstractIdentifiable i) {
-            final String refId = i
-                .getId()
-                .orElseThrow(() ->
-                    new IllegalArgumentException("Reference ID is missing")
-                );
-            if (isReferenced(refId)) {
-                throw new IllegalStateException(
-                    "Cannot delete this node: it is referenced from other nodes."
-                );
-            }
-        }
-
-        // 3. remove this node from the registers.
-        // unregister() already unregisters the node's own MultiTexts; doing it again
-        // here would decrement every language counter twice.
-        unregister(node);
-
-        // 4. recursively unregister its descendants, using the same child
-        // enumeration as addToDictionaryLowLevel so the two stay mirror images.
-        for (AbstractLiftRoot child : DictionaryMutator.childrenOf(node)) {
-            unregisterRec(child);
-        }
-    }
-
-    /**
-     * Completely remove a node from the dictionary: unlink it from its parent
-     * <em>and</em> unregister it.
-     *
-     * This is the counterpart of {@link AbstractLiftRoot#detach()}, and the difference
-     * between the two matters:
-     *
-     * <ul>
-     * <li>{@code detach()} only unlinks. The subtree keeps its UUIDs and stays in these
-     * registries, so it can be attached again somewhere else in <em>this</em>
-     * dictionary - a move, an undo - and re-attaching costs nothing.</li>
-     * <li>{@code removeFromDictionary()} also unregisters. The subtree comes back
-     * UUID-free and can be attached anywhere, including a different dictionary.</li>
-     * </ul>
-     *
-     * In both cases the node keeps its reference towards its children, and the children
-     * towards it.
-     *
-     * @param node the root of the subtree to remove
-     */
-    public void removeFromDictionary(AbstractLiftRoot node) {
-        // remove the link parent -> self
-        // pb : should be made afer the second since it can throw an exception.
-        node.detach();
-
-        unregisterRec(node);
-    }
-
-    public UUID getNewUUID() {
-        return uuidManager.getUniqueUuid();
-    }
-
-    public int nEntries() {
-        return entriesById.values().size();
     }
 }

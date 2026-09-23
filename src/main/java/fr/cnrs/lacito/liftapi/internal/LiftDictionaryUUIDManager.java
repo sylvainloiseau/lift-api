@@ -1,4 +1,4 @@
-package fr.cnrs.lacito.liftapi;
+package fr.cnrs.lacito.liftapi.internal;
 
 import java.util.ArrayDeque;
 import java.util.HashSet;
@@ -7,6 +7,9 @@ import java.util.UUID;
 
 /**
  * Manages the generation and allocation of unique UUIDs for Lift dictionary entries.
+ *
+ * <b>Not public API.</b> It lives in {@code fr.cnrs.lacito.liftapi.internal}, a package
+ * {@code module-info.java} does not export, so no consumer of the library can reach it.
  *
  * <b>Not thread-safe.</b> Like the rest of the model (see the package documentation),
  * a dictionary is owned by a single thread - the JavaFX Application Thread when a UI
@@ -21,7 +24,7 @@ public class LiftDictionaryUUIDManager {
     private final Set<UUID> usedUuid;
     private final ArrayDeque<UUID> availableUuid = new ArrayDeque<>(DEQUE_SIZE);
 
-    protected LiftDictionaryUUIDManager () {
+    LiftDictionaryUUIDManager () {
         this(DEFAULT_EXPECTED_NUMBER_OF_UUID);
     }
 
@@ -31,7 +34,7 @@ public class LiftDictionaryUUIDManager {
     * will be needed by the dictionary. If an estimate is available,
     * if can speed-up the management of UUID
     */
-    protected LiftDictionaryUUIDManager (int expectedNumberOfUuid) {
+    LiftDictionaryUUIDManager (int expectedNumberOfUuid) {
         if (expectedNumberOfUuid < 1) throw new IllegalArgumentException("expected number of uuid cannot be lower than 1");
         usedUuid = new HashSet<>(expectedNumberOfUuid);
         generateUniqueUuid();
@@ -53,7 +56,7 @@ public class LiftDictionaryUUIDManager {
         }
     }
 
-    protected UUID getUniqueUuid() {
+    UUID getUniqueUuid() {
         if (availableUuid.isEmpty()) {
             generateUniqueUuid();
         }

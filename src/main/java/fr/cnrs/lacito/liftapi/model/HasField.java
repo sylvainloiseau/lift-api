@@ -18,6 +18,14 @@ public sealed interface HasField
     public void addField(LiftField f) throws DuplicateTypeException;
 
     /**
+     * Removes a field from this object, and from the dictionary if this object belongs
+     * to one.
+     *
+     * @param f a field of this object.
+     */
+    public void deleteField(LiftField f);
+
+    /**
      * Returns the field with the given type.
      *
      * @param type the type of the field.

@@ -1,7 +1,6 @@
 package fr.cnrs.lacito.liftapi.builder;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
-import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.internal.DictionaryMutator;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
 import fr.cnrs.lacito.liftapi.model.AbstractNotable;
@@ -38,7 +37,6 @@ import fr.cnrs.lacito.liftapi.model.LiftVariant;
 public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot, U extends LiftObject> {
 
     protected final T element;
-    protected final LiftDictionaryRegistry registry;
     protected final LiftDictionary dictionary;
     protected final U parent;
     private boolean registered = false;
@@ -52,7 +50,6 @@ public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot, U e
      */
     protected AbstractLiftElementBuilder(T element, LiftDictionary dictionary, U parent) {
         this.element = element;
-        this.registry = dictionary.getLiftDictionaryRegistry();
         this.dictionary = dictionary;
         this.parent = parent;
     }
@@ -111,9 +108,9 @@ public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot, U e
     public abstract T build();
 
     /**
-     * Register the element built by this builder in the dictionary registry,
-     * and add the object to its parent (the parent take care of creating the
-     * reference from the child towards itself).
+     * Register the element built by this builder in the dictionary, and add it to its
+     * parent (the parent takes care of creating the reference from the child towards
+     * itself).
      */
     protected void register() {
         if (registered) {
