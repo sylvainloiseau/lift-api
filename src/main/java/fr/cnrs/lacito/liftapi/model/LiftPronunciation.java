@@ -26,6 +26,12 @@ public final class LiftPronunciation extends AbstractExtensibleWithField {
         return getMainMultiText();
     }
 
+    /**
+     * Protected: this method is called by the parent when it adopts this LiftPronunciation.
+     * 
+     * @param parent the new parent, or {@code null} when detaching this pronunciation
+     *        (see {@link AbstractLiftRoot#detach()})
+     */
     protected void setParent(HasPronunciation parent) {
         this.parent = parent;
     }

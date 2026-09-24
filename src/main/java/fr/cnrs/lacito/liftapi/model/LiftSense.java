@@ -131,7 +131,13 @@ public final class LiftSense
         this.grammaticalInfo = Optional.empty();
     }
 
-    public void setParent(HasSense parent) {
+    /**
+     * Protected: this method is called by the parent when it adopts this LiftSense.
+     * 
+     * @param parent the new parent, or {@code null} when detaching this sense
+     *        (see {@link AbstractLiftRoot#detach()})
+     */
+    protected void setParent(HasSense parent) {
         this.parent = parent;
     }
 

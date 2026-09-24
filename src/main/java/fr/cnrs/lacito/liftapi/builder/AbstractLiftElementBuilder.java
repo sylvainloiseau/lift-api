@@ -39,7 +39,7 @@ public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot, U e
     protected final T element;
     protected final LiftDictionary dictionary;
     protected final U parent;
-    private boolean registered = false;
+    private boolean attached = false;
 
     /**
      * Constructs a new AbstractLiftElementBuilder with the given element, dictionary, and parent.
@@ -104,22 +104,25 @@ public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot, U e
 
     /**
      * Build the element. Subclasses should override to add validation.
+     * A subclass must call {@link #attach()} to register the element
+     * in the dictionary and add it to its parent.
      */
     public abstract T build();
 
     /**
-     * Register the element built by this builder in the dictionary, and add it to its
-     * parent (the parent takes care of creating the reference from the child towards
+     * Attach the element built by this builder in the dictionary, i.e.:
+     * - register into the dictionary and
+     * - add it to its parent (the parent takes care of creating the reference from the child towards
      * itself).
      */
-    protected void register() {
-        if (registered) {
+    protected void attach() {
+        if (attached) {
             throw new IllegalStateException("This builder has already been used.");
         }
         // Registering and wiring to the parent both happen in DictionaryMutator, the
         // single place that knows the correct order (register first, so that a failed
         // registration cannot leave a half-built graph behind).
         dictionary.getMutator().attach(this.element, this.parent);
-        this.registered = true;
+        this.attached = true;
     }
 }

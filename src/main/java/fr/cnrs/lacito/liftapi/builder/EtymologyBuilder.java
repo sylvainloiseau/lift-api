@@ -148,7 +148,7 @@ public class EtymologyBuilder
      */
     @Override
     public LiftEtymology build() {
-        super.register();
+        super.attach();
         return element;
     }
 }

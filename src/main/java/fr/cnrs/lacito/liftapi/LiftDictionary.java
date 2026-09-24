@@ -22,12 +22,7 @@ import java.util.stream.Collectors;
 
 /// The entry point for working with a LIFT dictionary.
 ///
-/// Methods are distributed between this class and other classes in the same package
-/// (such as [LiftDictionaryRegistry], [DictionaryComponentBuilderFactory], [LiftDictionaryLanguagesManager], ...).
-/// Each dictionary owns one instance of each of them - they are not singletons and must
-/// not be shared between dictionaries - reachable from here through [LiftDictionary#getLiftDictionaryRegistry()],
-/// [LiftDictionary#getComponentBuilder()],
-/// [LiftDictionary#getObjectLanguageManager()] and [LiftDictionary#getMetaLanguageManager()], etc.
+/// # Functionality offered by this class
 ///
 /// Functionalities include:
 ///
@@ -36,13 +31,38 @@ import java.util.stream.Collectors;
 /// - lookup into dictionary content ([LiftDictionary#getEntryByForm(String lang, String form)], [LiftDictionary#searchInMetaLanguage(String lang, String searched)], [LiftDictionary#searchInObjectLanguage(String lang, String searched)])
 /// - manage languages ([LiftDictionary#getObjectLanguageManager()], [LiftDictionary#getMetaLanguageManager()])
 ///
+/// # General overview on mutating a dictionary
+///
+/// In order to mutate the dictionary, you can:
+///
+/// - use the fluent API ([LiftDictionary#getComponentBuilder()])
+/// - instantiate manually a component in the [fr.cnrs.lacito.liftapi.model] package and
+///   then use the `addX` and `deleteX` methods of another component
+///   in order to wire the created component to a parent.
+///   - If this parent already belongs to the dictionary, the component will be
+///     automatically added to it;
+///   - if not, the component will be added when one of its
+///     parents will be added to the dictionary.
+///     - In order to add an entry to the dictionary,
+///       use the [LiftDictionary#addEntry(LiftEntry entry)] method.
+///
 /// Internaly, components of the dictionary are linked in two ways:
 ///
 /// - with links from parent node to child node and from child node to parent
 /// - by managing list and map of components of a given type
 ///
 /// Creating, adding or removing a component from the dictionary implies taking
-/// care of these two aspects.
+/// care of these two aspects. Using either the fluent API or manual instantiation and addX methods
+///  will automatically take care of these two aspects.
+///
+/// Methods are distributed between this class and other classes in the same package
+/// (such as [LiftDictionaryRegistry], [DictionaryComponentBuilderFactory], [LiftDictionaryLanguagesManager], ...).
+/// Each dictionary owns one instance of each of them - they are not singletons and must
+/// not be shared between dictionaries - reachable from here through [LiftDictionary#getLiftDictionaryRegistry()],
+/// [LiftDictionary#getComponentBuilder()],
+/// [LiftDictionary#getObjectLanguageManager()] and [LiftDictionary#getMetaLanguageManager()], etc.
+///
+///
 public final class LiftDictionary {
 
     // Constants

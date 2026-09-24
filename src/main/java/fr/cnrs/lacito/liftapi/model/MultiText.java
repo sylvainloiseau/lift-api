@@ -25,18 +25,18 @@ import javafx.collections.ObservableMap;
 
 /**
  * A MultiText is a set of parallel {@link Form} in one or several languages + writting system coordinate.
- * 
+ *
  * A languages + writting system coordinate can be any documented string refering to a language or a language+writting system.
- * 
+ *
  * Some Multitext make more sense for giving the same content in several languages (for instance, a {@link LiftSense#getGlosses()}),
  * while other MultiText make more sense for various writting system ({@link LiftVariant#getForms()}).
  *
  * In a MultiText there can be only one {@link Form} in each language/writting system.
- * 
+ *
  * A multitex is either an object language(s) or a meta language multitext; in the first
  * case the languages of the multitext should belong to the {@link LiftDictionary#getObjectLanguageManager()} set,
  * in the second they should belong {@link LiftDictionary#getMetaLanguageManager()}.
- * 
+ *
  * All LIFT field holding textual content (appart from terminological components : type of {@link LiftField},
  * name and value of {@link LiftTrait}, etc.) are stored in such MultiText object, for instance:
  * <ul>
@@ -275,7 +275,8 @@ public final class MultiText
 
     /// With the fluent API, this method is called before any Form has been added.
     /// With the low-level API (for loading from XML), this method is called after
-    /// all Forms in the XML document have been added: the LiftFactoryNew take care of computing the numbers of occurrences.
+    /// all Forms in the XML document have been added: the LiftFactory take care
+    /// of computing the numbers of occurrences.
     ///
     /// Passing `null` detaches this MultiText from its dictionary: it stops
     /// contributing to that dictionary's language counters.

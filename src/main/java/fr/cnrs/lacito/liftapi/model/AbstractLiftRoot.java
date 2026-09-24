@@ -7,7 +7,8 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Superclass of all LIFT component classes (all subclasses names are prefixed with Lift: {@link LiftEntry}, etc.)
+ * Superclass of all LIFT component classes (all subclasses names are prefixed
+ * with Lift: {@link LiftEntry}, etc.)
  *
  * This abstract class provide a Multitext field used by subclasses.
  * Subclasses are responsible for exposing this field

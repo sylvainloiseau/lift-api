@@ -152,7 +152,7 @@ public final class ExampleBuilder extends AbstractLiftElementWithFieldAndNoteBui
     public LiftExample build() {
         if (element.getExample().isEmpty())
             throw new IllegalStateException("In order to build an example, it should contain at least one example");
-        super.register();
+        super.attach();
         return element;
     }
 }

@@ -88,7 +88,7 @@ public class FieldBuilder extends AbstractLiftElementWithoutFieldBuilder<LiftFie
         if (element.getSpecification() == null) {
             throw new IllegalArgumentException("Field name cannot be null");
         }
-        super.register();
+        super.attach();
         return element;
     }
 }

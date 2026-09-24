@@ -91,7 +91,7 @@ public class PronunciationBuilder extends AbstractLiftElementWithFieldBuilder<Li
      */
     @Override
     public LiftPronunciation build() {
-        super.register();
+        super.attach();
         return element;
     }
 }

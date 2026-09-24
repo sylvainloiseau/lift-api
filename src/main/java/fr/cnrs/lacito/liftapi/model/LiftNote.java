@@ -55,6 +55,12 @@ public final class LiftNote
         return parent;
     }
 
+    /**
+     * Protected: this method is called by the parent when it adopts this LiftNote.
+     * 
+     * @param parent the new parent, or {@code null} when detaching this note
+     *        (see {@link AbstractLiftRoot#detach()})
+     */
     protected void setParent(AbstractNotable parent) {
         this.parent = parent;
     }

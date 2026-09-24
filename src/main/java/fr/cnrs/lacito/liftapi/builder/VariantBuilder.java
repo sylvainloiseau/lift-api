@@ -161,7 +161,7 @@ public class VariantBuilder extends AbstractLiftElementWithFieldBuilder<LiftVari
      */
     @Override
     public LiftVariant build() {
-        super.register();
+        super.attach();
         return element;
     }
 }

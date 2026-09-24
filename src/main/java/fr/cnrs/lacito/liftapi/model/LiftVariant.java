@@ -121,6 +121,8 @@ public final class LiftVariant
     }
 
     /**
+     * Protected: this method is called by the parent when it adopts this LiftTrait.
+     * 
      * The {@link LiftEntry} containing this variant.
      * @param parent
      */

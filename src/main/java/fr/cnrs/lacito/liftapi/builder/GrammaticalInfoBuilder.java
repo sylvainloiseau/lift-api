@@ -104,7 +104,7 @@ public final class GrammaticalInfoBuilder
         // the dictionary first, so that replacing it does not leave a registered
         // component nothing refers to.
         parent.deleteGrammaticalInfo();
-        super.register();
+        super.attach();
         return element;
     }
 }

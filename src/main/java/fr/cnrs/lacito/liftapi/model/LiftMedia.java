@@ -20,6 +20,12 @@ public final class LiftMedia
         this.url = href;
     }
 
+    /**
+     * Protected: this method is called by the parent when it adopts this LiftMedia.
+     * 
+     * @param parent the new parent, or {@code null} when detaching this media
+     *        (see {@link AbstractLiftRoot#detach()})
+     */
     protected void setParent(LiftPronunciation parent) {
         this.parent = parent;
     }

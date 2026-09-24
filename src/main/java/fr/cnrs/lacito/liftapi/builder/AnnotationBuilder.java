@@ -81,7 +81,7 @@ public class AnnotationBuilder extends AbstractLiftElementBuilder<LiftAnnotation
      */
     @Override
     public LiftAnnotation build() {
-        super.register();
+        super.attach();
         return element;
     }
 }

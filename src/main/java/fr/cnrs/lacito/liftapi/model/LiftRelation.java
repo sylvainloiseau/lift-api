@@ -38,6 +38,12 @@ public final class LiftRelation
         this.refObjectProperty = new SimpleObjectProperty<AbstractIdentifiable>(this, "refObject", null);
     }
 
+    /**
+     * Protected: this method is called by the parent when it adopts this LiftRelation.
+     * 
+     * @param parent the new parent, or {@code null} when detaching this relation
+     *        (see {@link AbstractLiftRoot#detach()})
+     */
     protected void setParent(HasRelations parent) {
         this.parent = parent;
     }

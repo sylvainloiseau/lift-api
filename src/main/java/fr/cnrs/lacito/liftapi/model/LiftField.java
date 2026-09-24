@@ -48,6 +48,8 @@ public final class LiftField extends AbstractExtensibleWithoutField {
     }
 
     /**
+     * Protected: this method is called by the parent when it adopts this LiftExample.
+     * 
      * @param parent the new parent, or {@code null} when detaching this field
      *        (see {@link AbstractLiftRoot#detach()})
      */

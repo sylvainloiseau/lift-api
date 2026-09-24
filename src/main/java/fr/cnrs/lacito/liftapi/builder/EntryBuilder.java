@@ -234,7 +234,7 @@ public final class EntryBuilder extends AbstractLiftElementWithFieldAndNoteAndId
                 "Entry must have at least one form"
             );
         }
-        super.register();
+        super.attach();
         return element;
     }
 }

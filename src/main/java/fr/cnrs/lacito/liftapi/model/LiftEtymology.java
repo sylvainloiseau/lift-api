@@ -37,6 +37,11 @@ public final class LiftEtymology
         return parent;
     }
 
+    /**
+     * Protected: this method is called by the parent when it adopts this etymology.
+     * 
+     * @param parent
+     */
     protected void setParent(LiftEntry parent) {
         this.parent = parent;
     }

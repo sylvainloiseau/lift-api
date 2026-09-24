@@ -115,7 +115,7 @@ public class NoteBuilder extends AbstractLiftElementWithFieldBuilder<LiftNote, H
         if (element.getType() == null) {
             throw new IllegalStateException("Note type cannot be null");
         }
-        super.register();
+        super.attach();
         return element;
     }
 }

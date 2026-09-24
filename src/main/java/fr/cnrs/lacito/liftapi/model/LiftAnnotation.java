@@ -38,6 +38,11 @@ public final class LiftAnnotation extends AbstractLiftRoot implements HasType {
         typeProperty.set(element);
     }
 
+    /**
+     * Protected: this method is called by the parent when it adopts this annotation.
+     * 
+     * @param parent
+     */
     protected void setParent(HasAnnotation parent) {
         this.parent = parent;
     }

@@ -71,7 +71,7 @@ public class TraitBuilder extends AbstractLiftElementBuilder<LiftTrait, HasTrait
      */
     @Override
     public LiftTrait build() {
-        super.register();
+        super.attach();
         return element;
     }
 }

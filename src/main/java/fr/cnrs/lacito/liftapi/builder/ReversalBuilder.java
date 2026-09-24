@@ -34,7 +34,7 @@ public class ReversalBuilder extends AbstractLiftElementBuilder<LiftReversal, Ha
         if (element.getType() == null) {
             throw new IllegalStateException("Relation must have a type");
         }
-        super.register();
+        super.attach();
         return element;
     }
 

@@ -382,6 +382,8 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
     // --------------------------------------------------------
 
     /**
+     * Protected: this method is called by the parent when it adopts this LiftTrait.
+     * 
      * @param parent the new parent, or {@code null} when detaching this trait
      *        (see {@link AbstractLiftRoot#detach()})
      */

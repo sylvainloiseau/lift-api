@@ -63,6 +63,8 @@ public final class GrammaticalInfo
     }
 
     /**
+     * Protected: this method is called by the parent when it adopts this annotation.
+     * 
      * @param parent the sense this belongs to, or {@code null} when detaching
      *        (see {@link AbstractLiftRoot#detach()})
      */

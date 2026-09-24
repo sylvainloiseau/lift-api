@@ -234,7 +234,7 @@ public final class SenseBuilder extends AbstractLiftElementWithFieldAndNoteAndId
         ) {
             throw new IllegalStateException("A sense must contain at least one gloss or one definition.");
         }
-        super.register();
+        super.attach();
         return element;
     }
 }
