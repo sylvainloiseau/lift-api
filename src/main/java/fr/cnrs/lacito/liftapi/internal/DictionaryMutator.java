@@ -2,6 +2,7 @@ package fr.cnrs.lacito.liftapi.internal;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDictionaryLanguagesManager;
+import fr.cnrs.lacito.liftapi.builder.AbstractLiftElementBuilder;
 import fr.cnrs.lacito.liftapi.model.AbstractExtensibleWithoutField;
 import fr.cnrs.lacito.liftapi.model.AbstractIdentifiable;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
@@ -47,22 +48,14 @@ import javafx.collections.ObservableMap;
  * to modify a dictionary, use the model API in {@code fr.cnrs.lacito.liftapi.model} or the
  * builder API in {@code fr.cnrs.lacito.liftapi.builder}.
  *
- * Please note the following terminological choices:
- * <ul>
- * <li><em>wiring</em> means creating the parent-child references between components</li>
- * <li><em>registring</em> means adding the component to the dictionary's internal indexes</li>
- * <li><em>attaching</em> means wiring+registering</li>
- * <li><em>adding</em> </li>
- * <li><em>adopting</em> means wiring and registering subcomponents if needed, idempotent</li>
- * </ul>
- *
  * This class is the common core every path goes through. In particular
  * {@link #childrenOf(AbstractLiftRoot)} is the <em>only</em> definition of what a
  * component's children are, so the add and remove traversals cannot disagree.
  *
  * The two operations the rest of the library needs are
- * {@link #adoptSubtree(AbstractLiftRoot)} and {@link #releaseSubtree(AbstractLiftRoot)},
- * and both are called for you:
+ * {@link #adoptSubtree(AbstractLiftRoot)}
+ * and {@link #releaseSubtree(AbstractLiftRoot)},
+ * and both are called from:
  *
  * <ul>
  * <li>{@code parent.addX(child)} on the model calls {@code adoptSubtree} through
@@ -71,6 +64,17 @@ import javafx.collections.ObservableMap;
  * when {@code parent} actually belongs to a dictionary.</li>
  * <li>An entry has no parent, so {@code LiftDictionary.addEntry} and
  * {@code LiftDictionary.removeEntry} call them directly.</li>
+ * </ul>
+ *
+ *
+ * Please note the following terminological choices:
+ *
+ * <ul>
+ * <li> <em>wiring</em> means creating the parent<->child references between two components</li>
+ * <li> <em>registring</em> means adding the component to the dictionary's internal indexes</li>
+ * <li> <em>attaching</em> means wiring+registering non recursively an element without UUID. Sub-components of the child not must already have been attached to it. It is the way the builder API works: it builds a subtree bottom first, registering each node as it goes, and then attach the top leaf to its parent in the dictionary</li>
+ * <li> <em>adding</em></li>
+ * <li> <em>adopting/release or orpheaning</em> means recursively registering a component already wired to its parent and that can, itself or its subcomponents, already have UUID belonging to the dictionary: if the UUID already exist, adopt is idempotent</li>
  * </ul>
  *
  * <h2>Not public API</h2>
@@ -110,7 +114,13 @@ public final class DictionaryMutator {
     // ------------------------------------------------------------------
 
     /**
-     * Add a freshly created component to the dictionary: used by the builders.
+     * Add a freshly created component to the dictionary: used by the builders
+     * ({@see AbstractLiftElementBuilder#attach()}).
+     *
+     * The component cannot have an UUID.
+     *
+     * The operation is not recursive. Sub-components of the child has already
+     * been attached to the child.
      *
      * The component is registered <em>before</em> it is wired to its parent, because
      * registration is what can fail (a duplicate LIFT id, for instance). Wiring first
@@ -135,20 +145,22 @@ public final class DictionaryMutator {
     /**
      * Register a subtree, and everything under it, in this dictionary.
      *
-     * This is the path every {@code addX} on an attached component takes, and the one
-     * the XML reader takes for a whole {@code <entry>}. The SAX reader assembles an
-     * entry - senses, examples, traits and all - before the entry is complete, so it
-     * cannot register components one at a time as the builders do; while the entry is
-     * being built it belongs to no dictionary, so none of the {@code addX} calls along
-     * the way register anything, and this single traversal still does all the work. No
-     * builder is allocated during a parse.
-     *
      * The parent and child references are expected to be wired already; only
      * registration happens here.
      *
+     * Used by {@link AbstractLiftRoot#adopted()}.
+     *
+     * This is the path every {@code addX} on an attached component takes, and the one
+     * the XML reader takes for a whole {@code <entry>}. For performance sake, no
+     * builder is allocated during a parse. The SAX reader assembles an
+     * entry - senses, examples, traits and all - before the entry is complete, so it
+     * cannot register components one at a time as the builders do; while the entry is
+     * being built it belongs to no dictionary, so none of the {@code addX} calls along
+     * the way register anything, and this single traversal still does all the work.
+     *
      * Adoption is idempotent for components this dictionary already holds, so a subtree
      * that was detached without being unregistered - a move within the dictionary, an
-     * undo - can simply be attached again. A component carrying a UUID this dictionary
+     * undo - can simply be adopted again. A component carrying a UUID this dictionary
      * does not know is refused: it belongs to another dictionary, and must be released
      * with {@link #releaseSubtree(AbstractLiftRoot)} first.
      *
@@ -493,7 +505,7 @@ public final class DictionaryMutator {
      */
     public static List<MultiText> objectTextsOf(AbstractLiftRoot node) {
         return switch (node) {
-            case LiftEntry e -> List.of(e.getMainMultiText());
+            case LiftEntry e -> List.of(e.getMainMultiText(), e.getCitations());
             case LiftExample e -> List.of(e.getExample());
             case LiftVariant v -> List.of(v.getForms());
             case LiftReversal r -> List.of(r.getForms());
@@ -525,8 +537,7 @@ public final class DictionaryMutator {
             case LiftIllustration i -> List.of(i.getLabel());
             case LiftField f -> List.of(f.getText());
             case LiftAnnotation a -> List.of(a.getText());
-            case LiftEntry e -> List.of(e.getCitations());
-            case LiftVariant _, LiftTrait _, GrammaticalInfo _,
+            case LiftEntry _, LiftVariant _, LiftTrait _, GrammaticalInfo _,
                  LiftReversal _, LiftPronunciation _ -> List.of();
             case LiftEtymology y -> List.of(y.getGlosses());
             default -> throw new IllegalStateException(
