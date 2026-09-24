@@ -1,0 +1,37 @@
+<lift producer="SIL.FLEx 9.0.17.44670" version="0.13">
+<!--
+tiny test LIFT dictionary containing two entries.
+Three languages : tww, en, tpi
+-->
+<entry dateCreated="2015-06-19T08:46:53Z" dateModified="2023-06-09T13:23:14Z" id="nala_001199a3-0e7f-4b4d-ab9e-38cfd0fbff58" guid="001199a3-0e7f-4b4d-ab9e-38cfd0fbff58">
+<lexical-unit>
+<form lang="tww"><text>nala</text></form>
+</lexical-unit>
+<trait  name="morph-type" value="stem"/>
+<sense id="35888fca-f16c-4d26-9c71-3d9eea39d572" order="0">
+<grammatical-info value="Interrogative pro-form">
+</grammatical-info>
+<gloss lang="en"><text>which_kind</text></gloss>
+<gloss lang="tpi"><text>wanem</text></gloss>
+</sense>
+<sense id="fa847d6f-81e3-4f32-89c6-f5a2c7030836" order="1">
+<gloss lang="en"><text>what</text></gloss>
+</sense>
+</entry>
+<entry dateCreated="2015-04-28T20:28:41Z" dateModified="2015-06-16T17:15:41Z" id="kemia napuo_002794b9-f063-4c6b-b77d-39b8ecd618d1" guid="002794b9-f063-4c6b-b77d-39b8ecd618d1">
+<lexical-unit>
+<form lang="tww"><text>kemia napuo</text></form>
+</lexical-unit>
+<trait  name="morph-type" value="phrase"/>
+<sense id="582795c9-9350-4e3b-af34-b72e9b5c89aa">
+<grammatical-info value="Noun">
+</grammatical-info>
+<gloss lang="en"><text>short marita</text></gloss>
+<gloss lang="tpi"><text>shorpla liklik marita</text></gloss>
+<trait name ="semantic-domain-ddp4" value="1.5 Plant"/>
+<note type="source">
+<form lang="en"><text>2014.VI.87</text></form>
+</note>
+</sense>
+</entry>
+</lift>

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A small LIFT 0.15 dictionary exercising the constructs where the writer used to
+  diverge from lift-0.15.rng: field/@name, field-definition/@name, the <label>
+  wrapper of URLRef-content, <subsense>, nested <reversal>/<main>, range-element
+  hierarchy via @parent, and annotations inside a <form>.
+-->
+<lift producer="lift-api test" version="0.15">
+<header>
+<description><form lang="en"><text>A tiny 0.15 dictionary</text></form></description>
+<ranges>
+<range id="semantic-domain">
+<description><form lang="en"><text>Semantic domains</text></form></description>
+<label><form lang="en"><text>Semantic domain</text></form></label>
+<abbrev><form lang="en"><text>sem</text></form></abbrev>
+<range-element id="1 Universe">
+<description><form lang="en"><text>The universe</text></form></description>
+<label><form lang="en"><text>Universe</text></form></label>
+<abbrev><form lang="en"><text>1</text></form></abbrev>
+</range-element>
+<range-element id="1.1 Sky" parent="1 Universe">
+<description><form lang="en"><text>The sky</text></form></description>
+<label><form lang="en"><text>Sky</text></form></label>
+<abbrev><form lang="en"><text>1.1</text></form></abbrev>
+</range-element>
+</range>
+</ranges>
+<fields>
+<field-definition name="literal-meaning" class="entry" type="multistring">
+<description><form lang="en"><text>The literal meaning</text></form></description>
+<label><form lang="en"><text>Literal meaning</text></form></label>
+</field-definition>
+<field-definition name="semantic-domain" class="sense" type="option" option-range="semantic-domain">
+<description><form lang="en"><text>Semantic domain of the sense</text></form></description>
+<label><form lang="en"><text>Semantic domain</text></form></label>
+</field-definition>
+</fields>
+</header>
+<entry id="e1" guid="11111111-1111-1111-1111-111111111111" dateCreated="2024-01-01T00:00:00Z">
+<lexical-unit>
+<form lang="tww"><text>nala <span lang="en">sic</span></text><annotation name="checked" value="yes" who="sl" when="2024-01-02T00:00:00Z"/></form>
+</lexical-unit>
+<citation><form lang="tww"><text>nala</text></form></citation>
+<field name="literal-meaning"><form lang="en"><text>lit. which kind</text></form></field>
+<note type="source"><form lang="en"><text>fieldnotes 2014</text></form></note>
+<pronunciation>
+<form lang="tww"><text>na.la</text></form>
+<media href="audio/nala.wav"><label><form lang="en"><text>audio recording</text></form></label></media>
+</pronunciation>
+<etymology type="borrowed" source="Tok Pisin">
+<form lang="tpi"><text>nalo</text></form>
+<gloss lang="en"><text>which</text></gloss>
+</etymology>
+<sense id="s1" order="0">
+<grammatical-info value="Interrogative pro-form"/>
+<gloss lang="en"><text>which kind</text></gloss>
+<definition><form lang="en"><text>An interrogative pro-form.</text></form></definition>
+<trait name="semantic-domain" value="1.1 Sky"/>
+<illustration href="pictures/nala.png"><label><form lang="en"><text>a picture</text></form></label></illustration>
+<reversal type="reversal-en">
+<form lang="en"><text>which kind</text></form>
+<main><form lang="en"><text>interrogatives</text></form></main>
+</reversal>
+<example source="text 3">
+<form lang="tww"><text>nala ma?</text></form>
+<translation type="free"><form lang="en"><text>Which kind?</text></form></translation>
+</example>
+<subsense id="s1-1">
+<gloss lang="en"><text>which one</text></gloss>
+</subsense>
+</sense>
+</entry>
+<entry id="e2">
+<lexical-unit><form lang="tww"><text>kemia</text></form></lexical-unit>
+<variant ref="e1"><form lang="tww"><text>kemea</text></form></variant>
+<relation type="synonym" ref="e1" order="1"><usage><form lang="en"><text>rare</text></form></usage></relation>
+<sense id="s2"><gloss lang="en"><text>marita</text></gloss></sense>
+</entry>
+</lift>

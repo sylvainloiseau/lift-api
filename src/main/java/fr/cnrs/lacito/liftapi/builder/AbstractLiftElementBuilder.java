@@ -1,0 +1,128 @@
+package fr.cnrs.lacito.liftapi.builder;
+
+import fr.cnrs.lacito.liftapi.LiftDictionary;
+import fr.cnrs.lacito.liftapi.internal.DictionaryMutator;
+import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
+import fr.cnrs.lacito.liftapi.model.AbstractNotable;
+import fr.cnrs.lacito.liftapi.model.Feature;
+import fr.cnrs.lacito.liftapi.model.Form;
+import fr.cnrs.lacito.liftapi.model.HasAnnotation;
+import fr.cnrs.lacito.liftapi.model.HasField;
+import fr.cnrs.lacito.liftapi.model.HasPronunciation;
+import fr.cnrs.lacito.liftapi.model.HasRelations;
+import fr.cnrs.lacito.liftapi.model.HasSense;
+import fr.cnrs.lacito.liftapi.model.HasTrait;
+import fr.cnrs.lacito.liftapi.model.HasType;
+import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
+import fr.cnrs.lacito.liftapi.model.LiftEntry;
+import fr.cnrs.lacito.liftapi.model.LiftEtymology;
+import fr.cnrs.lacito.liftapi.model.LiftExample;
+import fr.cnrs.lacito.liftapi.model.LiftField;
+import fr.cnrs.lacito.liftapi.model.LiftNote;
+import fr.cnrs.lacito.liftapi.model.LiftObject;
+import fr.cnrs.lacito.liftapi.model.LiftPronunciation;
+import fr.cnrs.lacito.liftapi.model.LiftRelation;
+import fr.cnrs.lacito.liftapi.model.LiftSense;
+import fr.cnrs.lacito.liftapi.model.LiftTrait;
+import fr.cnrs.lacito.liftapi.model.LiftVariant;
+
+/**
+ * Abstract base class for all LIFT element builders.
+ *
+ * Provides common functionality for building LIFT model elements with a fluent API.
+ *
+ * @param <T> the type of LIFT element being built
+ * @param <U> the type of the parent element
+ */
+public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot, U extends LiftObject> {
+
+    protected final T element;
+    protected final LiftDictionary dictionary;
+    protected final U parent;
+    private boolean attached = false;
+
+    /**
+     * Constructs a new AbstractLiftElementBuilder with the given element, dictionary, and parent.
+     *
+     * @param element the LIFT element to build
+     * @param dictionary the LIFT dictionary this element belongs to
+     * @param parent the parent element of this element in the LIFT dictionary
+     */
+    protected AbstractLiftElementBuilder(T element, LiftDictionary dictionary, U parent) {
+        this.element = element;
+        this.dictionary = dictionary;
+        this.parent = parent;
+    }
+
+    /**
+     * Adds a multitext entry to the element. What the main multitext refers to is depending on the element type.
+     *
+     * @param lang the language of the text
+     * @param text the text to add
+     * @return this builder instance
+     */
+    public AbstractLiftElementBuilder<T, U> addMultitext(String lang, String text) {
+        if (lang == null || text == null) {
+            throw new IllegalArgumentException("Language and text cannot be null");
+        }
+        element.getMainMultiText().add(new Form(lang, text));
+        return this;
+    }
+
+    /**
+     * Adds a multitext entry to the element. What the main multitext refers to is depending on the element type.
+     *
+     * @param text the form to add
+     * @return this builder instance
+     */
+    public AbstractLiftElementBuilder<T, U> addMultitext(Form text) {
+        if (text == null) {
+            throw new IllegalArgumentException("Text cannot be null");
+        }
+        element.getMainMultiText().add(text);
+        return this;
+    }
+
+
+    /**
+     * Set the element type (for  components implementing {@link HasType}).
+     *
+     * @param type the type to set
+     * @throws IllegalArgumentException if the element built is not an instance of {@code HasType}
+     * @return this builder instance
+     */
+    public AbstractLiftElementBuilder<T, U> withType(Feature type) {
+        if (element instanceof HasType ht) {
+            ht.setType(type);
+        } else {
+            throw new IllegalArgumentException(
+                "Cannot set a type on an component of type: " + element.getClass().getName()
+            );
+        }
+        return this;
+    }
+
+    /**
+     * Build the element. Subclasses should override to add validation.
+     * A subclass must call {@link #attach()} to register the element
+     * in the dictionary and add it to its parent.
+     */
+    public abstract T build();
+
+    /**
+     * Attach the element built by this builder in the dictionary, i.e.:
+     * - register into the dictionary and
+     * - add it to its parent (the parent takes care of creating the reference from the child towards
+     * itself).
+     */
+    protected void attach() {
+        if (attached) {
+            throw new IllegalStateException("This builder has already been used.");
+        }
+        // Registering and wiring to the parent both happen in DictionaryMutator, the
+        // single place that knows the correct order (register first, so that a failed
+        // registration cannot leave a half-built graph behind).
+        dictionary.getMutator().attach(this.element, this.parent);
+        this.attached = true;
+    }
+}

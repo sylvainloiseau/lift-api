@@ -1,0 +1,66 @@
+package fr.cnrs.lacito.liftapi;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.util.List;
+import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
+
+import fr.cnrs.lacito.liftapi.model.Form;
+import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
+
+public class MultiTextTest {
+
+    @Test
+    public void testText () {
+        String fileTested = "lift/tinyTextSpan.xml";
+        int entryTested = 0;
+
+        LiftDictionary lf = Utils.loadDictionaryForTest(fileTested);
+        Optional<Form> tww = lf.getLiftDictionaryRegistry().getEntries().get(entryTested).getForms().getForm("tww");
+        assertTrue(tww.isPresent());
+        assertEquals("<span>nala</span>", tww.get().toString());
+    }
+
+    @Test
+    public void testTextAndSeveralSpan () {
+        String fileTested="lift/tinyTextSpan.xml";
+        int entryTested = 2;
+
+        LiftDictionary lf = Utils.loadDictionaryForTest(fileTested);
+        Optional<Form> form = lf.getLiftDictionaryRegistry().getEntries().get(entryTested).getForms().getForm("tww");
+        assertTrue(form.isPresent());
+        String found = form.get().toString();
+        assertEquals("<span><span>kemia <span><span></span>napuo</span></span></span>", found);
+    }
+
+    @Test
+    public void testTextAndSpan () {
+        String fileTested = "lift/tinyTextSpan.xml";
+        int entryTested = 1;
+
+        LiftDictionary lf = Utils.loadDictionaryForTest(fileTested);
+        Optional<Form> form = lf.getLiftDictionaryRegistry().getEntries().get(entryTested).getForms().getForm("tww");
+        assertTrue(form.isPresent());
+        String found = form.get().toString();
+        assertEquals("<span>kemia <span>napuo</span></span>", found);
+    }
+
+    @Test
+    public void testMultiTextLevelAnnotationOnLexicalUnit() {
+        LiftDictionary lf = Utils.loadDictionaryForTest("lift/tinyMultiTextAnnotation.xml");
+
+        List<LiftAnnotation> annotations = lf.getLiftDictionaryRegistry().getEntries().getFirst().getForms().getAnnotations();
+
+        assertEquals(1, annotations.size());
+        LiftAnnotation a = annotations.getFirst();
+        assertEquals("source", a.getType().getId());
+        assertEquals("elicitation", a.getValue());
+        assertEquals("alice", a.getWho());
+        assertEquals("2026-02-22", a.getWhen());
+        assertEquals("lexical-unit note", a.getText().getForm("en").map(Form::toPlainText).orElse(""));
+    }
+
+}

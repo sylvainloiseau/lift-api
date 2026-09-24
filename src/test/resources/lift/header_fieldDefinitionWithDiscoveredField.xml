@@ -1,0 +1,33 @@
+<lift producer="SIL.FLEx 9.0.17.44670" version="0.15">
+<!--
+The "morph-type" trait is not declared in the header and discovered during parsing.
+-->
+<header>
+<fields>
+<field-definition name="cv-pattern" class="Entry">
+<form lang="en"><text>This records the syllable pattern for a LexPronunciation in field-definitionWorks.</text></form>
+</field-definition>
+<field-definition name="tone" class="Example">
+<form lang="en"><text>This records the tone information for a LexPronunciation in field-definitionWorks.</text></form>
+</field-definition>
+<field-definition name="foo" class="Example Sense">
+<form lang="en"><text>This records the tone information for a LexPronunciation in field-definitionWorks.</text></form>
+</field-definition>
+</fields>
+</header>
+<entry dateCreated="2015-06-19T08:46:53Z" dateModified="2023-06-09T13:23:14Z" id="nala_001199a3-0e7f-4b4d-ab9e-38cfd0fbff58" guid="001199a3-0e7f-4b4d-ab9e-38cfd0fbff58">
+<lexical-unit>
+<form lang="tww"><text>nala</text></form>
+</lexical-unit>
+<trait  name="morph-type" value="stem"/>
+<sense id="35888fca-f16c-4d26-9c71-3d9eea39d572" order="0">
+<grammatical-info value="Interrogative pro-form">
+</grammatical-info>
+<gloss lang="en"><text>which_kind</text></gloss>
+<gloss lang="tpi"><text>wanem</text></gloss>
+</sense>
+<sense id="fa847d6f-81e3-4f32-89c6-f5a2c7030836" order="1">
+<gloss lang="en"><text>what</text></gloss>
+</sense>
+</entry>
+</lift>

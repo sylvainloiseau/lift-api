@@ -1,0 +1,128 @@
+package fr.cnrs.lacito.liftapi.model;
+
+import java.util.Map;
+import java.util.Optional;
+import javafx.beans.property.MapProperty;
+import javafx.beans.property.SimpleMapProperty;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
+import javafx.collections.FXCollections;
+
+public final class LiftExample extends AbstractNotable {
+
+    public static final String DEFAULT_TRANSLATION_TYPE = "";
+
+    protected Optional<String> source = Optional.empty();
+    protected final MapProperty<Feature, MultiText> translationsProperty =
+        new SimpleMapProperty<>(
+            this,
+            "translations",
+            FXCollections.observableHashMap()
+        );
+
+    protected LiftSense parent;
+
+    private final StringProperty sourceProperty = new SimpleStringProperty(
+        this,
+        "source",
+        ""
+    );
+
+    protected LiftExample(String source) {
+        this.source = Optional.of(source);
+        this.sourceProperty.set(source);
+    }
+
+    public LiftExample() {}
+
+    /**
+     * @param type
+     * @return return a new empty translation.
+     * @throws DuplicateTypeException if the translation type already exists.
+     */
+    public MultiText createTranslation(Feature type)
+        throws DuplicateTypeException {
+        if (type == null) throw new IllegalArgumentException(
+            "Translation type cannot be null"
+        );
+        if (
+            translationsProperty.containsKey(type)
+        ) throw new DuplicateTypeException(
+            "A translation of type " + type.getId() + "already exist."
+        );
+        MultiText newTranslation = new MultiText(this);
+        translationsProperty.put(type, newTranslation);
+        return newTranslation;
+    }
+
+    /**
+     * Protected: this method is called by the parent when it adopts this LiftExample.
+     * 
+     * @param parent the sense this belongs to, or {@code null} when detaching
+     *        (see {@link AbstractLiftRoot#detach()})
+     */
+    public void setParent(LiftSense parent) {
+        this.parent = parent;
+    }
+
+    /**
+     * @param type
+     * @return the translation of the given type.
+     * @throws IllegalArgumentException if no translation of this type exists.
+     */
+    public MultiText getTranslation(Feature type) {
+        if (translationsProperty.containsKey(type)) {
+            return translationsProperty.get(type);
+        } else {
+            throw new IllegalArgumentException(
+                "Unknown translation type: " + type.getId()
+            );
+        }
+    }
+
+    public MultiText getExample() {
+        return getMainMultiText();
+    }
+
+    public Optional<String> getSource() {
+        return source;
+    }
+
+    public void setSource(String value) {
+        this.source = Optional.of(value);
+        this.sourceProperty.set(value);
+    }
+
+    public LiftSense getParent() {
+        return parent;
+    }
+
+    public Map<Feature, MultiText> getTranslations() {
+        return translationsProperty.get();
+    }
+
+    public MapProperty<Feature, MultiText> translationsProperty() {
+        return translationsProperty;
+    }
+
+    public StringProperty sourceProperty() {
+        return sourceProperty;
+    }
+
+    public static LiftExample create() {
+        return new LiftExample();
+    }
+
+    public static LiftExample create(String source) {
+        return new LiftExample(source);
+    }
+
+    public MultiText getOrCreateTranslation(Feature type) {
+        return translationsProperty.computeIfAbsent(type, t -> new MultiText(this));
+    }
+
+    @Override
+    public AbstractLiftRoot getParentNode() {
+        return parent;
+    }
+}

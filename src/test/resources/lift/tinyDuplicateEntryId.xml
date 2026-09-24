@@ -1,0 +1,12 @@
+<lift producer="SIL.FLEx 9.0.17.44670" version="0.13">
+<entry id="foo">
+<lexical-unit>
+<form lang="tww"><text>nala</text></form>
+</lexical-unit>
+</entry>
+<entry id="foo">
+<lexical-unit>
+<form lang="tww"><text>kemia napuo</text></form>
+</lexical-unit>
+</entry>
+</lift>

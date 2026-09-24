@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Copyright (C) 2020 sloiseau
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+-->
+
+<!-- http://blog.bdoughan.com/2011/04/xml-schema-to-java-xsd-choice.html -->
+
+<jaxb:bindings xmlns:jaxb="https://jakarta.ee/xml/ns/jaxb" 
+        version="3.0" 
+        xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+        
+        jaxb:extensionBindingPrefixes="xjc"
+        xmlns:xjc="http://java.sun.com/xml/ns/jaxb/xjc"
+        xmlns:hex="hexmap"
+        >
+
+    <jaxb:globalBindings choiceContentProperty="false"
+    />
+    
+    <!-- 
+    https://stackoverflow.com/questions/5957708/how-do-i-specify-the-adapters-which-jaxb-uses-for-marshaling-unmarshaling-data#17634962
+    https://stackoverflow.com/questions/76293003/how-to-add-custom-string-to-liststring-jaxb-xml-adapter-to-an-xsd-generated-cl
+    -->
+    <!--
+    <jaxb:bindings schemaLocation="../resources/fr/cnrs/lacito/liftapi/schema/lift-0.13.xsd"
+                   node="//xsd:complexType[@name='entry-content']">
+        <jaxb:bindings node=".//xsd:element[@ref='lexical-unit']">
+            <jaxb:property>
+                <jaxb:baseType>
+                    <xjc:javaType name="java.util.List&lt;java.lang.Object&gt;" adapter="fr.cnrs.lacito.liftapi.model.Adapter"/>
+                </jaxb:baseType>
+            </jaxb:property>
+        </jaxb:bindings>
+    </jaxb:bindings>
+    <jaxb:bindings schemaLocation="../resources/fr/cnrs/lacito/liftapi/schema/lift-0.13.xsd">
+        <jaxb:globalBindings>
+            <xjc:javaType adapter="fr.cnrs.lacito.liftapi.model.Adapter" name="java.awt.Point" xmlType="Point" />
+        </jaxb:globalBindings>
+    </jaxb:bindings>
+    -->
+
+
+
+
+<!-- collectionType = "fr.cnrs.lacito.liftapi.model.Subfields" -->
+
+<!-- bindingStyle="elementBinding"
+https://codereview.stackexchange.com/questions/1877/jaxb-xjc-code-generation-adding-xmlrootelement-and-joda-datetime
+
+https://github.com/highsource/jaxb-tools/wiki/Using-JAXB2-Basics-Plugins
+
+            // https://stackoverflow.com/questions/14285928/adding-extra-methods-to-a-jaxb-class-generated-from-schema
+
+ -->
+    
+    <!-- <bindings schemaLocation="../resources/fr/cnrs/lacito/liftapi/schema/lift-0.13.xsd" node="/xsd:schema">
+        <schemaBindings>
+            <package name="fr.cnrs.lacito.liftapi.model.jaxb" />
+            <nameXmlTransform>
+                <typeName prefix = "LiftType" />
+                <elementName prefix ="LiftElement" />
+            </nameXmlTransform>
+        </schemaBindings>
+    </bindings> -->
+
+</jaxb:bindings>
+
+<!--
+<jxb:bindings xmlns:jxb="https://jakarta.ee/xml/ns/jaxb" version="3.0"
+    node="//xs:complexType[@name='entry-content']/xs:choice/xs:element[@ref='lexical-unit']" >
+    <jxb:property name="lexicalUnitElement" />
+        <globalBindings choiceContentProperty="false"/> 
+</jxb:bindings>
+-->
