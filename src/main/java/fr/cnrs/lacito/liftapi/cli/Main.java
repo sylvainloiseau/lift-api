@@ -2,6 +2,7 @@ package fr.cnrs.lacito.liftapi.cli;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDocumentLoadingException;
+import fr.cnrs.lacito.liftapi.LiftDictionaryLanguagesManager;
 import java.io.File;
 import java.util.Comparator;
 import java.util.stream.Collectors;
@@ -40,19 +41,30 @@ public final class Main implements Runnable {
                 e
             );
         }
+        LiftDictionaryLanguagesManager metaLanguageManager = dictionary.getMetaLanguageManager();
         String metaLanguages = dictionary.getMetaLanguageManager()
             .getLanguages()
             .stream()
             .sorted(Comparator.naturalOrder())
+            .map(x -> x + " (" + metaLanguageManager.getLanguageOccurrence(x) + ")")
             .collect(Collectors.joining(", "));
+
+        LiftDictionaryLanguagesManager objectLanguageManager = dictionary.getObjectLanguageManager();
         String objectLanguages = dictionary.getObjectLanguageManager()
             .getLanguages()
             .stream()
             .sorted(Comparator.naturalOrder())
+            .map(x -> x + " (" + objectLanguageManager.getLanguageOccurrence(x) + ")")
             .collect(Collectors.joining(", "));
 
         System.out.println(
             "Entries: " + dictionary.getLiftDictionaryRegistry().nEntries()
+        );
+        System.out.println(
+            "Senses: " + dictionary.getLiftDictionaryRegistry().getSenses().size()
+        );
+        System.out.println(
+            "Examples: " + dictionary.getLiftDictionaryRegistry().getExamples().size()
         );
         System.out.println("Meta languages: " + metaLanguages);
         System.out.println("Object languages: " + objectLanguages);
