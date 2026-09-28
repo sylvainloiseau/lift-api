@@ -31,6 +31,7 @@ import fr.cnrs.lacito.liftapi.model.LiftRelation;
 import fr.cnrs.lacito.liftapi.model.LiftReversal;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
+import fr.cnrs.lacito.liftapi.model.LiftTranslation;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
 import fr.cnrs.lacito.liftapi.model.MultiText;
 
@@ -513,7 +514,7 @@ public final class DictionaryMutator {
             case LiftEtymology e -> List.of(e.getForms());
             case LiftSense _, LiftTrait _, GrammaticalInfo _, LiftRelation _,
                  LiftNote _, LiftMedia _, LiftIllustration _, LiftField _,
-                 LiftAnnotation _ -> List.of();
+                 LiftAnnotation _, LiftTranslation _ -> List.of();
             default -> throw new IllegalStateException(
                 "Unknown type: " + node.getClass()
             );
@@ -530,15 +531,15 @@ public final class DictionaryMutator {
     public static List<MultiText> metaTextsOf(AbstractLiftRoot node) {
         return switch (node) {
             case LiftSense s -> List.of(s.getMainMultiText(), s.getDefinition());
-            case LiftExample e -> List.copyOf(e.getTranslations().values());
+            case LiftTranslation t -> List.of(t.getTranslation());
             case LiftRelation r -> List.of(r.getUsage());
             case LiftNote n -> List.of(n.getText());
             case LiftMedia m -> List.of(m.getLabel());
             case LiftIllustration i -> List.of(i.getLabel());
             case LiftField f -> List.of(f.getText());
             case LiftAnnotation a -> List.of(a.getText());
-            case LiftEntry _, LiftVariant _, LiftTrait _, GrammaticalInfo _,
-                 LiftReversal _, LiftPronunciation _ -> List.of();
+            case LiftEntry _, LiftExample _, LiftVariant _, LiftTrait _,
+                 GrammaticalInfo _, LiftReversal _, LiftPronunciation _ -> List.of();
             case LiftEtymology y -> List.of(y.getGlosses());
             default -> throw new IllegalStateException(
                 "Unknown type: " + node.getClass()
@@ -579,6 +580,10 @@ public final class DictionaryMutator {
             s.getGrammaticalInfo().ifPresent(children::add);
             // Reversals come from the HasReversal branch below, which LiftSense also
             // matches: listing them here too would visit each one twice.
+        }
+
+        if (node instanceof LiftExample x) {
+            children.addAll(x.getTranslationComponents());
         }
 
         if (node instanceof GrammaticalInfo gi) {
@@ -647,6 +652,8 @@ public final class DictionaryMutator {
             case LiftPronunciation pronunciation ->
                 ((HasPronunciation) parent).addPronunciation(pronunciation);
             case LiftExample example -> ((LiftSense) parent).addExample(example);
+            case LiftTranslation translation ->
+                ((LiftExample) parent).addTranslation(translation);
             case LiftField field -> ((HasField) parent).addField(field);
             case LiftAnnotation annotation ->
                 ((HasAnnotation) parent).addAnnotation(annotation);

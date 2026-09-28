@@ -1,5 +1,9 @@
 package fr.cnrs.lacito.liftapi.builder;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
@@ -23,6 +27,16 @@ import fr.cnrs.lacito.liftapi.model.LiftSense;
  * </pre>
  */
 public final class ExampleBuilder extends AbstractLiftElementWithFieldAndNoteBuilder<LiftExample, LiftSense> {
+
+    /**
+     * Forms given to {@link #addTranslation(String, Form)}, grouped by type.
+     *
+     * Several calls with the same type make up one translation, so a translation cannot
+     * be built at the first call: once built it is registered, and its text then only
+     * accepts the languages the dictionary already declares. They are built together in
+     * {@link #build()}, where the translation's languages are declared on registration.
+     */
+    private final Map<Feature, List<Form>> pendingTranslations = new LinkedHashMap<>();
 
     protected ExampleBuilder(LiftDictionary dictionary, LiftSense parent) {
         super(LiftExample.create(), dictionary, parent);
@@ -86,8 +100,44 @@ public final class ExampleBuilder extends AbstractLiftElementWithFieldAndNoteBui
             dictionary.getHeader().getTranslationTypeManager().addFeature(type);
         }
         Feature f = dictionary.getHeader().getTranslationTypeManager().getFeature(type);
-        element.getOrCreateTranslation(f).add(translation);
+        requireNoBuiltTranslation(f);
+        pendingTranslations.computeIfAbsent(f, k -> new ArrayList<>()).add(translation);
         return this;
+    }
+
+    /**
+     * Add a translation via nested builder configuration.
+     *
+     * The translation is built at once, so a type cannot be given both here and to
+     * {@link #addTranslation(String, Form)}.
+     *
+     * @throws IllegalStateException if a translation of this type was already added
+     */
+    public ExampleBuilder addTranslation(String type, Consumer<TranslationBuilder> config) {
+        TranslationBuilder tb = new TranslationBuilder(dictionary, element, type);
+        Feature f = tb.element.getType();
+        if (pendingTranslations.containsKey(f)) {
+            throw new IllegalStateException(
+                "A translation of type " + f.getId() + " was already added to this example."
+            );
+        }
+        requireNoBuiltTranslation(f);
+        config.accept(tb);
+        tb.build();
+        return this;
+    }
+
+    /**
+     * Refuse a translation type already built by the nested-builder overload: checking
+     * here, rather than letting {@link #build()} fail, keeps the failure away from a
+     * half-attached translation.
+     */
+    private void requireNoBuiltTranslation(Feature type) {
+        if (element.getTranslations().containsKey(type)) {
+            throw new IllegalStateException(
+                "A translation of type " + type.getId() + " was already added to this example."
+            );
+        }
     }
 
     // Override addNote in order to return the good type
@@ -152,6 +202,11 @@ public final class ExampleBuilder extends AbstractLiftElementWithFieldAndNoteBui
     public LiftExample build() {
         if (element.getExample().isEmpty())
             throw new IllegalStateException("In order to build an example, it should contain at least one example");
+        for (Map.Entry<Feature, List<Form>> pending : pendingTranslations.entrySet()) {
+            TranslationBuilder tb = new TranslationBuilder(dictionary, element, pending.getKey());
+            pending.getValue().forEach(tb::addText);
+            tb.build();
+        }
         super.attach();
         return element;
     }

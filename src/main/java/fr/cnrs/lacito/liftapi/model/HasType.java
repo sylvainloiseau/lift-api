@@ -9,7 +9,7 @@ package fr.cnrs.lacito.liftapi.model;
  */
 public sealed interface HasType
     permits LiftNote, LiftEtymology, LiftReversal, LiftRelation, LiftVariant, LiftAnnotation
-    // + Translation (not an object)
+    // + LiftTranslation, whose type is immutable (it is the key its example holds it by)
 // LiftField, LiftTrait, GramType
 {
     Feature getType();

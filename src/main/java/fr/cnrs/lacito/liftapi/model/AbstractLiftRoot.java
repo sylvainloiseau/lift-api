@@ -31,6 +31,7 @@ public abstract sealed class AbstractLiftRoot implements LiftObject
         LiftAnnotation,
         LiftIllustration,
         LiftMedia,
+        LiftTranslation,
         LiftTrait,
         LiftHeader,
         LiftFieldAndTraitDefinition,
@@ -271,6 +272,10 @@ public abstract sealed class AbstractLiftRoot implements LiftObject
                 o.getParent()
                 .getAnnotations()
                 .removeIf(x -> x == this);
+                o.setParent(null);
+            }
+            case LiftTranslation o -> {
+                o.getParent().removeTranslation(o);
                 o.setParent(null);
             }
             case GrammaticalInfo o -> {

@@ -103,6 +103,12 @@ public class DictionaryCensusTest {
             () -> registry.getPronunciations().size()
         );
         check(mismatches, "note", inFile.of("note"), () -> registry.getNotes().size());
+        check(
+            mismatches,
+            "translation",
+            inFile.of("translation"),
+            () -> registry.getTranslations().size()
+        );
         check(mismatches, "media", inFile.of("media"), () -> registry.getMedias().size());
         check(
             mismatches,

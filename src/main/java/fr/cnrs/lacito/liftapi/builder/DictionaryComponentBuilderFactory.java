@@ -18,6 +18,7 @@ import fr.cnrs.lacito.liftapi.model.LiftExample;
 import fr.cnrs.lacito.liftapi.model.LiftPronunciation;
 import fr.cnrs.lacito.liftapi.model.LiftRelation;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
+import fr.cnrs.lacito.liftapi.model.LiftTranslation;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
 
 /**
@@ -163,6 +164,28 @@ public class DictionaryComponentBuilderFactory {
      */
     public LiftExample example(LiftSense parent, String language, String exampleText) {
         return example(parent).withExample(language, exampleText).build();
+    }
+
+    /**
+     * Create a new translation builder.
+     *
+     * @param type the translation type, created in the header's translation-type range
+     *        if not declared there yet
+     */
+    public TranslationBuilder translation(LiftExample parent, String type) {
+        return new TranslationBuilder(dictionary, parent, type);
+    }
+
+    /**
+     * Create a quick translation with a single text.
+     */
+    public LiftTranslation translation(
+        LiftExample parent,
+        String type,
+        String language,
+        String text
+    ) {
+        return translation(parent, type).addText(language, text).build();
     }
 
     /**

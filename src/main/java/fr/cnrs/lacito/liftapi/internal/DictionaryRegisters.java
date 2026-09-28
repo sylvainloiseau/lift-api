@@ -16,6 +16,7 @@ import fr.cnrs.lacito.liftapi.model.LiftRelation;
 import fr.cnrs.lacito.liftapi.model.LiftReversal;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
+import fr.cnrs.lacito.liftapi.model.LiftTranslation;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
 import fr.cnrs.lacito.liftapi.model.MultiText;
 
@@ -108,6 +109,8 @@ public final class DictionaryRegisters {
         FXCollections.observableHashMap();
     public final ObservableMap<UUID, LiftAnnotation> annotationsById =
         FXCollections.observableHashMap();
+    public final ObservableMap<UUID, LiftTranslation> translationsById =
+        FXCollections.observableHashMap();
     public final ObservableMap<UUID, GrammaticalInfo> grammaticalInfosById =
         FXCollections.observableHashMap();
     public final ObservableMap<UUID, MultiText> objectTextById =
@@ -168,6 +171,7 @@ public final class DictionaryRegisters {
             case LiftField _ ->  map = fieldsById;
             case LiftEtymology _ ->  map = etymologiesById;
             case LiftAnnotation _ ->  map = annotationsById;
+            case LiftTranslation _ ->  map = translationsById;
             case GrammaticalInfo _ ->  map = grammaticalInfosById;
             default -> throw new IllegalStateException(
                 "Unknown type: " + node.getClass()

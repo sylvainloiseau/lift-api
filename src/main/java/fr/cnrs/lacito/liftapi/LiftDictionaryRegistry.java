@@ -18,6 +18,7 @@ import fr.cnrs.lacito.liftapi.model.LiftRelation;
 import fr.cnrs.lacito.liftapi.model.LiftReversal;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
+import fr.cnrs.lacito.liftapi.model.LiftTranslation;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
 import fr.cnrs.lacito.liftapi.model.MultiText;
 
@@ -227,6 +228,14 @@ public class LiftDictionaryRegistry {
             this.<LiftNote>populateObservableList(LiftNote.class, registers.notesById);
         }
         return (ObservableList<LiftNote>) observableList.get(LiftNote.class).getReadOnlyProperty();
+    }
+
+    @SuppressWarnings("unchecked")
+    public ObservableList<LiftTranslation> getTranslations() {
+        if (!observableList.containsKey(LiftTranslation.class)) {
+            this.<LiftTranslation>populateObservableList(LiftTranslation.class, registers.translationsById);
+        }
+        return (ObservableList<LiftTranslation>) observableList.get(LiftTranslation.class).getReadOnlyProperty();
     }
 
     @SuppressWarnings("unchecked")
