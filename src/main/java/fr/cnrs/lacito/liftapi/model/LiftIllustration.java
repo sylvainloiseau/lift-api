@@ -8,7 +8,7 @@ public final class LiftIllustration
     implements HasExternalDocument
 {
 
-    final String href;
+    private String href;
 
     LiftSense parent;
 
@@ -22,7 +22,7 @@ public final class LiftIllustration
 
     /**
      * Protected: this method is called by the parent when it adopts this LiftIllustration.
-     * 
+     *
      * @param parent the new parent, or {@code null} when detaching this illustration
      *        (see {@link AbstractLiftRoot#detach()})
      */
@@ -38,6 +38,10 @@ public final class LiftIllustration
     @Override
     public String getHref() {
         return this.href;
+    }
+
+    public void setHref(String href) {
+        this.href = href;
     }
 
     @Override
