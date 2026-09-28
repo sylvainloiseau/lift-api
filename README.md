@@ -1,10 +1,20 @@
 # lift-api
 
-A library for working with dictionaries in LIFT format (<a href="https://github.com/sillsdev/lift-standard">https://github.com/sillsdev/lift-standard</a>).
+A library for working with dictionaries in LIFT format (<a
+href="https://github.com/sillsdev/lift-standard">https://github.com/sillsdev/lift-standard</a>).
 
-The LIFT dictionary format allows to represent complex linguistic structures particularly in the perspective of descriptive linguistics.
+The LIFT dictionary format allows to represent complex linguistic structures and
+has been elaborated for descriptive linguistics.
 
-The API allows not only to parse and serialize LIFT dictionaries, but also to manipulate them: create, modify, and query a dictionary; update its content and create new entries or new components in the all the data structure.
+# Features
+
+- complete modeling of the LIFT dictionary data structure (with its entry, note, example components, but also the note, field, trait, annotation components, references to media; cross-references, feature sets, etc.)
+- load and save LIFT dictionary
+- walk the dictionary data structure: hierarchically, or by components types
+- maintain a registry of the features set and their features: manipulate feature names, count, etc.
+- maintain a registry of all metalanguage or object language forms, number of occurrences of each languages
+- maintain a registry of cross-references between components
+- offer methods to mutate the dictionary, with two API (a fluent API or a low-level API): create components, update component properties, delete or move components, etc.
 
 # Installation
 
