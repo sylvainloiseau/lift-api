@@ -361,7 +361,7 @@ public final class LiftDictionary {
             .stream()
             .filter(x -> x.getForms().containsLang(lang))
             .filter(x ->
-                x.getForms().getForm(lang).get().textProperty().get().equals(form)
+                x.getForms().getForm(lang).orElseThrow().toPlainText().equals(form)
             )
             .toList();
     }
