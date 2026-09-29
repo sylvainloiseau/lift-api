@@ -295,4 +295,38 @@ public final class LiftEntry
         orphaned(etymology);
         etymology.detach();
     }
+
+    // --------------------------------------------------------
+    // Changing the type of sub-components
+    // --------------------------------------------------------
+
+    /**
+     * Change the type of an etymology of this entry. {@link LiftEtymology#setType}
+     * calls this when the etymology belongs to an entry.
+     *
+     * @param etymology an etymology of this entry
+     * @param type its new type
+     */
+    public void retypeEtymology(LiftEtymology etymology, Feature type) {
+        requireChild(etymology, etymologiesProperty.contains(etymology));
+        etymology.assignType(type);
+    }
+
+    /**
+     * Change the type of a variant of this entry. {@link LiftVariant#setType}
+     * calls this when the variant belongs to an entry.
+     *
+     * @param variant a variant of this entry
+     * @param type its new type
+     */
+    public void retypeVariant(LiftVariant variant, Feature type) {
+        requireChild(variant, variantsProperty.contains(variant));
+        variant.assignType(type);
+    }
+
+    @Override
+    public void retypeRelation(LiftRelation relation, Feature type) {
+        requireChild(relation, relationsProperty.contains(relation));
+        relation.assignType(type);
+    }
 }

@@ -23,6 +23,15 @@ public sealed interface HasReversal extends LiftObject permits LiftSense, LiftRe
     public void deleteReversal(LiftReversal reversal);
 
     /**
+     * Changes the type of a reversal of this component. {@link LiftReversal#setType(Feature)}
+     * calls this when the reversal has a parent.
+     *
+     * @param reversal a reversal of this component.
+     * @param type the new type.
+     */
+    public void retypeReversal(LiftReversal reversal, Feature type);
+
+    /**
      * Returns the list of reversals of this component.
      *
      * @return the list of reversals.

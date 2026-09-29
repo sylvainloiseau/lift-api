@@ -3,6 +3,8 @@ package fr.cnrs.lacito.liftapi.model;
 import java.util.Optional;
 
 import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.ReadOnlyObjectProperty;
+import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.SimpleObjectProperty;
 
 public final class LiftRelation
@@ -24,7 +26,7 @@ public final class LiftRelation
         return order;
     }
 
-    private final ObjectProperty<Feature> typeProperty;
+    private final ReadOnlyObjectWrapper<Feature> typeProperty;
 
     private final ObjectProperty<AbstractIdentifiable> refObjectProperty;
 
@@ -34,7 +36,7 @@ public final class LiftRelation
     }
 
     public LiftRelation() {
-        this.typeProperty = new SimpleObjectProperty<>(this, "type", null);
+        this.typeProperty = new ReadOnlyObjectWrapper<>(this, "type", null);
         this.refObjectProperty = new SimpleObjectProperty<AbstractIdentifiable>(this, "refObject", null);
     }
 
@@ -57,9 +59,25 @@ public final class LiftRelation
         this.refId = Optional.of(refId);
     }
 
-    /** Updates the relation type and the bound JavaFX property. */
+    /**
+     * Change the type of this relation, through
+     * {@link HasRelations#retypeRelation(LiftRelation, Feature)} when it has a parent.
+     */
     @Override
     public void setType(Feature newType) {
+        if (parent != null) {
+            parent.retypeRelation(this, newType);
+        } else {
+            assignType(newType);
+        }
+    }
+
+    /**
+     * Write the type. Called by {@link #setType(Feature)} when this component has no
+     * parent, and otherwise by the parent's {@code retype} method once it has checked
+     * and re-keyed what depends on the type.
+     */
+    void assignType(Feature newType) {
         typeProperty.set(newType);
     }
 
@@ -90,8 +108,9 @@ public final class LiftRelation
         this.refObjectProperty.set(refObject);
     }
 
-    public ObjectProperty<Feature> typeProperty() {
-        return typeProperty;
+    @Override
+    public ReadOnlyObjectProperty<Feature> typeProperty() {
+        return typeProperty.getReadOnlyProperty();
     }
 
     public static LiftRelation create(Feature type) {

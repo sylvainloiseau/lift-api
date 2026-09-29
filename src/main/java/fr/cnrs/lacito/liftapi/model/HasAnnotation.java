@@ -20,5 +20,14 @@ public sealed interface HasAnnotation
      */
     public void deleteAnnotation(LiftAnnotation a);
 
+    /**
+     * Changes the type of an annotation of this component. {@link LiftAnnotation#setType(Feature)}
+     * calls this when the annotation has a parent.
+     *
+     * @param a an annotation of this component.
+     * @param type the new type.
+     */
+    public void retypeAnnotation(LiftAnnotation a, Feature type);
+
     public List<LiftAnnotation> getAnnotations();
 }

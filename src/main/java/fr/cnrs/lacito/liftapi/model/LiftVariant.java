@@ -6,6 +6,8 @@ import java.util.Optional;
 import fr.cnrs.lacito.liftapi.LiftDictionaryBuilder;
 import javafx.beans.property.ListProperty;
 import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.ReadOnlyObjectProperty;
+import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.SimpleListProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
@@ -23,7 +25,7 @@ public final class LiftVariant
 
     protected Optional<String> refId = Optional.empty();
 
-    private final ObjectProperty<Feature> typeProperty = new SimpleObjectProperty<>(
+    private final ReadOnlyObjectWrapper<Feature> typeProperty = new ReadOnlyObjectWrapper<>(
         this,
         "type",
         null
@@ -93,12 +95,33 @@ public final class LiftVariant
      *     .build()
      * </pre>
      * 
+     * When the variant belongs to an entry, the change goes through
+     * {@link LiftEntry#retypeVariant(LiftVariant, Feature)}.
+     *
      * @param type: a {@code Feature}, belonging to a {@link FeatureSet} containing the variant types.
      */
     @Override
     public void setType(Feature type) {
+        if (parent != null) {
+            parent.retypeVariant(this, type);
+        } else {
+            assignType(type);
+        }
+    }
+
+    /**
+     * Write the type. Called by {@link #setType(Feature)} when this component has no
+     * parent, and otherwise by the parent's {@code retype} method once it has checked
+     * and re-keyed what depends on the type.
+     */
+    void assignType(Feature type) {
         if (type == null) throw new IllegalArgumentException("type cannot be null");
         this.typeProperty.set(type);
+    }
+
+    @Override
+    public ReadOnlyObjectProperty<Feature> typeProperty() {
+        return typeProperty.getReadOnlyProperty();
     }
 
     public void setRefId(String refId) {
@@ -212,5 +235,11 @@ public final class LiftVariant
         requireChild(relation, relationsProperty.contains(relation));
         orphaned(relation);
         relation.detach();
+    }
+
+    @Override
+    public void retypeRelation(LiftRelation relation, Feature type) {
+        requireChild(relation, relationsProperty.contains(relation));
+        relation.assignType(type);
     }
 }

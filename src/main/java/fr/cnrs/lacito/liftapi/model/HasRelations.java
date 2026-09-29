@@ -23,6 +23,15 @@ public sealed interface HasRelations extends LiftObject permits LiftVariant, Lif
     public void deleteRelation(LiftRelation relation);
 
     /**
+     * Changes the type of a relation of this component. {@link LiftRelation#setType(Feature)}
+     * calls this when the relation has a parent.
+     *
+     * @param relation a relation of this component.
+     * @param type the new type.
+     */
+    public void retypeRelation(LiftRelation relation, Feature type);
+
+    /**
      * Returns the list of relations of this component.
      *
      * @return the list of relations.

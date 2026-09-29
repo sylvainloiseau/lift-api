@@ -1,7 +1,7 @@
 package fr.cnrs.lacito.liftapi.model;
 
-import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.ReadOnlyObjectProperty;
+import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 
@@ -20,7 +20,7 @@ public final class LiftAnnotation extends AbstractLiftRoot implements HasType {
 
     protected HasAnnotation parent;
 
-    private final ObjectProperty<Feature> typeProperty = new SimpleObjectProperty<>(
+    private final ReadOnlyObjectWrapper<Feature> typeProperty = new ReadOnlyObjectWrapper<>(
         this,
         "type",
         null
@@ -62,13 +62,32 @@ public final class LiftAnnotation extends AbstractLiftRoot implements HasType {
         return typeProperty.get();
     }
 
+    /**
+     * Change the type of this annotation, through
+     * {@link HasAnnotation#retypeAnnotation(LiftAnnotation, Feature)} when it has a
+     * parent.
+     */
     @Override
     public void setType(Feature type) {
+        if (parent != null) {
+            parent.retypeAnnotation(this, type);
+        } else {
+            assignType(type);
+        }
+    }
+
+    /**
+     * Write the type. Called by {@link #setType(Feature)} when this component has no
+     * parent, and otherwise by the parent's {@code retype} method once it has checked
+     * and re-keyed what depends on the type.
+     */
+    void assignType(Feature type) {
         typeProperty.set(type);
     }
 
-    public ObjectProperty<Feature> typeProperty() {
-        return typeProperty;
+    @Override
+    public ReadOnlyObjectProperty<Feature> typeProperty() {
+        return typeProperty.getReadOnlyProperty();
     }
 
     // Value -----------------------------------

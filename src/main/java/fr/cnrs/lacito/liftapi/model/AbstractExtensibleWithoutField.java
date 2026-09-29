@@ -103,4 +103,10 @@ public abstract sealed class AbstractExtensibleWithoutField
         orphaned(a);
         a.detach();
     }
+
+    @Override
+    public void retypeAnnotation(LiftAnnotation a, Feature type) {
+        requireChild(a, annotationsProperty.contains(a));
+        a.assignType(type);
+    }
 }

@@ -2,9 +2,9 @@ package fr.cnrs.lacito.liftapi.model;
 
 import java.util.List;
 import javafx.beans.property.ListProperty;
-import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.ReadOnlyObjectProperty;
+import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.SimpleListProperty;
-import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 
 /**
@@ -40,7 +40,7 @@ public final class LiftReversal
         return parent;
     }
 
-    private final ObjectProperty<Feature> typeProperty = new SimpleObjectProperty<>(
+    private final ReadOnlyObjectWrapper<Feature> typeProperty = new ReadOnlyObjectWrapper<>(
         this,
         "type",
         null
@@ -73,10 +73,40 @@ public final class LiftReversal
         return typeProperty.get();
     }
 
+    /**
+     * Change the type of this reversal, through
+     * {@link HasReversal#retypeReversal(LiftReversal, Feature)} when it has a parent.
+     */
     @Override
     public void setType(Feature type) {
+        if (parent != null) {
+            parent.retypeReversal(this, type);
+        } else {
+            assignType(type);
+        }
+    }
+
+    /**
+     * Write the type. Called by {@link #setType(Feature)} when this component has no
+     * parent, and otherwise by the parent's {@code retype} method once it has checked
+     * and re-keyed what depends on the type.
+     */
+    void assignType(Feature type) {
         if (type == null) throw new IllegalArgumentException("type cannot be null");
         this.typeProperty.set(type);
+    }
+
+    /**
+     * Change the type of a reversal held by this one, either in its list of reversals
+     * or as its {@code <main>}.
+     */
+    @Override
+    public void retypeReversal(LiftReversal reversal, Feature type) {
+        requireChild(
+            reversal,
+            reversal != null && (reversalsProperty.contains(reversal) || main == reversal)
+        );
+        reversal.assignType(type);
     }
 
     public LiftReversal getMain() {
@@ -98,8 +128,9 @@ public final class LiftReversal
         }
     }
 
-    public ObjectProperty<Feature> typeProperty() {
-        return typeProperty;
+    @Override
+    public ReadOnlyObjectProperty<Feature> typeProperty() {
+        return typeProperty.getReadOnlyProperty();
     }
 
     /**

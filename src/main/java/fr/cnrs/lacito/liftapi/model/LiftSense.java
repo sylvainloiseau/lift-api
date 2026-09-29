@@ -322,6 +322,18 @@ public final class LiftSense
         reversal.detach();
     }
 
+    @Override
+    public void retypeReversal(LiftReversal reversal, Feature type) {
+        requireChild(reversal, reversalsProperty.contains(reversal));
+        reversal.assignType(type);
+    }
+
+    @Override
+    public void retypeRelation(LiftRelation relation, Feature type) {
+        requireChild(relation, relationsProperty.contains(relation));
+        relation.assignType(type);
+    }
+
     /**
      * Remove this sense's grammatical information, unregistering it - and the traits it
      * carries - if this sense belongs to a dictionary.

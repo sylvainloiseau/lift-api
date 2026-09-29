@@ -113,6 +113,34 @@ public final class LiftExample extends AbstractNotable {
     }
 
     /**
+     * Change the type of a translation of this example, re-keying it.
+     *
+     * @param translation a translation of this example
+     * @param type its new type
+     * @throws DuplicateTypeException if this example already has another translation of
+     *         that type; nothing is changed then
+     */
+    public void retypeTranslation(LiftTranslation translation, Feature type) {
+        requireChild(
+            translation,
+            translation != null && translations.get(translation.getType()) == translation
+        );
+        if (type == null) throw new IllegalArgumentException(
+            "Translation type cannot be null"
+        );
+        Feature old = translation.getType();
+        if (type == old) return;
+        if (translations.containsKey(type)) throw new DuplicateTypeException(
+            "A translation of type " + type.getId() + " already exists."
+        );
+        translations.remove(old);
+        translationTexts.remove(old);
+        translation.assignType(type);
+        translations.put(type, translation);
+        translationTexts.put(type, translation.getTranslation());
+    }
+
+    /**
      * Unlink a translation from the maps of this example; called by
      * {@link AbstractLiftRoot#detach()}.
      */

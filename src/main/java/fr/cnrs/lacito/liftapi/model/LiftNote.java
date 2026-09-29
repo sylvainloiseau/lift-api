@@ -1,7 +1,7 @@
 package fr.cnrs.lacito.liftapi.model;
 
-import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.ReadOnlyObjectProperty;
+import javafx.beans.property.ReadOnlyObjectWrapper;
 
 /**
  * A Lift note (not to be confused with {@link LiftTrait}, {@link LiftAnnotation}, {@link LiftField}; for comparison see {@link LiftTrait}).
@@ -27,7 +27,7 @@ public final class LiftNote
 
     protected AbstractNotable parent;
 
-    private final ObjectProperty<Feature> typeProperty = new SimpleObjectProperty<>(
+    private final ReadOnlyObjectWrapper<Feature> typeProperty = new ReadOnlyObjectWrapper<>(
         this,
         "type",
         null
@@ -67,8 +67,28 @@ public final class LiftNote
 
     // Type -----------------------------------
 
+    /**
+     * Change the type of this note. When the note belongs to a component, the change
+     * goes through {@link AbstractNotable#retypeNote(LiftNote, Feature)}, which re-keys
+     * the note and refuses a type another note of that component already has.
+     *
+     * @throws DuplicateTypeException if the parent already has a note of that type
+     */
     @Override
     public void setType(Feature type) {
+        if (parent != null) {
+            parent.retypeNote(this, type);
+        } else {
+            assignType(type);
+        }
+    }
+
+    /**
+     * Write the type. Called by {@link #setType(Feature)} when this component has no
+     * parent, and otherwise by the parent's {@code retype} method once it has checked
+     * and re-keyed what depends on the type.
+     */
+    void assignType(Feature type) {
         if (type == null) throw new IllegalArgumentException("note type cannot be null");
         this.typeProperty.set(type);
     }
@@ -78,8 +98,9 @@ public final class LiftNote
         return typeProperty.get();
     }
 
-    public ObjectProperty<Feature> typeProperty() {
-        return typeProperty;
+    @Override
+    public ReadOnlyObjectProperty<Feature> typeProperty() {
+        return typeProperty.getReadOnlyProperty();
     }
 
     public static LiftNote create() {

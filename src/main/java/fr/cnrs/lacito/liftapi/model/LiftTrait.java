@@ -432,4 +432,10 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
         orphaned(a);
         a.detach();
     }
+
+    @Override
+    public void retypeAnnotation(LiftAnnotation a, Feature type) {
+        requireChild(a, annotations.contains(a));
+        a.assignType(type);
+    }
 }

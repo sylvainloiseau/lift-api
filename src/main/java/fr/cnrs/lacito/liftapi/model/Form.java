@@ -163,6 +163,16 @@ public final class Form implements HasAnnotation {
         }
     }
 
+    @Override
+    public void retypeAnnotation(LiftAnnotation a, Feature type) {
+        if (a == null || annotations.stream().noneMatch(x -> x == a)) {
+            throw new IllegalArgumentException(
+                "This annotation is not held by this " + getClass().getSimpleName() + "."
+            );
+        }
+        a.assignType(type);
+    }
+
     public List<LiftAnnotation> getAnnotations() {
         return annotations;
     }

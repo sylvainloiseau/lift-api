@@ -268,9 +268,10 @@ public final class DictionarySnapshot {
     }
 
     private void notable(String p, AbstractNotable o) {
-        for (String type : new TreeMap<>(o.getNotes()).keySet()) {
-            note(p + ".note[" + type + "]", o.getNotes().get(type));
-        }
+        // Notes are keyed by Feature; sort by feature id for a stable order.
+        o.getNotes().values().stream()
+            .sorted(java.util.Comparator.comparing(n -> n.getType().getId()))
+            .forEach(n -> note(p + ".note[" + n.getType().getId() + "]", n));
     }
 
     private void multiText(String p, MultiText mt) {

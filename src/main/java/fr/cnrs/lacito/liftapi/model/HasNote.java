@@ -35,10 +35,30 @@ public sealed interface HasNote
     public LiftNote getNote(String type);
 
     /**
+     * Returns the note of the given type.
+     *
+     * @param type the type of the note to return.
+     * @return the note of the given type
+     * @throws IllegalArgumentException if the note of the given type does not exist.
+     */
+    public LiftNote getNote(Feature type);
+
+    /**
+     * Changes the type of a note of this component, keeping the notes keyed by their
+     * type. {@link LiftNote#setType(Feature)} calls this when the note has a parent.
+     *
+     * @param note a note of this component.
+     * @param type the new type.
+     * @throws DuplicateTypeException if this component already has another note of
+     *         that type.
+     */
+    public void retypeNote(LiftNote note, Feature type) throws DuplicateTypeException;
+
+    /**
      * Returns the notes of this component.
      *
      * @return the notes.
      */
-    public Map<String, LiftNote> getNotes();
+    public Map<Feature, LiftNote> getNotes();
 
 }

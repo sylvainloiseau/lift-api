@@ -149,6 +149,16 @@ public final class MultiText
         }
     }
 
+    @Override
+    public void retypeAnnotation(LiftAnnotation a, Feature type) {
+        if (a == null || annotations.stream().noneMatch(x -> x == a)) {
+            throw new IllegalArgumentException(
+                "This annotation is not held by this " + getClass().getSimpleName() + "."
+            );
+        }
+        a.assignType(type);
+    }
+
     /**
      * JavaFX observable access to underlying forms map.
      */

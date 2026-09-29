@@ -245,7 +245,7 @@ public abstract sealed class AbstractLiftRoot implements LiftObject
             }
             case LiftNote o -> { o.getParent()
                 .getNotes()
-                .remove(o.getType().getId());
+                .remove(o.getType());
                 o.setParent(null);
             }
             case LiftMedia o -> { o.getParent()

@@ -1,9 +1,9 @@
 package fr.cnrs.lacito.liftapi.model;
 
-import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.ReadOnlyObjectProperty;
+import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringProperty;
 import javafx.beans.property.ReadOnlyStringWrapper;
-import javafx.beans.property.SimpleObjectProperty;
 
 public final class LiftEtymology
     extends AbstractExtensibleWithField
@@ -14,12 +14,12 @@ public final class LiftEtymology
 
     protected LiftEntry parent;
 
-    private final ObjectProperty<Feature> typeProperty;
+    private final ReadOnlyObjectWrapper<Feature> typeProperty;
 
     private final ReadOnlyStringWrapper sourcePropertyWrapper;
 
     public LiftEtymology(Feature type, String source) {
-        this.typeProperty = new SimpleObjectProperty<>(
+        this.typeProperty = new ReadOnlyObjectWrapper<>(
             this,
             "type",
             type
@@ -62,14 +62,33 @@ public final class LiftEtymology
         return typeProperty.get();
     }
 
+    /**
+     * Change the type of this etymology, through
+     * {@link LiftEntry#retypeEtymology(LiftEtymology, Feature)} when it belongs to an
+     * entry.
+     */
     @Override
     public void setType(Feature type) {
+        if (parent != null) {
+            parent.retypeEtymology(this, type);
+        } else {
+            assignType(type);
+        }
+    }
+
+    /**
+     * Write the type. Called by {@link #setType(Feature)} when this component has no
+     * parent, and otherwise by the parent's {@code retype} method once it has checked
+     * and re-keyed what depends on the type.
+     */
+    void assignType(Feature type) {
         // TODO should check that the type belong to the etymology-type range
         this.typeProperty.set(type);
     }
 
-    public ObjectProperty<Feature> typeProperty() {
-        return typeProperty;
+    @Override
+    public ReadOnlyObjectProperty<Feature> typeProperty() {
+        return typeProperty.getReadOnlyProperty();
     }
 
     // Source -----------------------------------
