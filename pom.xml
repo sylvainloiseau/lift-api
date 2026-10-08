@@ -6,14 +6,9 @@
 >
     <modelVersion>4.0.0</modelVersion>
 
-  <parent>
     <groupId>fr.cnrs.lacito</groupId>
-    <artifactId>multilingual-dictionary-editor</artifactId>
     <version>0.1-SNAPSHOT</version>
-  </parent>
-
     <artifactId>lift-api</artifactId>
-    <version>0.1-SNAPSHOT</version>
     <name>${project.groupId}:${project.artifactId}</name>
     <description
     >A library for reading and manipulating the Lift (Lexicon interchange format) data model for dictionary (https://github.com/sillsdev/lift-standard)</description>
