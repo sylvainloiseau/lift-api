@@ -6,13 +6,20 @@
 >
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>fr.cnrs.lacito</groupId>
+    <groupId>io.github.sylvainloiseau</groupId>
     <version>0.1-SNAPSHOT</version>
     <artifactId>lift-api</artifactId>
     <name>${project.groupId}:${project.artifactId}</name>
+
     <description
     >A library for reading and manipulating the Lift (Lexicon interchange format) data model for dictionary (https://github.com/sillsdev/lift-standard)</description>
     <url>https://github.com/sylvainloiseau/lift-api</url>
+    <licenses>
+      <license>
+        <name>Academic Free License v. 3.0</name>
+        <url>https://opensource.org/license/AFL-3.0</url>
+      </license>
+    </licenses>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>25</maven.compiler.source>
@@ -20,6 +27,13 @@
         <maven.compiler.release>25</maven.compiler.release>
         <javafx.version>25</javafx.version>
     </properties>
+    <distributionManagement>
+      <repository>
+        <id>github</id>
+        <name>sylvainloiseau</name>
+        <url>https://maven.pkg.github.com/sylvainloiseau/lift-api</url>
+      </repository>
+    </distributionManagement>
     <dependencies>
         <dependency>
             <groupId>info.picocli</groupId>
