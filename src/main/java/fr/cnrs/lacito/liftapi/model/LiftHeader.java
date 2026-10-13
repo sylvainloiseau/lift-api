@@ -19,10 +19,10 @@ public final class LiftHeader extends AbstractLiftRoot {
     private static final String NOTE_TYPE_RANGE = "note-type";
     private static final String TRANSLATION_TYPE_RANGE = "translation-type";
     private static final String GRAMMATICAL_INFO_RANGE = "grammatical-info";
-    private static final String RELATION_TYPE_RANGE = "relation-type";
-    private static final String INVERSE_TYPE_RANGE = "inverse-type";
+    private static final String RELATION_TYPE_RANGE = "lexical-relation";
+    private static final String INVERSE_TYPE_RANGE = "reversal-type";
     private static final String ANNOTATION_TYPE_RANGE = "annotation-type";
-    private static final String ETYMOLOGY_TYPE_RANGE = "etymology-type";
+    private static final String ETYMOLOGY_TYPE_RANGE = "etymology";
     private static final String VARIANT_TYPE_RANGE = "variant-type";
 
     private Map<String, LiftFieldAndTraitDefinition> fieldsAndTraitsDefinition = new HashMap<>();

@@ -16,13 +16,14 @@ public class ReversalBuilder extends AbstractLiftElementBuilder<LiftReversal, Ha
 
     public ReversalBuilder withType(String type) {
         if (type == null || type.isBlank()) {
-            throw new IllegalArgumentException("Annotation name cannot be null or blank");
+            throw new IllegalArgumentException("Reversal type cannot be null or blank");
         }
-        // if (!dictionary.getHeader().getInverseTypeManager().hasRangeElements(type)) {
-        //     dictionary.getHeader().getInverseTypeManager().addFeature(type);
-        // }
-        Feature e = dictionary.getHeader().getInverseTypeManager().getFeature(type);
-        super.withType(e);
+        // Create the type on demand, as this builder's own constructor already does.
+        Feature f = dictionary
+            .getHeader()
+            .getInverseTypeManager()
+            .getOrCreateFeature(type);
+        super.withType(f);
         return this;
     }
 
@@ -31,9 +32,10 @@ public class ReversalBuilder extends AbstractLiftElementBuilder<LiftReversal, Ha
      */
     @Override
     public LiftReversal build() {
-        if (element.getType() == null) {
-            throw new IllegalStateException("Relation must have a type");
-        }
+        // no: type is optional in the schema
+        // if (element.getType() == null) {
+        //     throw new IllegalStateException("Reversal must have a type");
+        // }
         super.attach();
         return element;
     }

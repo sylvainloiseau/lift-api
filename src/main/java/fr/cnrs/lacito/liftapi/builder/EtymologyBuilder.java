@@ -97,13 +97,16 @@ public class EtymologyBuilder
 
     public EtymologyBuilder withType(String type) {
         if (type == null || type.isBlank()) throw new IllegalArgumentException("Type cannot be null or empty.");
+        if (!dictionary.getHeader().getEtymologyTypeManager().hasFeature(type)) {
+            dictionary.getHeader().getEtymologyTypeManager().addFeature(type);
+        }
         Feature f = dictionary.getHeader().getEtymologyTypeManager().getFeature(type);
         super.withType(f);
         return this;
     }
 
     // Override WithField so that the correct type is returned
-    
+
     @Override
     public EtymologyBuilder addField(String name, String language, String text) {
         super.addField(name, language, text);

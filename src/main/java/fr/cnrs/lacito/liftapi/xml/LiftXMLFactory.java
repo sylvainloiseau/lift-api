@@ -82,14 +82,14 @@ public final class LiftXMLFactory {
             LiftVocabulary.LIFT_URI,
             LiftVocabulary.TYPE_ATTRIBUTE
         );
-        Feature element = null;
+        Feature f = null;
         if (type != null) {
-            if (!header.getNoteTypeManager().hasFeature(type)) {
-                header.getNoteTypeManager().addFeature(type);
+            if (!header.getInverseTypeManager().hasFeature(type)) {
+                header.getInverseTypeManager().addFeature(type);
             }
-            element = header.getNoteTypeManager().getFeature(type);
+            f = header.getInverseTypeManager().getFeature(type);
         }
-        LiftReversal reversal = new LiftReversal(element);
+        LiftReversal reversal = new LiftReversal(f);
         sense.addReversal(reversal);
         return reversal;
     }

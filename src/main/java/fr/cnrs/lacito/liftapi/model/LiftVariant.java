@@ -14,7 +14,7 @@ import javafx.collections.FXCollections;
 
 /**
  * A variant form of an entry.
- * 
+ *
  * A "variant" can relate to various phenomena: morphology, allomorphie, dialectal or in free-variation... The type of phenomena this variant belongs can be set in {@link LiftVariant#setType(Feature)}.
  *
  */
@@ -55,7 +55,7 @@ public final class LiftVariant
 
     /**
      * Get the type of the variant
-     * 
+     *
      * @return a {@code Feature}, belonging to a {@link FeatureSet} containing the various variant type.
      */
     @Override
@@ -65,7 +65,7 @@ public final class LiftVariant
 
     /**
      * Set the type of the variant. In order to be set, type must have been created first in the dictionary:
-     * 
+     *
      * <ul>
      * <li>either during the dictionary creation, with {@link LiftDictionaryBuilder#withVariantType(String[])} :
      * <pre>
@@ -84,9 +84,9 @@ public final class LiftVariant
      * </pre>
      * </li>
      * </ul>
-     * 
+     *
      * The feature can the be used with the fluid API:
-     * 
+     *
      * <pre>
      * LiftVariant v = dictionary.getComponentBuilder()
      *     .variant()
@@ -94,7 +94,7 @@ public final class LiftVariant
      *     // ...
      *     .build()
      * </pre>
-     * 
+     *
      * When the variant belongs to an entry, the change goes through
      * {@link LiftEntry#retypeVariant(LiftVariant, Feature)}.
      *
@@ -145,7 +145,7 @@ public final class LiftVariant
 
     /**
      * Protected: this method is called by the parent when it adopts this LiftTrait.
-     * 
+     *
      * The {@link LiftEntry} containing this variant.
      * @param parent
      */
@@ -175,7 +175,7 @@ public final class LiftVariant
     // No : add several variant instead.
     /**
      * The transcription of the variant, with an indication of the language-writting system(s).
-     * 
+     *
      * @return a linguistic transcription.
      */
     public MultiText getForms() {
