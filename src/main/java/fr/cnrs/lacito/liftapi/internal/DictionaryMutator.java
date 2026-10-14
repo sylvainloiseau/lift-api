@@ -289,7 +289,11 @@ public final class DictionaryMutator {
      * <li>giving it a UUID</li>
      * <li>recording the mapping (node, UUID) in the index for its kind</li>
      * <li>counting it against the components it refers to (see {@link HasRefId})</li>
-     * <li>giving it a LIFT id (entries and senses only) if it does not have one</li>
+     * <li>giving it a LIFT id (entries and senses only) if it does not have one: a
+     * random UUID of its own, not the internal one, since the LIFT id is written to the
+     * file and must not collide with the ids of other files or sessions, which the
+     * internal UUIDs, unique only within this dictionary, would (see
+     * {@link LiftDictionaryUUIDManager})</li>
      * <li>registering the MultiTexts it owns, which is what puts their languages on the
      * dictionary's language managers</li>
      * </ul>
@@ -311,7 +315,7 @@ public final class DictionaryMutator {
         switch (node) {
             case LiftEntry e -> {
                 if (e.getId().isEmpty()) {
-                    e.setId(uuid.toString());
+                    e.setId(UUID.randomUUID().toString());
                 }
                 if (registers.entriesByLiftId.containsKey(e.getId().get())) {
                     throw new DuplicateIdException(
@@ -321,7 +325,7 @@ public final class DictionaryMutator {
             }
             case LiftSense s -> {
                 if (s.getId().isEmpty()) {
-                    s.setId(uuid.toString());
+                    s.setId(UUID.randomUUID().toString());
                 }
                 // Same guard as for entries: without it a file with two senses
                 // sharing an id silently loses one of them.

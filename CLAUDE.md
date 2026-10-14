@@ -30,7 +30,7 @@ is a JavaFX editor that binds directly to this model.
 | `change` | yes | The changes of a dictionary as reversible events: `ModelChange` (sealed) and its records, `ModelProperty`, `ChangeRecorder` (transactions). Read its `package-info` |
 | `model` | yes | The LIFT data model (~50 classes). `Lift*` component classes, `Has*` capability interfaces, `MultiText`/`Form`/`TextSpan` text model, `FeatureSet`/`Feature` (= LIFT `range`/`range-element`), `LiftHeader`, `LiftFieldAndTraitDefinition` |
 | `builder` | yes | Fluent API, reached via `dictionary.getComponentBuilder()` (`DictionaryComponentBuilderFactory`) |
-| `internal` | **no** | `DictionaryMutator` (the only code that writes indexes), `DictionaryRegisters` (the index maps), `ChangeSupport` (listeners), `ModelInternals` (the model's package-private wiring: `setUUID`, `setOwningDictionary`…), UUID manager |
+| `internal` | **no** | `DictionaryMutator` (the only code that writes indexes), `DictionaryRegisters` (the index maps), `ChangeSupport` (listeners), `ModelInternals` (the model's package-private wiring: `setUUID`, `setOwningDictionary`…), `LiftDictionaryUUIDManager` (internal UUIDs: per-dictionary prefix + counter, not random — never write them to a file; default LIFT ids are separate random UUIDs) |
 | `xml` | **no** | SAX reader (`LiftDictionaryXmlReader` → `LiftSaxHandler` → `LiftXMLFactory`), writer (`LiftWriterSession`, `*Writers`), `LiftVocabulary` (element/attribute names) |
 | `cli` | no (opened to picocli) | `Main` |
 

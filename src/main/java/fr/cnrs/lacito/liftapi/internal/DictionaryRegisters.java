@@ -128,6 +128,12 @@ public final class DictionaryRegisters {
     public final ObservableList<LiftEntry> entries =
         FXCollections.observableArrayList();
 
+    /**
+     * A UUID not yet used in this dictionary, to index a component or a MultiText.
+     *
+     * Unique within this dictionary, but not random: never use it for anything written
+     * to a file (see {@link LiftDictionaryUUIDManager}).
+     */
     public UUID newUUID() {
         return uuidManager.getUniqueUuid();
     }

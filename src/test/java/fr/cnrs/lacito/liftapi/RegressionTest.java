@@ -27,6 +27,7 @@ import fr.cnrs.lacito.liftapi.model.LiftTrait;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
 import fr.cnrs.lacito.liftapi.LiftVersion;
 
+import java.io.File;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
@@ -687,5 +688,59 @@ public class RegressionTest {
         assertEquals("sense", d.getHeader().getFieldsAndTraitsDefinitions("note-a").getTargetAsString());
         assertEquals(1, d.getHeader().getFieldsAndTraitsDefinitions().stream()
             .filter(x -> x.getName().equals("note-a")).count());
+    }
+
+    // ------------------------------------------------------------------
+    // Default LIFT ids
+    // ------------------------------------------------------------------
+
+    /**
+     * The default LIFT id of an entry or a sense used to be its internal UUID. Internal
+     * UUIDs are now a per-dictionary counter, unique only within the dictionary, while
+     * the LIFT id is written to the file: it must stay a random UUID of its own.
+     */
+    @Test
+    public void aDefaultLiftIdIsARandomUuidDistinctFromTheInternalOne() {
+        LiftEntry entry = new LiftEntry();
+        entry.getForms().add(new Form("tww", "nala"));
+        LiftSense sense = new LiftSense();
+        sense.getGlosses().add(new Form("en", "house"));
+        entry.addSense(sense);
+        dictionary.addEntry(entry);
+
+        for (var node : List.of(entry, sense)) {
+            java.util.UUID liftId = java.util.UUID.fromString(node.getId().orElseThrow());
+            assertEquals(4, liftId.version(), "the LIFT id must be a random (version 4) UUID");
+            assertFalse(liftId.equals(node.getUUID()), "the LIFT id must not be the internal UUID");
+            assertEquals(8, node.getUUID().version(), "the internal UUID is a custom (version 8) one");
+        }
+    }
+
+    /**
+     * Ids generated after a reload must not collide with the ids generated, and saved,
+     * in an earlier session - which ids derived from a per-dictionary counter would.
+     */
+    @Test
+    public void idsGeneratedAfterAReloadDoNotCollideWithSavedOnes(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+        for (int i = 0; i < 20; i++) {
+            LiftEntry e = new LiftEntry();
+            e.getForms().add(new Form("tww", "w" + i));
+            dictionary.addEntry(e);
+        }
+        File file = dir.resolve("ids.lift").toFile();
+        dictionary.save(file);
+        Set<String> saved = new HashSet<>();
+        for (LiftEntry e : dictionary.getLiftDictionaryRegistry().getEntries()) {
+            saved.add(e.getId().orElseThrow());
+        }
+
+        LiftDictionary reloaded = LiftDictionary.loadDictionaryFromFile(file);
+        for (int i = 0; i < 20; i++) {
+            LiftEntry e = new LiftEntry();
+            e.getForms().add(new Form("tww", "v" + i));
+            reloaded.addEntry(e);
+            assertFalse(saved.contains(e.getId().orElseThrow()), "a new id collides with a saved one");
+        }
+        assertEquals(40, reloaded.getLiftDictionaryRegistry().getEntries().size());
     }
 }
