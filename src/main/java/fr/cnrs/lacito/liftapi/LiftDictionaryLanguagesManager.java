@@ -2,47 +2,69 @@ package fr.cnrs.lacito.liftapi;
 
 import java.util.Set;
 
+import fr.cnrs.lacito.liftapi.change.LanguageAdded;
+import fr.cnrs.lacito.liftapi.change.LanguageRemoved;
+import fr.cnrs.lacito.liftapi.internal.ChangeSupport;
+import javafx.beans.property.ReadOnlySetProperty;
+import javafx.beans.property.ReadOnlySetWrapper;
 import javafx.beans.property.SimpleMapProperty;
-import javafx.beans.property.SimpleSetProperty;
 import javafx.collections.FXCollections;
+import javafx.collections.ObservableSet;
 
 /**
  * Manages a set of languages (either meta languages or object languages) of a {@link LiftDictionary}.
  */
 public class LiftDictionaryLanguagesManager {
 
-    private final SimpleSetProperty<String> languages =
-        new SimpleSetProperty<>(FXCollections.observableSet());
+    private final ObservableSet<String> languageSet = FXCollections.observableSet();
+    private final ObservableSet<String> languagesView = FXCollections.unmodifiableObservableSet(languageSet);
+    private final ReadOnlySetWrapper<String> languages =
+        new ReadOnlySetWrapper<>(this, "languages", languagesView);
+
+    /** The dictionary these languages belong to, to report their changes to. */
+    private final LiftDictionary dictionary;
 
     private final SimpleMapProperty<String, Integer> languageCounts =
         new SimpleMapProperty<>(FXCollections.observableHashMap());
 
-    protected LiftDictionaryLanguagesManager() {}
-
-    public SimpleSetProperty<String> languagesProperty() {
-        return languages;
+    LiftDictionaryLanguagesManager(LiftDictionary dictionary) {
+        this.dictionary = dictionary;
     }
 
-    public Set<String> getLanguages() {
-        return languages.get();
+    /**
+     * The languages, as a read-only property; change them with {@link #addLanguage} and
+     * {@link #removeLanguage}.
+     */
+    public ReadOnlySetProperty<String> languagesProperty() {
+        return languages.getReadOnlyProperty();
+    }
+
+    /**
+     * @return the languages, as a read-only observable set
+     */
+    public ObservableSet<String> getLanguages() {
+        return languagesView;
     }
 
     public boolean hasLanguage(String lang) {
-        return languages.get().contains(lang);
+        return languageSet.contains(lang);
     }
 
     public void addLanguage(String lang) {
-        if (languages.get().contains(lang)) {
+        if (languageSet.contains(lang)) {
             throw new IllegalArgumentException(
                 "The languages already contain: " + lang
             );
         }
-        languages.get().add(lang);
+        languageSet.add(lang);
         languageCounts.get().put(lang, 0);
+        if (ChangeSupport.anyObserved() && dictionary != null && dictionary.getChangeSupport().isObserved()) {
+            dictionary.getChangeSupport().fire(new LanguageAdded(dictionary, this, lang));
+        }
     }
 
     public void removeLanguage(String lang) {
-        if (!languages.get().contains(lang)) {
+        if (!languageSet.contains(lang)) {
             throw new IllegalArgumentException(
                 "The languages do not contain: " + lang
             );
@@ -52,8 +74,11 @@ public class LiftDictionaryLanguagesManager {
                 "Cannot remove language with non-zero count: " + lang
             );
         }
-        languages.get().remove(lang);
+        languageSet.remove(lang);
         languageCounts.get().remove(lang);
+        if (ChangeSupport.anyObserved() && dictionary != null && dictionary.getChangeSupport().isObserved()) {
+            dictionary.getChangeSupport().fire(new LanguageRemoved(dictionary, this, lang));
+        }
     }
 
     /**

@@ -30,7 +30,8 @@ public class FeatureBuilderTest {
 
     @Test
     public void testFeatureBuilderRaw() {
-        assertEquals(9, dictionary.getHeader().getFeatureSets().size());
+        // 7 built-in ranges, and the one created above.
+        assertEquals(8, dictionary.getHeader().getFeatureSets().size());
         Feature f = new FeatureBuilder(
             dictionary,
             dictionary.getHeader().getFeatureSet("myclassification"),
@@ -38,7 +39,8 @@ public class FeatureBuilderTest {
         ).build();
         assertEquals("myfeature", f.getId());
         assertEquals("myclassification", f.getParentFeatureSet().getId());
-        assertEquals(9, dictionary.getHeader().getFeatureSets().size());
+        // 7 built-in ranges, and the one created above.
+        assertEquals(8, dictionary.getHeader().getFeatureSets().size());
     }
 
     @Test

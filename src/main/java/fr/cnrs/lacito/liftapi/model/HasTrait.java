@@ -16,6 +16,14 @@ public sealed interface HasTrait extends LiftObject
     public void addTrait(LiftTrait t);
 
     /**
+     * Adds a trait at a given position among the traits of this component.
+     *
+     * @param index where to insert the trait.
+     * @param t the trait to add.
+     */
+    public void addTrait(int index, LiftTrait t);
+
+    /**
      * Removes a trait from this component, and from the dictionary if this component
      * belongs to one.
      *

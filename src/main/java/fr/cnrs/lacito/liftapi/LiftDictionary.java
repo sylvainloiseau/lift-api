@@ -1,6 +1,12 @@
 package fr.cnrs.lacito.liftapi;
 
 import fr.cnrs.lacito.liftapi.builder.DictionaryComponentBuilderFactory;
+import fr.cnrs.lacito.liftapi.change.ChangeRecorder;
+import fr.cnrs.lacito.liftapi.change.ComponentAdded;
+import fr.cnrs.lacito.liftapi.change.ComponentRemoved;
+import fr.cnrs.lacito.liftapi.change.ModelChange;
+import fr.cnrs.lacito.liftapi.internal.ChangeSupport;
+import fr.cnrs.lacito.liftapi.internal.ModelInternals;
 import fr.cnrs.lacito.liftapi.internal.DictionaryMutator;
 import fr.cnrs.lacito.liftapi.internal.DictionaryRegisters;
 import fr.cnrs.lacito.liftapi.model.Form;
@@ -14,11 +20,15 @@ import java.io.File;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import javafx.util.Subscription;
 
 /// The entry point for working with a LIFT dictionary.
 ///
@@ -100,14 +110,16 @@ public final class LiftDictionary {
     protected String liftProducer = DEFAULT_PRODUCER;
 
     private LiftDictionaryLanguagesManager objectLanguagesManager =
-        new LiftDictionaryLanguagesManager();
+        new LiftDictionaryLanguagesManager(this);
 
     private LiftDictionaryLanguagesManager metaLanguagesManager =
-        new LiftDictionaryLanguagesManager();
+        new LiftDictionaryLanguagesManager(this);
 
     private final LiftDictionaryCounterManager counter;
 
     private final DictionaryMutator mutator;
+
+    private final ChangeSupport changeSupport = new ChangeSupport();
 
     // Getters/Setters
 
@@ -126,6 +138,42 @@ public final class LiftDictionary {
      */
     public DictionaryMutator getMutator() {
         return mutator;
+    }
+
+    /**
+     * The change listeners of this dictionary.
+     *
+     * <b>Not public API</b>, for the same reason as {@link #getMutator()}: use
+     * {@link #addChangeListener(Consumer)} and {@link #recordChanges()}.
+     */
+    public ChangeSupport getChangeSupport() {
+        return changeSupport;
+    }
+
+    /**
+     * Listen to the changes of this dictionary.
+     *
+     * Every public operation that changes the dictionary - its entries, their
+     * components and values, the header, the languages - reports one or more
+     * {@link ModelChange}s, after it succeeded, synchronously. Each can be reverted.
+     * Loading a file reports nothing: the dictionary is only handed out once loaded.
+     * See the {@code fr.cnrs.lacito.liftapi.change} package for the rules.
+     *
+     * @param listener called with each change; it must not change the dictionary
+     * @return the subscription to cancel to stop listening
+     */
+    public Subscription addChangeListener(Consumer<? super ModelChange> listener) {
+        return changeSupport.addListener(listener);
+    }
+
+    /**
+     * Start recording the changes of this dictionary, as a transaction: see
+     * {@link ChangeRecorder}.
+     *
+     * @return a recorder, to use in a try-with-resources block
+     */
+    public ChangeRecorder recordChanges() {
+        return ChangeRecorder.start(this);
     }
 
     public DictionaryComponentBuilderFactory getComponentBuilder() {
@@ -210,6 +258,7 @@ public final class LiftDictionary {
         this.registry = new LiftDictionaryRegistry(this.registers);
         this.mutator = new DictionaryMutator(this, this.registers);
         this.header = new LiftHeader();
+        ModelInternals.get().setDictionary(this.header, this);
         this.componentBuilder = new DictionaryComponentBuilderFactory(this);
         counter = new LiftDictionaryCounterManager(this);
     }
@@ -241,7 +290,9 @@ public final class LiftDictionary {
         if (entry == null) {
             throw new IllegalArgumentException("entry cannot be null");
         }
+        boolean registers = entry.getUUID() == null;
         mutator.adoptSubtree(entry);
+        reportEntryAdded(entry, registers);
     }
 
     /**
@@ -260,6 +311,7 @@ public final class LiftDictionary {
             throw new IllegalArgumentException("entry cannot be null");
         }
         mutator.adoptEntryAt(entry, index);
+        reportEntryAdded(entry, true);
     }
 
     /**
@@ -277,7 +329,19 @@ public final class LiftDictionary {
         if (entry == null) {
             throw new IllegalArgumentException("entry cannot be null");
         }
+        boolean observed = ChangeSupport.anyObserved() && changeSupport.isObserved()
+            && entry.getOwningDictionary() == this;
+        OptionalInt position = observed ? entry.positionInParent() : OptionalInt.empty();
         mutator.releaseSubtree(entry);
+        if (observed) {
+            changeSupport.fire(new ComponentRemoved(this, this, entry, position, true));
+        }
+    }
+
+    private void reportEntryAdded(LiftEntry entry, boolean registers) {
+        if (ChangeSupport.anyObserved() && changeSupport.isObserved()) {
+            changeSupport.fire(new ComponentAdded(this, this, entry, entry.positionInParent(), registers));
+        }
     }
 
     /**

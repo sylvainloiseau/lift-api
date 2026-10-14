@@ -21,7 +21,7 @@ import javafx.beans.property.ReadOnlyObjectProperty;
  * their type is a {@link fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition}.
  */
 public sealed interface HasType
-    permits LiftNote, LiftEtymology, LiftReversal, LiftRelation, LiftVariant, LiftAnnotation,
+    permits LiftNote, LiftEtymology, LiftReversal, LiftRelation, LiftAnnotation,
         LiftTranslation
 // LiftField, LiftTrait, GramType
 {

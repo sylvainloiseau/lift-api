@@ -1,5 +1,7 @@
 package fr.cnrs.lacito.liftapi.model;
 
+import fr.cnrs.lacito.liftapi.change.ModelProperty;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -10,6 +12,8 @@ import javafx.beans.property.ReadOnlyStringProperty;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 
 /**
  * A transcription of linguistic content in a given language and with a given writting system.
@@ -28,7 +32,13 @@ public final class Form implements HasAnnotation {
     private String toText = null;
     private String toPlainText = null;
 
-    protected final List<LiftAnnotation> annotations = new ArrayList<>();
+    // Allocated on the first annotation, or the first call to getAnnotations(): there
+    // are many Forms, and very few have annotations.
+    private ObservableList<LiftAnnotation> annotations;
+    private ObservableList<LiftAnnotation> annotationsView;
+
+    /** The multitext holding this form, set by {@link MultiText#add(Form)}. */
+    private MultiText owner;
 
     private final Deque<TextSpan> current = new ArrayDeque<>();
     private TextSpan root = new TextSpan();
@@ -95,11 +105,19 @@ public final class Form implements HasAnnotation {
         return textProperty;
     }
 
+    /**
+     * Append a piece of text. For building a form (the XML reader), before it is added to
+     * a multitext: this is not reported as a change. To edit a form, use
+     * {@link #changeText(String)} or {@link #textProperty()}.
+     */
     public void append(String string) {
         current.peek().addSpan(new TextSpan(string));
         textSpanNumber += 1;
     }
 
+    /**
+     * Open a nested span; see {@link #append(String)} and {@link #pop()}.
+     */
     public void append(TextSpan span) {
         this.current.peek().addSpan(span);
         this.current.push(span);
@@ -145,10 +163,51 @@ public final class Form implements HasAnnotation {
         return toPlainText;
     }
 
+    /**
+     * The text of this form with its markup: what is inside the {@code <text>} element,
+     * {@code <span>}s included. {@link #changeText(String)} parses it back into the same
+     * spans, which is why it is the value reported for a change of text
+     * ({@link ModelProperty#FORM_TEXT}).
+     */
+    public String getMarkup() {
+        StringBuffer strb = new StringBuffer();
+        TextSpan top = getTextSpanRoot();
+        if (top.isTerminal()) {
+            top.toString(strb);
+        } else {
+            for (TextSpan child : top.getInnerContent()) {
+                child.toString(strb);
+            }
+        }
+        return strb.toString();
+    }
+
+    /** The multitext holding this form, or {@code null}. */
+    MultiText getOwner() {
+        return owner;
+    }
+
+    void setOwner(MultiText owner) {
+        this.owner = owner;
+    }
+
     @Override
     public void addAnnotation(LiftAnnotation a) {
-        annotations.add(a);
+        addAnnotation(annotationsOrEmpty().size(), a);
+    }
+
+    /**
+     * Add an annotation at a given position; it is registered when the component this
+     * form belongs to is in a dictionary.
+     */
+    @Override
+    public void addAnnotation(int index, LiftAnnotation a) {
+        annotations().add(index, a);
         a.setParent(this);
+        AbstractLiftRoot component = owner == null ? null : owner.getParent();
+        if (component != null) {
+            component.adoptedIn(this, a);
+        }
     }
 
     /**
@@ -158,14 +217,22 @@ public final class Form implements HasAnnotation {
      */
     @Override
     public void deleteAnnotation(LiftAnnotation a) {
-        if (annotations.removeIf(x -> x == a)) {
-            a.setParent(null);
+        if (a == null || annotationsOrEmpty().stream().noneMatch(x -> x == a)) {
+            throw new IllegalArgumentException(
+                "This annotation is not held by this " + getClass().getSimpleName() + "."
+            );
+        }
+        AbstractLiftRoot component = owner == null ? null : owner.getParent();
+        if (component != null) {
+            component.removeChildIn(this, a);
+        } else {
+            a.unlink();
         }
     }
 
     @Override
     public void retypeAnnotation(LiftAnnotation a, Feature type) {
-        if (a == null || annotations.stream().noneMatch(x -> x == a)) {
+        if (a == null || annotationsOrEmpty().stream().noneMatch(x -> x == a)) {
             throw new IllegalArgumentException(
                 "This annotation is not held by this " + getClass().getSimpleName() + "."
             );
@@ -173,8 +240,34 @@ public final class Form implements HasAnnotation {
         a.assignType(type);
     }
 
-    public List<LiftAnnotation> getAnnotations() {
+    /**
+     * @return the annotations, as a read-only observable list
+     */
+    @Override
+    public ObservableList<LiftAnnotation> getAnnotations() {
+        if (annotationsView == null) annotationsView = FXCollections.unmodifiableObservableList(annotations());
+        return annotationsView;
+    }
+
+    /**
+     * Whether this form has annotations; unlike {@link #getAnnotations()}, it does
+     * not allocate anything.
+     */
+    public boolean hasAnnotations() {
+        return annotations != null && !annotations.isEmpty();
+    }
+
+    /** The annotations, created on demand. */
+    ObservableList<LiftAnnotation> annotations() {
+        if (annotations == null) {
+            annotations = FXCollections.observableArrayList();
+        }
         return annotations;
+    }
+
+    /** The annotations, without allocating: an empty list when there are none. */
+    java.util.List<LiftAnnotation> annotationsOrEmpty() {
+        return annotations == null ? java.util.List.of() : annotations;
     }
 
     /**
@@ -190,6 +283,8 @@ public final class Form implements HasAnnotation {
     }
 
     public void changeText(String input) {
+        // The old text is only computed when somebody listens.
+        String old = Changes.observing(this) == null ? null : getMarkup();
         // Réinitialise le contenu
         while (current.size() > 0) {
             current.pop();
@@ -214,64 +309,89 @@ public final class Form implements HasAnnotation {
                 }
             }
         }
+        if (old != null) {
+            Changes.valueChanged(this, ModelProperty.FORM_TEXT, old, getMarkup());
+        }
     }
 
+    /**
+     * Parse the markup of a form's text ({@code <span>} elements, possibly nested, with
+     * {@code lang}, {@code class} and {@code href} attributes) into {@code parent}.
+     *
+     * Written by hand rather than with a regular expression: a greedy pattern took
+     * {@code <span>a</span>b<span>c</span>} as one span holding {@code a</span>b<span>c},
+     * so that a text with two spans did not survive {@link #changeText(String)}.
+     * A {@code </span>} with no opening tag, or an unterminated {@code <span}, is kept
+     * as text.
+     */
     private void parseSpanContent(String input, TextSpan parent) {
-        // \s* rather than \s+: <span> without attributes is legal, and requiring an
-        // attribute made the match fail, leaving idx stuck and the loop spinning forever
-        // on input this class's own toString() produces.
-        Pattern spanPattern = Pattern.compile(
-            "<span(\\s[^>]*)?>(.*)</span>",
-            Pattern.DOTALL
-        );
+        if (input == null) {
+            return;
+        }
+        int i = parseSpans(input, 0, parent, true);
+        if (i < input.length()) {
+            parent.addSpan(new TextSpan(input.substring(i)));
+        }
+    }
 
-        int idx = 0;
-        while (idx < input.length()) {
-            Matcher matcher = spanPattern.matcher(input.substring(idx));
-            if (matcher.find() && matcher.start() == 0) {
-                // Attributs de la balise
-                String attrs = matcher.group(1) == null ? "" : matcher.group(1);
-                String content = matcher.group(2);
-
-                String lang = null,
-                    clazz = null;
-                Matcher attrMatcher = Pattern.compile(
-                    "(lang|class)\\s*=\\s*\"([^\"]*)\""
-                ).matcher(attrs);
-                while (attrMatcher.find()) {
-                    if ("lang".equals(attrMatcher.group(1))) lang =
-                        attrMatcher.group(2);
-                    if ("class".equals(attrMatcher.group(1))) clazz =
-                        attrMatcher.group(2);
+    /**
+     * Parse spans and text from {@code i} into {@code parent}, up to the
+     * {@code </span>} that closes it (or the end, for the root).
+     *
+     * @return the index after what was consumed
+     */
+    private static int parseSpans(String s, int i, TextSpan parent, boolean root) {
+        StringBuilder text = new StringBuilder();
+        while (i < s.length()) {
+            if (startsSpan(s, i)) {
+                int end = s.indexOf('>', i);
+                if (end < 0) {
+                    break;
                 }
+                flush(text, parent);
                 TextSpan span = new TextSpan();
-                if (lang != null) span.setLang(lang);
-                if (clazz != null) span.setsClass(clazz);
-
-                // Récursivité sur le contenu interne
-                parseSpanContent(content, span);
+                Matcher attr = ATTRIBUTE.matcher(s.substring(i + 5, end));
+                while (attr.find()) {
+                    switch (attr.group(1)) {
+                        case "lang" -> span.setLang(attr.group(2));
+                        case "class" -> span.setsClass(attr.group(2));
+                        case "href" -> span.setHref(attr.group(2));
+                        default -> { }
+                    }
+                }
+                i = parseSpans(s, end + 1, span, false);
                 parent.addSpan(span);
-
-                // Avance l'index après ce span
-                idx += matcher.end();
+            } else if (!root && s.startsWith("</span>", i)) {
+                flush(text, parent);
+                return i + "</span>".length();
             } else {
-                // Texte brut jusqu'au prochain <span> ou fin
-                int nextSpan = input.indexOf("<span", idx);
-                String text;
-                if (nextSpan == -1 || nextSpan == idx) {
-                    // Either no further span, or a "<span" that did not match the
-                    // pattern (unterminated, for instance): consume the rest as text
-                    // so that idx always advances.
-                    text = input.substring(idx);
-                    idx = input.length();
-                } else {
-                    text = input.substring(idx, nextSpan);
-                    idx = nextSpan;
-                }
-                if (!text.isEmpty()) {
-                    parent.addSpan(new TextSpan(text));
-                }
+                text.append(s.charAt(i));
+                i++;
             }
+        }
+        if (i < s.length()) {
+            // An unterminated "<span": the rest is text.
+            text.append(s, i, s.length());
+            i = s.length();
+        }
+        flush(text, parent);
+        return i;
+    }
+
+    private static final Pattern ATTRIBUTE = Pattern.compile("(lang|class|href)\\s*=\\s*\"([^\"]*)\"");
+
+    private static boolean startsSpan(String s, int i) {
+        if (!s.startsWith("<span", i)) {
+            return false;
+        }
+        int next = i + 5;
+        return next < s.length() && (s.charAt(next) == '>' || Character.isWhitespace(s.charAt(next)));
+    }
+
+    private static void flush(StringBuilder text, TextSpan parent) {
+        if (!text.isEmpty()) {
+            parent.addSpan(new TextSpan(text.toString()));
+            text.setLength(0);
         }
     }
 }

@@ -13,6 +13,14 @@ public sealed interface HasAnnotation
     public void addAnnotation(LiftAnnotation a);
 
     /**
+     * Adds an annotation at a given position among the annotations of this object.
+     *
+     * @param index where to insert the annotation.
+     * @param a the annotation to add.
+     */
+    public void addAnnotation(int index, LiftAnnotation a);
+
+    /**
      * Removes an annotation from this object, and from the dictionary if this object
      * belongs to one.
      *

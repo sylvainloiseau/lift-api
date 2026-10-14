@@ -1,0 +1,28 @@
+package fr.cnrs.lacito.liftapi.change;
+
+import fr.cnrs.lacito.liftapi.LiftDictionary;
+import fr.cnrs.lacito.liftapi.model.FeatureSet;
+import fr.cnrs.lacito.liftapi.model.LiftHeader;
+
+/// A feature set removed from the header.
+///
+/// @param dictionary the dictionary that changed
+/// @param header the header
+/// @param featureSet the feature set removed, with its features
+public record FeatureSetRemoved(LiftDictionary dictionary, LiftHeader header, FeatureSet featureSet) implements ModelChange {
+
+    @Override
+    public Object subject() {
+        return featureSet;
+    }
+
+    @Override
+    public void revert() {
+        header.addFeatureSet(featureSet);
+    }
+
+    @Override
+    public void reapply() {
+        header.removeFeatureSet(featureSet);
+    }
+}

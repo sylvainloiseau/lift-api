@@ -1,9 +1,9 @@
 package fr.cnrs.lacito.liftapi.model;
 
+import fr.cnrs.lacito.liftapi.change.ModelProperty;
+
 import javafx.beans.property.ReadOnlyObjectProperty;
-import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringProperty;
-import javafx.beans.property.ReadOnlyStringWrapper;
 
 public final class LiftEtymology
     extends AbstractExtensibleWithField
@@ -14,21 +14,12 @@ public final class LiftEtymology
 
     protected LiftEntry parent;
 
-    private final ReadOnlyObjectWrapper<Feature> typeProperty;
-
-    private final ReadOnlyStringWrapper sourcePropertyWrapper;
+    private final TrackedProperty<Feature> typeProperty;
+    private final TrackedStringProperty sourcePropertyWrapper;
 
     public LiftEtymology(Feature type, String source) {
-        this.typeProperty = new ReadOnlyObjectWrapper<>(
-            this,
-            "type",
-            type
-        );
-        this.sourcePropertyWrapper = new ReadOnlyStringWrapper(
-            this,
-            "source",
-            source
-        );
+        this.typeProperty = new TrackedProperty<>(this, ModelProperty.TYPE, type);
+        this.sourcePropertyWrapper = new TrackedStringProperty(this, ModelProperty.SOURCE, source);
     }
 
     // Parent -----------------------------------

@@ -1,7 +1,8 @@
 package fr.cnrs.lacito.liftapi.model;
 
+import fr.cnrs.lacito.liftapi.change.ModelProperty;
+
 import javafx.beans.property.ReadOnlyObjectProperty;
-import javafx.beans.property.ReadOnlyObjectWrapper;
 
 /**
  * A translation of a {@link LiftExample}, of a given type (LIFT {@code <translation>}).
@@ -20,8 +21,8 @@ import javafx.beans.property.ReadOnlyObjectWrapper;
  */
 public final class LiftTranslation extends AbstractLiftRoot implements HasType {
 
-    private final ReadOnlyObjectWrapper<Feature> typeProperty =
-        new ReadOnlyObjectWrapper<>(this, "type", null);
+    private final TrackedProperty<Feature> typeProperty =
+        new TrackedProperty<>(this, ModelProperty.TYPE, null);
 
     private LiftExample parent;
 

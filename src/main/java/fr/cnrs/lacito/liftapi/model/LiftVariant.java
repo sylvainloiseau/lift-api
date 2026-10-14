@@ -1,178 +1,141 @@
 package fr.cnrs.lacito.liftapi.model;
 
-import java.util.List;
 import java.util.Optional;
 
-import fr.cnrs.lacito.liftapi.LiftDictionaryBuilder;
-import javafx.beans.property.ListProperty;
-import javafx.beans.property.ObjectProperty;
+import fr.cnrs.lacito.liftapi.change.ModelProperty;
+import javafx.beans.property.ReadOnlyListProperty;
+import javafx.beans.property.ReadOnlyListWrapper;
 import javafx.beans.property.ReadOnlyObjectProperty;
-import javafx.beans.property.ReadOnlyObjectWrapper;
-import javafx.beans.property.SimpleListProperty;
-import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 
 /**
  * A variant form of an entry.
  *
- * A "variant" can relate to various phenomena: morphology, allomorphie, dialectal or in free-variation... The type of phenomena this variant belongs can be set in {@link LiftVariant#setType(Feature)}.
- *
+ * A "variant" can relate to various phenomena: morphology, allomorphy, dialectal or free
+ * variation... LIFT gives a variant no type attribute; the kind of variant is a trait,
+ * {@code variant-type} in the files FieldWorks writes, whose values come from the
+ * {@code variant-type} range when the file has one.
  */
 public final class LiftVariant
     extends AbstractExtensibleWithField
-    implements HasType, HasPronunciation, HasRelations, HasRefId
+    implements HasPronunciation, HasRelations, HasRefId
 {
 
-    protected Optional<String> refId = Optional.empty();
+    // Plain fields until a property is asked for (see AbstractExtensibleWithoutField).
+    private String refId;
+    private TrackedProperty<String> refIdProperty;
+    private AbstractIdentifiable refObject;
+    private TrackedProperty<AbstractIdentifiable> refObjectProperty;
 
-    private final ReadOnlyObjectWrapper<Feature> typeProperty = new ReadOnlyObjectWrapper<>(
-        this,
-        "type",
-        null
-    );
-
-    protected final ListProperty<LiftPronunciation> pronunciationsProperty =
-        new SimpleListProperty<>(
-            this,
-            "pronunciations",
-            FXCollections.observableArrayList()
-        );
-    protected final ListProperty<LiftRelation> relationsProperty =
-        new SimpleListProperty<>(
-            this,
-            "relations",
-            FXCollections.observableArrayList()
-        );
-    private final ObjectProperty<AbstractIdentifiable> refObjectProperty = new SimpleObjectProperty<AbstractIdentifiable>(this, "refObject", null);
+    final ObservableList<LiftPronunciation> pronunciations = FXCollections.observableArrayList();
+    private ObservableList<LiftPronunciation> pronunciationsView;
+    final ObservableList<LiftRelation> relations = FXCollections.observableArrayList();
+    private ObservableList<LiftRelation> relationsView;
 
     protected LiftEntry parent;
+
+    public LiftVariant() {}
 
     public LiftEntry getParent() {
         return parent;
     }
 
-    public LiftVariant() {}
-
     /**
-     * Get the type of the variant
+     * Set the LIFT id this variant refers to. On a registered variant, the dictionary's
+     * reference counts follow.
      *
-     * @return a {@code Feature}, belonging to a {@link FeatureSet} containing the various variant type.
+     * @param refId the id, or {@code null} for none
      */
-    @Override
-    public Feature getType() {
-        return typeProperty.get();
-    }
-
-    /**
-     * Set the type of the variant. In order to be set, type must have been created first in the dictionary:
-     *
-     * <ul>
-     * <li>either during the dictionary creation, with {@link LiftDictionaryBuilder#withVariantType(String[])} :
-     * <pre>
-     * LiftDictionary = dictionary = LiftDictionary.makeBuilder()
-     *      .withLiftVersion(LiftVersion.V0_13)
-     *      .withProducer("Test Producer")
-     *      .withMetaLanguages("en")
-     *      .withObjectLanguages("tww")
-     *      <strong>.withVariantType("allomorph", "free-variant")</strong>
-     *      .build();
-     * </pre>
-     * </li>
-     * <li>or later, using the variant type manager at {@link LiftHeader#getVariantTypeManager()}, for instance:
-     * <pre>
-     * dictionary.getHeader().getVariantTypeManager().addFeature("allomorph");
-     * </pre>
-     * </li>
-     * </ul>
-     *
-     * The feature can the be used with the fluid API:
-     *
-     * <pre>
-     * LiftVariant v = dictionary.getComponentBuilder()
-     *     .variant()
-     *     .withType("allomorph")
-     *     // ...
-     *     .build()
-     * </pre>
-     *
-     * When the variant belongs to an entry, the change goes through
-     * {@link LiftEntry#retypeVariant(LiftVariant, Feature)}.
-     *
-     * @param type: a {@code Feature}, belonging to a {@link FeatureSet} containing the variant types.
-     */
-    @Override
-    public void setType(Feature type) {
-        if (parent != null) {
-            parent.retypeVariant(this, type);
-        } else {
-            assignType(type);
-        }
-    }
-
-    /**
-     * Write the type. Called by {@link #setType(Feature)} when this component has no
-     * parent, and otherwise by the parent's {@code retype} method once it has checked
-     * and re-keyed what depends on the type.
-     */
-    void assignType(Feature type) {
-        if (type == null) throw new IllegalArgumentException("type cannot be null");
-        this.typeProperty.set(type);
-    }
-
-    @Override
-    public ReadOnlyObjectProperty<Feature> typeProperty() {
-        return typeProperty.getReadOnlyProperty();
-    }
-
     public void setRefId(String refId) {
-        this.refId = Optional.of(refId);
+        String oldTarget = References.target(this);
+        if (refIdProperty != null) {
+            refIdProperty.set(refId);
+        } else {
+            String old = this.refId;
+            this.refId = refId;
+            Changes.valueChanged(this, ModelProperty.REF_ID, old, refId);
+        }
+        References.retarget(this, oldTarget);
     }
 
     @Override
     public Optional<String> getRefId() {
-        return this.refId;
+        return Optional.ofNullable(refIdProperty != null ? refIdProperty.get() : refId);
+    }
+
+    /** The referred LIFT id, read-only: it changes through {@link #setRefId(String)}. */
+    public ReadOnlyObjectProperty<String> refIdProperty() {
+        if (refIdProperty == null) {
+            refIdProperty = new TrackedProperty<>(this, ModelProperty.REF_ID, refId);
+            refId = null;
+        }
+        return refIdProperty.getReadOnlyProperty();
     }
 
     @Override
     public AbstractIdentifiable getRefObject() {
-        return this.refObjectProperty.get();
-    }
-
-    @Override
-    public void setRefObject(AbstractIdentifiable refObject) {
-        this.refObjectProperty.set(refObject);
+        return refObjectProperty != null ? refObjectProperty.get() : refObject;
     }
 
     /**
-     * Protected: this method is called by the parent when it adopts this LiftTrait.
+     * Set the entry or sense this variant refers to. On a registered variant, the
+     * dictionary's reference counts follow.
      *
-     * The {@link LiftEntry} containing this variant.
-     * @param parent
+     * @param refObject the referred component, or {@code null} for none
+     */
+    @Override
+    public void setRefObject(AbstractIdentifiable refObject) {
+        String oldTarget = References.target(this);
+        if (refObjectProperty != null) {
+            refObjectProperty.set(refObject);
+        } else {
+            AbstractIdentifiable old = this.refObject;
+            this.refObject = refObject;
+            Changes.valueChanged(this, ModelProperty.REF_OBJECT, old, refObject);
+        }
+        References.retarget(this, oldTarget);
+    }
+
+    /** The referred component, read-only: it changes through {@link #setRefObject}. */
+    public ReadOnlyObjectProperty<AbstractIdentifiable> refObjectProperty() {
+        if (refObjectProperty == null) {
+            refObjectProperty = new TrackedProperty<>(this, ModelProperty.REF_OBJECT, refObject);
+            refObject = null;
+        }
+        return refObjectProperty.getReadOnlyProperty();
+    }
+
+    /**
+     * Protected: this method is called by the parent when it adopts this variant.
+     *
+     * @param parent the {@link LiftEntry} containing this variant
      */
     protected void setParent(LiftEntry parent) {
         this.parent = parent;
     }
 
     /**
-     * The pronunciation(s) of this variant
+     * The pronunciation(s) of this variant, read-only.
      */
     @Override
-    public List<LiftPronunciation> getPronunciations() {
-        return pronunciationsProperty.get();
+    public ObservableList<LiftPronunciation> getPronunciations() {
+        if (pronunciationsView == null) pronunciationsView = FXCollections.unmodifiableObservableList(pronunciations);
+        return pronunciationsView;
     }
 
-    /**
-     * Add a pronunciation to this variant
-     */
     @Override
     public void addPronunciation(LiftPronunciation pronounciation) {
-        pronunciationsProperty.add(pronounciation);
+        addPronunciation(pronunciations.size(), pronounciation);
+    }
+
+    @Override
+    public void addPronunciation(int index, LiftPronunciation pronounciation) {
+        pronunciations.add(index, pronounciation);
         pronounciation.setParent(this);
         adopted(pronounciation);
     }
 
-    // TODO a bug from the LIFT data model: should'nt several variants with the same lang be possible?
-    // No : add several variant instead.
     /**
      * The transcription of the variant, with an indication of the language-writting system(s).
      *
@@ -184,23 +147,33 @@ public final class LiftVariant
 
     @Override
     public void addRelation(LiftRelation relation) {
-        this.relationsProperty.add(relation);
+        addRelation(relations.size(), relation);
+    }
+
+    @Override
+    public void addRelation(int index, LiftRelation relation) {
+        relations.add(index, relation);
         relation.setParent(this);
         adopted(relation);
     }
 
-    public List<LiftRelation> getRelations() {
-        return relationsProperty.get();
+    @Override
+    public ObservableList<LiftRelation> getRelations() {
+        if (relationsView == null) relationsView = FXCollections.unmodifiableObservableList(relations);
+        return relationsView;
     }
 
-    public ListProperty<LiftPronunciation> pronunciationsProperty() {
-        return pronunciationsProperty;
+    /** @deprecated use {@link #getPronunciations()}; read-only, will be removed */
+    @Deprecated(forRemoval = true)
+    public ReadOnlyListProperty<LiftPronunciation> pronunciationsProperty() {
+        return new ReadOnlyListWrapper<>(this, "pronunciations", getPronunciations()).getReadOnlyProperty();
     }
 
-    public ListProperty<LiftRelation> relationsProperty() {
-        return relationsProperty;
+    /** @deprecated use {@link #getRelations()}; read-only, will be removed */
+    @Deprecated(forRemoval = true)
+    public ReadOnlyListProperty<LiftRelation> relationsProperty() {
+        return new ReadOnlyListWrapper<>(this, "relations", getRelations()).getReadOnlyProperty();
     }
-
 
     @Override
     public AbstractLiftRoot getParentNode() {
@@ -219,9 +192,8 @@ public final class LiftVariant
      */
     @Override
     public void deletePronunciation(LiftPronunciation pronounciation) {
-        requireChild(pronounciation, pronunciationsProperty.contains(pronounciation));
-        orphaned(pronounciation);
-        pronounciation.detach();
+        requireChild(pronounciation, pronunciations.contains(pronounciation));
+        removeChild(pronounciation);
     }
 
     /**
@@ -232,14 +204,13 @@ public final class LiftVariant
      */
     @Override
     public void deleteRelation(LiftRelation relation) {
-        requireChild(relation, relationsProperty.contains(relation));
-        orphaned(relation);
-        relation.detach();
+        requireChild(relation, relations.contains(relation));
+        removeChild(relation);
     }
 
     @Override
     public void retypeRelation(LiftRelation relation, Feature type) {
-        requireChild(relation, relationsProperty.contains(relation));
+        requireChild(relation, relations.contains(relation));
         relation.assignType(type);
     }
 }

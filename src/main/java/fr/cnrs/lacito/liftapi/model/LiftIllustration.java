@@ -1,5 +1,8 @@
 package fr.cnrs.lacito.liftapi.model;
 
+import fr.cnrs.lacito.liftapi.change.ModelProperty;
+import javafx.beans.property.ObjectProperty;
+
 /**
  * A still image associated with a {@link LiftSense LiftSense}.
  */
@@ -8,7 +11,9 @@ public final class LiftIllustration
     implements HasExternalDocument
 {
 
+    // Plain field until a property is asked for (see AbstractExtensibleWithoutField).
     private String href;
+    private TrackedProperty<String> hrefProperty;
 
     LiftSense parent;
 
@@ -37,11 +42,26 @@ public final class LiftIllustration
 
     @Override
     public String getHref() {
-        return this.href;
+        return hrefProperty != null ? hrefProperty.get() : href;
+    }
+
+    /** The {@code href}; {@code null} when there is none. */
+    public ObjectProperty<String> hrefProperty() {
+        if (hrefProperty == null) {
+            hrefProperty = new TrackedProperty<>(this, ModelProperty.HREF, href);
+            href = null;
+        }
+        return hrefProperty;
     }
 
     public void setHref(String href) {
-        this.href = href;
+        if (hrefProperty != null) {
+            hrefProperty.set(href);
+        } else {
+            String old = this.href;
+            this.href = href;
+            Changes.valueChanged(this, ModelProperty.HREF, old, href);
+        }
     }
 
     @Override

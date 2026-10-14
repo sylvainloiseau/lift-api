@@ -1,11 +1,20 @@
 package fr.cnrs.lacito.liftapi.model;
 
+import java.util.HashSet;
 import java.util.Optional;
-import javafx.beans.property.MapProperty;
-import javafx.beans.property.SimpleMapProperty;
-import javafx.beans.property.SimpleSetProperty;
+
+import fr.cnrs.lacito.liftapi.LiftDictionary;
+import fr.cnrs.lacito.liftapi.change.FeatureAdded;
+import fr.cnrs.lacito.liftapi.change.FeatureRemoved;
+import fr.cnrs.lacito.liftapi.change.ModelProperty;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.ReadOnlySetProperty;
+import javafx.beans.property.ReadOnlySetWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.MapChangeListener;
+import javafx.collections.ObservableMap;
+import javafx.collections.ObservableSet;
+
 
 /**
   * A terminology for the classification of components into a fixed set of values ({@link Feature}), for instance part of speech, usage markers, inflexional classes, etc.
@@ -20,25 +29,21 @@ public final class FeatureSet extends AbstractExtensibleWithField {
 
     final LiftHeader parent;
 
-    Optional<String> href = Optional.empty();
+    private final TrackedProperty<String> href;
 
     private boolean externalContentLoaded = false;
 
-    Optional<String> guid = Optional.empty();
+    private final TrackedProperty<String> guid;
 
     MultiText label = new MultiText(this);
 
     MultiText abbrev = new MultiText(this);
 
-    private final SimpleMapProperty<
-        String,
-        Feature
-    > featureMap = new SimpleMapProperty<>(
-        FXCollections.observableHashMap()
-        //FXCollections.emptyObservableMap()
-    );
+    /** The features, by id: a map, their order is not data. */
+    private final ObservableMap<String, Feature> featureMap = FXCollections.observableHashMap();
+    private ObservableMap<String, Feature> featureMapView;
 
-    private SimpleSetProperty<Feature> featureSet = null;
+    private ReadOnlySetWrapper<Feature> featureSet = null;
 
     /**
      * Creates a new {@code FeatureSet} with the given id and parent.
@@ -52,6 +57,8 @@ public final class FeatureSet extends AbstractExtensibleWithField {
     ) {
         this.id = id;
         this.parent = parent;
+        this.href = new TrackedProperty<>(this, ModelProperty.HREF, null);
+        this.guid = new TrackedProperty<>(this, ModelProperty.GUID, null);
     }
 
     /**
@@ -69,7 +76,7 @@ public final class FeatureSet extends AbstractExtensibleWithField {
      * @return the guid as an {@code Optional}
      */
     public Optional<String> getGuid() {
-        return guid;
+        return Optional.ofNullable(guid.get());
     }
 
     /**
@@ -78,11 +85,12 @@ public final class FeatureSet extends AbstractExtensibleWithField {
      * @param guid the guid or {@code null} to clear
      */
     public void setGuid(String guid) {
-        if (guid == null) {
-            this.guid = Optional.empty();
-        } else {
-            this.guid = Optional.of(guid);
-        }
+        this.guid.set(guid);
+    }
+
+    /** The guid; {@code null} when there is none. */
+    public ObjectProperty<String> guidProperty() {
+        return guid;
     }
 
     /**
@@ -109,11 +117,12 @@ public final class FeatureSet extends AbstractExtensibleWithField {
      * @param href the href or {@code null} to clear
      */
     public void setHref(String href) {
-        if (href == null) {
-            this.href = Optional.empty();
-        } else {
-            this.href = Optional.of(href);
-        }
+        this.href.set(href);
+    }
+
+    /** The href; {@code null} when there is none. */
+    public ObjectProperty<String> hrefProperty() {
+        return href;
     }
 
     /**
@@ -122,7 +131,7 @@ public final class FeatureSet extends AbstractExtensibleWithField {
      * @return the href as an {@code Optional}
      */
     public Optional<String> getHref() {
-        return this.href;
+        return Optional.ofNullable(href.get());
     }
 
     /**
@@ -161,20 +170,23 @@ public final class FeatureSet extends AbstractExtensibleWithField {
     }
 
     /**
-     * The features as a map (feature id -> {@code Feature})
+     * The features by id, as a read-only observable map; change them with
+     * {@link #addFeature(Feature)}, {@link #removeFeature(String)} and
+     * {@link #changeFeatureId(Feature, String)}.
      */
-    public MapProperty<String, Feature> getFeatures() {
-        return featureMap;
+    public ObservableMap<String, Feature> getFeatures() {
+        if (featureMapView == null) featureMapView = FXCollections.unmodifiableObservableMap(featureMap);
+        return featureMapView;
     }
 
     /**
-     * The features as a set (wrapped in a property)
+     * The features as a read-only set property.
      */
-    public SimpleSetProperty<Feature> featuresProperty() {
+    public ReadOnlySetProperty<Feature> featuresProperty() {
         if (featureSet == null) {
             initFeatureSet();
         }
-        return featureSet;
+        return featureSet.getReadOnlyProperty();
     }
 
     /**
@@ -228,6 +240,10 @@ public final class FeatureSet extends AbstractExtensibleWithField {
         if (hasFeature(element.getId()))
             throw new IllegalArgumentException("Duplicate feature in feature set: " + element.getId());
         featureMap.put(element.getId(), element);
+        LiftDictionary observer = Changes.observing(this);
+        if (observer != null) {
+            Changes.fire(observer, new FeatureAdded(observer, this, element));
+        }
     }
 
     /**
@@ -255,7 +271,12 @@ public final class FeatureSet extends AbstractExtensibleWithField {
     public Feature removeFeature(String id) {
         if (!hasFeature(id))
             throw new IllegalArgumentException("Cannot remove non-existing feature: " + id);
-        return featureMap.remove(id);
+        Feature removed = featureMap.remove(id);
+        LiftDictionary observer = Changes.observing(this);
+        if (observer != null) {
+            Changes.fire(observer, new FeatureRemoved(observer, this, removed));
+        }
+        return removed;
     }
 
     /**
@@ -269,8 +290,9 @@ public final class FeatureSet extends AbstractExtensibleWithField {
         if (featureMap.containsKey(newId)) throw new IllegalArgumentException("The id " + newId + " is already used.");
         if (!featureMap.containsKey(element.getId())) throw new IllegalArgumentException("No feature with id " + element.getId() + " found.");
         featureMap.remove(element.getId());
+        featureMap.put(newId, element);
+        // Last, so that the change is reported once the feature is under its new key.
         element.setId(newId);
-        featureMap.put(element.getId(), element);
     }
 
     /**
@@ -286,27 +308,17 @@ public final class FeatureSet extends AbstractExtensibleWithField {
     }
 
     private void initFeatureSet() {
-        // FXCollections.emptyObservableSet() is unmodifiable: the addAll below (and every
-        // later addFeature) threw on it.
-        featureSet = new SimpleSetProperty<>(FXCollections.observableSet());
-        featureSet.addAll(featureMap.values());
-        featureMap.addListener(
-            new MapChangeListener<String, Feature>() {
-                @Override
-                public void onChanged(
-                    Change<
-                        ? extends String,
-                        ? extends Feature
-                    > change
-                ) {
-                    if (change.wasAdded()) {
-                        featureSet.add(change.getValueAdded());
-                    } else if (change.wasRemoved()) {
-                        featureSet.remove(change.getValueRemoved());
-                    }
-                }
+        // The property wraps a read-only view of a set this listener keeps in step.
+        ObservableSet<Feature> backing = FXCollections.observableSet(new HashSet<>(featureMap.values()));
+        featureSet = new ReadOnlySetWrapper<>(this, "features", FXCollections.unmodifiableObservableSet(backing));
+        featureMap.addListener((MapChangeListener<String, Feature>) change -> {
+            if (change.wasRemoved()) {
+                backing.remove(change.getValueRemoved());
             }
-        );
+            if (change.wasAdded()) {
+                backing.add(change.getValueAdded());
+            }
+        });
     }
 
     @Override

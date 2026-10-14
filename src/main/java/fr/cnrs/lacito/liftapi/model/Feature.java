@@ -2,6 +2,10 @@ package fr.cnrs.lacito.liftapi.model;
 
 import java.util.Optional;
 
+import fr.cnrs.lacito.liftapi.change.ModelProperty;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.ReadOnlyObjectProperty;
+
 /**
  * An element of a {@link FeatureSet} representing a value in a terminology.
  *
@@ -9,12 +13,12 @@ import java.util.Optional;
  */
 public final class Feature extends AbstractExtensibleWithField {
 
-    private String id;
+    private final TrackedProperty<String> id;
     private final FeatureSet parentFeatureSet;
-    private Optional<String> guid = Optional.empty();
+    private final TrackedProperty<String> guid;
     private MultiText label = new MultiText(this);
     private MultiText abbrev = new MultiText(this);
-    private Optional<Feature> superOrdinateFeature = Optional.empty();
+    private final TrackedProperty<Feature> superOrdinateFeature;
 
     /**
      * Creates a new {@code Feature} with the given id and parent {@code FeatureSet}.
@@ -23,7 +27,9 @@ public final class Feature extends AbstractExtensibleWithField {
      * @param parent the parent {@code FeatureSet}
      */
     public Feature(String id, FeatureSet parent) {
-        this.id = id;
+        this.id = new TrackedProperty<>(this, ModelProperty.FEATURE_ID, id);
+        this.guid = new TrackedProperty<>(this, ModelProperty.GUID, null);
+        this.superOrdinateFeature = new TrackedProperty<>(this, ModelProperty.SUPERORDINATE_FEATURE, null);
         this.parentFeatureSet = parent;
     }
 
@@ -37,7 +43,7 @@ public final class Feature extends AbstractExtensibleWithField {
      * @return the id of the feature
      */
     public String getId() {
-        return id;
+        return id.get();
     }
 
     /**
@@ -48,8 +54,16 @@ public final class Feature extends AbstractExtensibleWithField {
      * order to take care of the id -> LiftHeaderRangeElement mapping returned by  {@link
      * FeatureSet#getFeatures()} in that class.
      */
-    protected void setId(String id) {
-        this.id = id;
+    void setId(String id) {
+        this.id.set(id);
+    }
+
+    /**
+     * The id, read-only: it changes through {@link FeatureSet#changeFeatureId}, which
+     * keeps the feature set's index in step.
+     */
+    public ReadOnlyObjectProperty<String> idProperty() {
+        return id.getReadOnlyProperty();
     }
 
     /**
@@ -58,7 +72,7 @@ public final class Feature extends AbstractExtensibleWithField {
      * @return the superordinate feature, or {@code Optional.empty()} if none
      */
     public Optional<Feature> getSuperOrdinateFeature() {
-        return superOrdinateFeature;
+        return Optional.ofNullable(superOrdinateFeature.get());
     }
 
     /**
@@ -67,11 +81,12 @@ public final class Feature extends AbstractExtensibleWithField {
      * @param parent the superordinate feature, or {@code null} to clear
      */
     public void setSuperordinateFeature(Feature parent) {
-        if (parent == null) {
-            this.superOrdinateFeature = Optional.empty();
-        } else {
-            this.superOrdinateFeature = Optional.of(parent);
-        }
+        superOrdinateFeature.set(parent);
+    }
+
+    /** The parent of this feature in its set's hierarchy; {@code null} for none. */
+    public ObjectProperty<Feature> superordinateFeatureProperty() {
+        return superOrdinateFeature;
     }
 
     /**
@@ -80,7 +95,7 @@ public final class Feature extends AbstractExtensibleWithField {
      * @return the GUID, or {@code Optional.empty()} if none
      */
     public Optional<String> getGuid() {
-        return guid;
+        return Optional.ofNullable(guid.get());
     }
 
     /**
@@ -89,11 +104,12 @@ public final class Feature extends AbstractExtensibleWithField {
      * @param guid the GUID, or {@code null} to clear
      */
     public void setGuid(String guid) {
-        if (guid == null) {
-            this.guid = Optional.empty();
-        } else {
-            this.guid = Optional.of(guid);
-        }
+        this.guid.set(guid);
+    }
+
+    /** The guid; {@code null} when there is none. */
+    public ObjectProperty<String> guidProperty() {
+        return guid;
     }
 
     /**

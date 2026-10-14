@@ -43,7 +43,7 @@ public class MultiTextWriters {
         List<Form> forms = new ArrayList<>(mt.getForms());
         forms.sort(Comparator.comparing(Form::getLang));
 
-        if (forms.isEmpty() && !mt.getAnnotations().isEmpty()) {
+        if (forms.isEmpty() && mt.hasAnnotations()) {
             LOGGER.warning(
                 "Writing " +
                     mt.getAnnotations().size() +
@@ -64,14 +64,19 @@ public class MultiTextWriters {
             writeTextSpanChildren(w, text.getTextSpanRoot());
             w.writeEndElement(); // text
 
+            // hasAnnotations() first: getAnnotations() would allocate a list on every text.
             if (firstForm) {
-                for (LiftAnnotation ann : mt.getAnnotations()) {
-                    AbstractPropertyWriters.writeAnnotation(w, ann);
+                if (mt.hasAnnotations()) {
+                    for (LiftAnnotation ann : mt.getAnnotations()) {
+                        AbstractPropertyWriters.writeAnnotation(w, ann);
+                    }
                 }
                 firstForm = false;
             }
-            for (LiftAnnotation ann : text.getAnnotations()) {
-                AbstractPropertyWriters.writeAnnotation(w, ann);
+            if (text.hasAnnotations()) {
+                for (LiftAnnotation ann : text.getAnnotations()) {
+                    AbstractPropertyWriters.writeAnnotation(w, ann);
+                }
             }
             w.writeEndElement(); // form/gloss
         }

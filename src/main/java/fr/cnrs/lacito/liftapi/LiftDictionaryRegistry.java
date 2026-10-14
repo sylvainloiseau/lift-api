@@ -289,13 +289,18 @@ public class LiftDictionaryRegistry {
     private <T extends AbstractLiftRoot> void populateObservableList(
         Class<T> clazz,
         ObservableMap<UUID, T> map) {
-            ReadOnlyListWrapper<T> x = new ReadOnlyListWrapper<>(FXCollections.observableArrayList(map.values()));
+            // The property wraps a read-only view: a ReadOnlyListProperty's get() returns
+            // the list it wraps, which must not be the one this listener writes.
+            ObservableList<T> backing = FXCollections.observableArrayList(map.values());
+            ReadOnlyListWrapper<T> x = new ReadOnlyListWrapper<>(
+                FXCollections.unmodifiableObservableList(backing));
             map.addListener(
                 (MapChangeListener<UUID, T>) change -> {
+                    if (change.wasRemoved()) {
+                        backing.remove(change.getValueRemoved());
+                    }
                     if (change.wasAdded()) {
-                        x.add(change.getValueAdded());
-                    } else if (change.wasRemoved()) {
-                        x.remove(change.getValueRemoved());
+                        backing.add(change.getValueAdded());
                     }
                 }
             );

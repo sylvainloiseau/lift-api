@@ -1,5 +1,8 @@
 package fr.cnrs.lacito.liftapi.model;
 
+import fr.cnrs.lacito.liftapi.change.ModelProperty;
+import javafx.beans.property.ObjectProperty;
+
 /**
  * A media file associated to a {@link LiftPronunciation} object.
  */
@@ -8,7 +11,9 @@ public final class LiftMedia
     implements HasExternalDocument
 {
 
-    protected String url;
+    // Plain field until a property is asked for (see AbstractExtensibleWithoutField).
+    private String href;
+    private TrackedProperty<String> hrefProperty;
 
     protected LiftPronunciation parent;
 
@@ -17,7 +22,7 @@ public final class LiftMedia
     }
 
     public LiftMedia(String href) {
-        this.url = href;
+        this.href = href;
     }
 
     /**
@@ -32,11 +37,26 @@ public final class LiftMedia
 
     @Override
     public String getHref() {
-        return this.url;
+        return hrefProperty != null ? hrefProperty.get() : href;
+    }
+
+    /** The {@code href}; {@code null} when there is none. */
+    public ObjectProperty<String> hrefProperty() {
+        if (hrefProperty == null) {
+            hrefProperty = new TrackedProperty<>(this, ModelProperty.HREF, href);
+            href = null;
+        }
+        return hrefProperty;
     }
 
     public void setHref(String href) {
-        this.url = href;
+        if (hrefProperty != null) {
+            hrefProperty.set(href);
+        } else {
+            String old = this.href;
+            this.href = href;
+            Changes.valueChanged(this, ModelProperty.HREF, old, href);
+        }
     }
 
     @Override

@@ -15,6 +15,14 @@ public sealed interface HasRelations extends LiftObject permits LiftVariant, Lif
     public void addRelation(LiftRelation relation);
 
     /**
+     * Adds a relation at a given position among the relations of this component.
+     *
+     * @param index where to insert the relation.
+     * @param relation the relation to add.
+     */
+    public void addRelation(int index, LiftRelation relation);
+
+    /**
      * Removes a relation from this component, and from the dictionary if this component
      * belongs to one.
      *

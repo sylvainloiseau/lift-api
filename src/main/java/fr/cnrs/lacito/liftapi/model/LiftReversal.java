@@ -1,11 +1,12 @@
 package fr.cnrs.lacito.liftapi.model;
 
-import java.util.List;
-import javafx.beans.property.ListProperty;
+import fr.cnrs.lacito.liftapi.change.ModelProperty;
+import javafx.beans.property.ReadOnlyListProperty;
+import javafx.beans.property.ReadOnlyListWrapper;
 import javafx.beans.property.ReadOnlyObjectProperty;
-import javafx.beans.property.ReadOnlyObjectWrapper;
-import javafx.beans.property.SimpleListProperty;
 import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+
 
 /**
  * A reversal entry associated with a sense.
@@ -25,43 +26,49 @@ public final class LiftReversal
     implements HasType, HasReversal
 {
 
-    protected LiftReversal main;
+    private LiftReversal main;
 
-    protected final ListProperty<LiftReversal> reversalsProperty =
-        new SimpleListProperty<>(
-            this,
-            "reversals",
-            FXCollections.observableArrayList()
-        );
+    final ObservableList<LiftReversal> reversals = FXCollections.observableArrayList();
+    private ObservableList<LiftReversal> reversalsView;
 
     protected HasReversal parent;
+
+    private final TrackedProperty<Feature> typeProperty;
+
+    public LiftReversal() {
+        this(null);
+    }
+
+    public LiftReversal(Feature type) {
+        this.typeProperty = new TrackedProperty<>(this, ModelProperty.TYPE, type);
+    }
 
     public HasReversal getParent() {
         return parent;
     }
 
-    private final ReadOnlyObjectWrapper<Feature> typeProperty = new ReadOnlyObjectWrapper<>(
-        this,
-        "type",
-        null
-    );
-
-    public LiftReversal() {
-    }
-
-    public LiftReversal(Feature type) {
-        this.typeProperty.set(type);
-    }
-
-
+    @Override
     public void addReversal(LiftReversal reversal) {
-        reversalsProperty.add(reversal);
+        addReversal(reversals.size(), reversal);
+    }
+
+    @Override
+    public void addReversal(int index, LiftReversal reversal) {
+        reversals.add(index, reversal);
         reversal.setParent(this);
         adopted(reversal);
     }
 
-    public List<LiftReversal> getReversals() {
-        return reversalsProperty.get();
+    @Override
+    public ObservableList<LiftReversal> getReversals() {
+        if (reversalsView == null) reversalsView = FXCollections.unmodifiableObservableList(reversals);
+        return reversalsView;
+    }
+
+    /** @deprecated use {@link #getReversals()}; read-only, will be removed */
+    @Deprecated(forRemoval = true)
+    public ReadOnlyListProperty<LiftReversal> reversalsProperty() {
+        return new ReadOnlyListWrapper<>(this, "reversals", getReversals()).getReadOnlyProperty();
     }
 
     public MultiText getForms() {
@@ -104,7 +111,7 @@ public final class LiftReversal
     public void retypeReversal(LiftReversal reversal, Feature type) {
         requireChild(
             reversal,
-            reversal != null && (reversalsProperty.contains(reversal) || main == reversal)
+            reversal != null && (reversals.contains(reversal) || main == reversal)
         );
         reversal.assignType(type);
     }
@@ -114,18 +121,30 @@ public final class LiftReversal
     }
 
     /**
-     * Set the {@code <main>} of this reversal.
+     * Set the {@code <main>} of this reversal, in place of the current one, which is
+     * deleted (and unregistered) first.
      *
      * The back reference was missing here, which left the nested reversal unreachable
      * from its own parent even though {@code childrenOf} reaches it from above: it
      * could be registered but never detached.
+     *
+     * @param main the new main, or {@code null} to delete the current one
      */
     public void setMain(LiftReversal main) {
-        this.main = main;
+        if (main == this.main) {
+            return;
+        }
+        deleteMain();
         if (main != null) {
+            this.main = main;
             main.setParent(this);
             adopted(main);
         }
+    }
+
+    /** Empty the {@code <main>} slot (used when unlinking the main). */
+    void clearMain() {
+        this.main = null;
     }
 
     @Override
@@ -135,14 +154,13 @@ public final class LiftReversal
 
     /**
      * Protected: this method is called by the parent when it adopts this LiftReversal.
-     * 
+     *
      * @param parent the new parent, or {@code null} when detaching this reversal
      *        (see {@link AbstractLiftRoot#detach()})
      */
     protected void setParent(HasReversal parent) {
         this.parent = parent;
     }
-
 
     @Override
     public AbstractLiftRoot getParentNode() {
@@ -161,9 +179,8 @@ public final class LiftReversal
      */
     @Override
     public void deleteReversal(LiftReversal reversal) {
-        requireChild(reversal, reversalsProperty.contains(reversal));
-        orphaned(reversal);
-        reversal.detach();
+        requireChild(reversal, reversals.contains(reversal));
+        removeChild(reversal);
     }
 
     /**
@@ -171,11 +188,8 @@ public final class LiftReversal
      * belongs to a dictionary. Does nothing if there is none.
      */
     public void deleteMain() {
-        if (main == null) {
-            return;
+        if (main != null) {
+            removeChild(main);
         }
-        LiftReversal removed = main;
-        orphaned(removed);
-        removed.detach();
     }
 }

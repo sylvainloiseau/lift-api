@@ -1,66 +1,100 @@
 package fr.cnrs.lacito.liftapi.model;
 
-import java.util.List;
 import java.util.Optional;
-import javafx.beans.property.ListProperty;
-import javafx.beans.property.SimpleListProperty;
+
+import fr.cnrs.lacito.liftapi.change.ModelProperty;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.ReadOnlyListProperty;
+import javafx.beans.property.ReadOnlyListWrapper;
+import javafx.beans.property.ReadOnlyObjectProperty;
+import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 
 public final class LiftSense
     extends AbstractIdentifiable
     implements HasGlosses, HasRelations, HasSense, HasReversal
 {
 
-    protected Optional<Integer> order = Optional.empty();
+    // Plain field until a property is asked for (see AbstractExtensibleWithoutField).
+    private Integer order;
+    private TrackedProperty<Integer> orderProperty;
 
-    public Optional<Integer> getOrder() {
-        return order;
-    }
-
-    protected Optional<GrammaticalInfo> grammaticalInfo = Optional.empty();
-
-    public Optional<GrammaticalInfo> getGrammaticalInfo() {
-        return grammaticalInfo;
-    }
+    /**
+     * The grammatical info: a component in a single slot, so its changes are reported
+     * as components added and removed. Its property, created on demand, only mirrors it.
+     */
+    private GrammaticalInfo grammaticalInfo;
+    private ReadOnlyObjectWrapper<GrammaticalInfo> grammaticalInfoProperty;
 
     protected final MultiText definition = new MultiText(this);
+
+    final ObservableList<LiftRelation> relations = FXCollections.observableArrayList();
+    private ObservableList<LiftRelation> relationsView;
+    final ObservableList<LiftExample> examples = FXCollections.observableArrayList();
+    private ObservableList<LiftExample> examplesView;
+    final ObservableList<LiftIllustration> illustrations = FXCollections.observableArrayList();
+    private ObservableList<LiftIllustration> illustrationsView;
+    final ObservableList<LiftSense> subSenses = FXCollections.observableArrayList();
+    private ObservableList<LiftSense> subSensesView;
+    final ObservableList<LiftReversal> reversals = FXCollections.observableArrayList();
+    private ObservableList<LiftReversal> reversalsView;
+
+    private HasSense parent;
+
+    public LiftSense() {}
+
+    public Optional<Integer> getOrder() {
+        return Optional.ofNullable(orderProperty != null ? orderProperty.get() : order);
+    }
+
+    /**
+     * @param order the {@code order} attribute, or {@code null} for none
+     */
+    public void setOrder(Integer order) {
+        if (orderProperty != null) {
+            orderProperty.set(order);
+        } else {
+            Integer old = this.order;
+            this.order = order;
+            Changes.valueChanged(this, ModelProperty.ORDER, old, order);
+        }
+    }
+
+    /** The {@code order} attribute; {@code null} when there is none. */
+    public ObjectProperty<Integer> orderProperty() {
+        if (orderProperty == null) {
+            orderProperty = new TrackedProperty<>(this, ModelProperty.ORDER, order);
+            order = null;
+        }
+        return orderProperty;
+    }
+
+    public Optional<GrammaticalInfo> getGrammaticalInfo() {
+        return Optional.ofNullable(grammaticalInfo);
+    }
+
+    /**
+     * The grammatical info, read-only: it changes through
+     * {@link #setGrammaticalInfo(GrammaticalInfo)} and {@link #deleteGrammaticalInfo()}.
+     */
+    public ReadOnlyObjectProperty<GrammaticalInfo> grammaticalInfoProperty() {
+        if (grammaticalInfoProperty == null) {
+            grammaticalInfoProperty = new ReadOnlyObjectWrapper<>(this, "grammaticalInfo", grammaticalInfo);
+        }
+        return grammaticalInfoProperty.getReadOnlyProperty();
+    }
+
+    private void storeGrammaticalInfo(GrammaticalInfo gi) {
+        this.grammaticalInfo = gi;
+        if (grammaticalInfoProperty != null) {
+            grammaticalInfoProperty.set(gi);
+        }
+    }
 
     public MultiText getDefinition() {
         return definition;
     }
-
-    protected final ListProperty<LiftRelation> relationsProperty =
-        new SimpleListProperty<>(
-            this,
-            "relations",
-            FXCollections.observableArrayList()
-        );
-    protected final ListProperty<LiftExample> examplesProperty =
-        new SimpleListProperty<>(
-            this,
-            "examples",
-            FXCollections.observableArrayList()
-        );
-    protected final ListProperty<LiftIllustration> illustrationsProperty =
-        new SimpleListProperty<>(
-            this,
-            "illustrations",
-            FXCollections.observableArrayList()
-        );
-    protected final ListProperty<LiftSense> subSensesProperty =
-        new SimpleListProperty<>(
-            this,
-            "subSenses",
-            FXCollections.observableArrayList()
-        );
-    protected final ListProperty<LiftReversal> reversalsProperty =
-        new SimpleListProperty<>(
-            this,
-            "reversals",
-            FXCollections.observableArrayList()
-        );
-
-    private HasSense parent;
 
     public HasSense getParent() {
         return parent;
@@ -84,8 +118,6 @@ public final class LiftSense
         return null;
     }
 
-    public LiftSense() {}
-
     @Override
     public void addGloss(Form gloss) {
         addToMainMultiText(gloss);
@@ -97,28 +129,32 @@ public final class LiftSense
     }
 
     /**
-     * Attach an existing grammatical information to this sense.
+     * Attach a grammatical information to this sense, in place of the current one.
      *
-     * Like every other {@code addX}/{@code setX} on the model, this wires the two
-     * components together and then registers {@code gi} in the dictionary - but only if
-     * this sense is itself attached to one. On a detached sense it merely wires, and
-     * registration happens later, when the subtree is attached.
+     * Like every other {@code addX} on the model, this wires the two components together
+     * and then registers {@code gi} in the dictionary - but only if this sense is itself
+     * attached to one. A current grammatical info is deleted first (and unregistered),
+     * so that nothing is left in the dictionary that the sense no longer refers to.
      *
      * @param gi the grammatical information to attach
      */
     public void setGrammaticalInfo(GrammaticalInfo gi) {
-        this.grammaticalInfo = Optional.of(gi);
+        if (gi == null) {
+            deleteGrammaticalInfo();
+            return;
+        }
+        if (gi == grammaticalInfo) {
+            return;
+        }
+        deleteGrammaticalInfo();
+        storeGrammaticalInfo(gi);
         gi.setParent(this);
         adopted(gi);
     }
 
     /**
-     * Create a grammatical information for the given part of speech and attach it.
-     *
-     * Note that this replaces any previous grammatical information without taking it
-     * out of the dictionary, which leaves a registered component nothing refers to.
-     * {@code DictionaryComponentBuilderFactory.grammaticalInfo(sense, pos)} handles
-     * that; this overload exists for the XML reader, which builds each sense once.
+     * Create a grammatical information for the given part of speech and attach it, in
+     * place of the current one (see {@link #setGrammaticalInfo(GrammaticalInfo)}).
      *
      * @param value the part of speech
      */
@@ -126,14 +162,14 @@ public final class LiftSense
         this.setGrammaticalInfo(GrammaticalInfo.create(value));
     }
 
-    /** Drop the grammatical information of this sense (used by {@code detach()}). */
-    protected void clearGrammaticalInfo() {
-        this.grammaticalInfo = Optional.empty();
+    /** Drop the grammatical information of this sense (used when unlinking it). */
+    void clearGrammaticalInfo() {
+        storeGrammaticalInfo(null);
     }
 
     /**
      * Protected: this method is called by the parent when it adopts this LiftSense.
-     * 
+     *
      * @param parent the new parent, or {@code null} when detaching this sense
      *        (see {@link AbstractLiftRoot#detach()})
      */
@@ -141,84 +177,142 @@ public final class LiftSense
         this.parent = parent;
     }
 
+    // Read-only views ----------------------------------------------------------------
+
+    @Override
+    public ObservableList<LiftRelation> getRelations() {
+        if (relationsView == null) relationsView = FXCollections.unmodifiableObservableList(relations);
+        return relationsView;
+    }
+
+    public ObservableList<LiftExample> getExamples() {
+        if (examplesView == null) examplesView = FXCollections.unmodifiableObservableList(examples);
+        return examplesView;
+    }
+
+    public ObservableList<LiftIllustration> getIllustrations() {
+        if (illustrationsView == null) illustrationsView = FXCollections.unmodifiableObservableList(illustrations);
+        return illustrationsView;
+    }
+
+    @Override
+    public ObservableList<LiftSense> getSenses() {
+        if (subSensesView == null) subSensesView = FXCollections.unmodifiableObservableList(subSenses);
+        return subSensesView;
+    }
+
+    @Override
+    public ObservableList<LiftReversal> getReversals() {
+        if (reversalsView == null) reversalsView = FXCollections.unmodifiableObservableList(reversals);
+        return reversalsView;
+    }
+
+    // Adding sub-components ----------------------------------------------------------
+
     @Override
     public void addRelation(LiftRelation relation) {
-        this.relationsProperty.add(relation);
+        addRelation(relations.size(), relation);
+    }
+
+    @Override
+    public void addRelation(int index, LiftRelation relation) {
+        relations.add(index, relation);
         relation.setParent(this);
         adopted(relation);
     }
 
     public void addExample(LiftExample example) {
-        this.examplesProperty.add(example);
+        addExample(examples.size(), example);
+    }
+
+    /**
+     * Add an example at a given position.
+     *
+     * @param index where to insert the example
+     * @param example the example to add
+     */
+    public void addExample(int index, LiftExample example) {
+        examples.add(index, example);
         example.setParent(this);
         adopted(example);
     }
 
     @Override
     public void addSense(LiftSense sense) {
-        subSensesProperty.add(sense);
+        addSense(subSenses.size(), sense);
+    }
+
+    /**
+     * Add a subsense at a given position.
+     *
+     * @param index where to insert the subsense
+     * @param sense the subsense to add
+     */
+    @Override
+    public void addSense(int index, LiftSense sense) {
+        subSenses.add(index, sense);
         sense.setParent(this);
         adopted(sense);
     }
 
     public void addIllustration(LiftIllustration illustration) {
-        illustrationsProperty.add(illustration);
+        addIllustration(illustrations.size(), illustration);
+    }
+
+    /**
+     * Add an illustration at a given position.
+     *
+     * @param index where to insert the illustration
+     * @param illustration the illustration to add
+     */
+    public void addIllustration(int index, LiftIllustration illustration) {
+        illustrations.add(index, illustration);
         illustration.setParent(this);
         adopted(illustration);
     }
 
+    @Override
     public void addReversal(LiftReversal reversal) {
-        reversalsProperty.add(reversal);
+        addReversal(reversals.size(), reversal);
+    }
+
+    @Override
+    public void addReversal(int index, LiftReversal reversal) {
+        reversals.add(index, reversal);
         reversal.setParent(this);
         adopted(reversal);
     }
 
-    public void setOrder(int order) {
-        this.order = Optional.of(order);
+    // Deprecated collection properties -----------------------------------------------
+
+    /** @deprecated use {@link #getRelations()}; read-only, will be removed */
+    @Deprecated(forRemoval = true)
+    public ReadOnlyListProperty<LiftRelation> relationsProperty() {
+        return new ReadOnlyListWrapper<>(this, "relations", getRelations()).getReadOnlyProperty();
     }
 
-    public List<LiftRelation> getRelations() {
-        return relationsProperty.get();
+    /** @deprecated use {@link #getExamples()}; read-only, will be removed */
+    @Deprecated(forRemoval = true)
+    public ReadOnlyListProperty<LiftExample> examplesProperty() {
+        return new ReadOnlyListWrapper<>(this, "examples", getExamples()).getReadOnlyProperty();
     }
 
-    public List<LiftExample> getExamples() {
-        return examplesProperty.get();
+    /** @deprecated use {@link #getIllustrations()}; read-only, will be removed */
+    @Deprecated(forRemoval = true)
+    public ReadOnlyListProperty<LiftIllustration> illustrationsProperty() {
+        return new ReadOnlyListWrapper<>(this, "illustrations", getIllustrations()).getReadOnlyProperty();
     }
 
-    public List<LiftIllustration> getIllustrations() {
-        return illustrationsProperty.get();
+    /** @deprecated use {@link #getSenses()}; read-only, will be removed */
+    @Deprecated(forRemoval = true)
+    public ReadOnlyListProperty<LiftSense> subSensesProperty() {
+        return new ReadOnlyListWrapper<>(this, "subSenses", getSenses()).getReadOnlyProperty();
     }
 
-    public List<LiftSense> getSenses() {
-        return subSensesProperty.get();
-    }
-
-    //public List<LiftSense> getSubSenses() {
-    //    return subSensesProperty.get();
-    //}
-
-    public ListProperty<LiftRelation> relationsProperty() {
-        return relationsProperty;
-    }
-
-    public ListProperty<LiftExample> examplesProperty() {
-        return examplesProperty;
-    }
-
-    public ListProperty<LiftIllustration> illustrationsProperty() {
-        return illustrationsProperty;
-    }
-
-    public ListProperty<LiftSense> subSensesProperty() {
-        return subSensesProperty;
-    }
-
-    public List<LiftReversal> getReversals() {
-        return reversalsProperty.get();
-    }
-
-    public ListProperty<LiftReversal> reversalsProperty() {
-        return reversalsProperty;
+    /** @deprecated use {@link #getReversals()}; read-only, will be removed */
+    @Deprecated(forRemoval = true)
+    public ReadOnlyListProperty<LiftReversal> reversalsProperty() {
+        return new ReadOnlyListWrapper<>(this, "reversals", getReversals()).getReadOnlyProperty();
     }
 
     public static LiftSense create() {
@@ -235,31 +329,6 @@ public final class LiftSense
     // --------------------------------------------------------
 
     /**
-     * Add a subsense at a given position.
-     *
-     * @param index where to insert the subsense
-     * @param sense the subsense to add
-     */
-    @Override
-    public void addSense(int index, LiftSense sense) {
-        subSensesProperty.add(index, sense);
-        sense.setParent(this);
-        adopted(sense);
-    }
-
-    /**
-     * Add an example at a given position.
-     *
-     * @param index where to insert the example
-     * @param example the example to add
-     */
-    public void addExample(int index, LiftExample example) {
-        this.examplesProperty.add(index, example);
-        example.setParent(this);
-        adopted(example);
-    }
-
-    /**
      * Remove a relation from this sense, unregistering it if this sense belongs to a
      * dictionary.
      *
@@ -267,9 +336,8 @@ public final class LiftSense
      */
     @Override
     public void deleteRelation(LiftRelation relation) {
-        requireChild(relation, relationsProperty.contains(relation));
-        orphaned(relation);
-        relation.detach();
+        requireChild(relation, relations.contains(relation));
+        removeChild(relation);
     }
 
     /**
@@ -279,9 +347,8 @@ public final class LiftSense
      * @param example an example of this sense
      */
     public void deleteExample(LiftExample example) {
-        requireChild(example, examplesProperty.contains(example));
-        orphaned(example);
-        example.detach();
+        requireChild(example, examples.contains(example));
+        removeChild(example);
     }
 
     /**
@@ -292,9 +359,8 @@ public final class LiftSense
      */
     @Override
     public void deleteSense(LiftSense sense) {
-        requireChild(sense, subSensesProperty.contains(sense));
-        orphaned(sense);
-        sense.detach();
+        requireChild(sense, subSenses.contains(sense));
+        removeChild(sense);
     }
 
     /**
@@ -304,9 +370,8 @@ public final class LiftSense
      * @param illustration an illustration of this sense
      */
     public void deleteIllustration(LiftIllustration illustration) {
-        requireChild(illustration, illustrationsProperty.contains(illustration));
-        orphaned(illustration);
-        illustration.detach();
+        requireChild(illustration, illustrations.contains(illustration));
+        removeChild(illustration);
     }
 
     /**
@@ -317,20 +382,19 @@ public final class LiftSense
      */
     @Override
     public void deleteReversal(LiftReversal reversal) {
-        requireChild(reversal, reversalsProperty.contains(reversal));
-        orphaned(reversal);
-        reversal.detach();
+        requireChild(reversal, reversals.contains(reversal));
+        removeChild(reversal);
     }
 
     @Override
     public void retypeReversal(LiftReversal reversal, Feature type) {
-        requireChild(reversal, reversalsProperty.contains(reversal));
+        requireChild(reversal, reversals.contains(reversal));
         reversal.assignType(type);
     }
 
     @Override
     public void retypeRelation(LiftRelation relation, Feature type) {
-        requireChild(relation, relationsProperty.contains(relation));
+        requireChild(relation, relations.contains(relation));
         relation.assignType(type);
     }
 
@@ -342,9 +406,8 @@ public final class LiftSense
      * {@link #setGrammaticalInfo(GrammaticalInfo)}, which holds at most one.
      */
     public void deleteGrammaticalInfo() {
-        grammaticalInfo.ifPresent(gi -> {
-            orphaned(gi);
-            gi.detach();
-        });
+        if (grammaticalInfo != null) {
+            removeChild(grammaticalInfo);
+        }
     }
 }

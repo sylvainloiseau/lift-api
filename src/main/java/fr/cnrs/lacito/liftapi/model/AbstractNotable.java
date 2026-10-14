@@ -1,9 +1,10 @@
 package fr.cnrs.lacito.liftapi.model;
 
 import java.util.Map;
-import javafx.beans.property.MapProperty;
-import javafx.beans.property.SimpleMapProperty;
+import javafx.beans.property.ReadOnlyMapProperty;
+import javafx.beans.property.ReadOnlyMapWrapper;
 import javafx.collections.FXCollections;
+import javafx.collections.ObservableMap;
 
 /**
  * Superclass of component that can receive {@link LiftNote} (not to be confused with {@link LiftAnnotation}).
@@ -23,17 +24,13 @@ public abstract sealed class AbstractNotable
      * identity, so renaming it ({@link FeatureSet#changeFeatureId}) leaves the keys
      * valid. A note's type only changes through {@link #retypeNote}, which re-keys it.
      */
-    protected final MapProperty<Feature, LiftNote> notesProperty =
-        new SimpleMapProperty<>(
-            this,
-            "notes",
-            FXCollections.observableHashMap()
-        );
+    final ObservableMap<Feature, LiftNote> notes = FXCollections.observableHashMap();
+    private ObservableMap<Feature, LiftNote> notesView;
 
     @Override
     public void addNote(LiftNote n) throws DuplicateTypeException {
         Feature type = n.getType();
-        if (notesProperty.containsKey(type)) {
+        if (notes.containsKey(type)) {
             throw new DuplicateTypeException(
                 "Duplicate note type '" +
                     type.getId() +
@@ -43,7 +40,7 @@ public abstract sealed class AbstractNotable
                     noteTypeIds()
             );
         }
-        notesProperty.put(type, n);
+        notes.put(type, n);
         n.setParent(this);
         adopted(n);
     }
@@ -55,7 +52,7 @@ public abstract sealed class AbstractNotable
      * so this cannot simply cast to {@link AbstractIdentifiable}.
      */
     private java.util.List<String> noteTypeIds() {
-        return notesProperty.keySet().stream().map(Feature::getId).toList();
+        return notes.keySet().stream().map(Feature::getId).toList();
     }
 
     private String describe() {
@@ -70,7 +67,7 @@ public abstract sealed class AbstractNotable
 
     @Override
     public LiftNote getNote(String type) {
-        for (Map.Entry<Feature, LiftNote> e : notesProperty.entrySet()) {
+        for (Map.Entry<Feature, LiftNote> e : notes.entrySet()) {
             if (e.getKey().getId().equals(type)) {
                 return e.getValue();
             }
@@ -82,21 +79,33 @@ public abstract sealed class AbstractNotable
 
     @Override
     public LiftNote getNote(Feature type) {
-        if (!notesProperty.containsKey(type)) {
+        if (!notes.containsKey(type)) {
             throw new IllegalArgumentException(
                 "Not note with type: " + (type == null ? null : type.getId()) + "."
             );
         }
-        return notesProperty.get(type);
+        return notes.get(type);
     }
 
+    /**
+     * @return the notes by type, as a read-only observable map; change them with
+     *         {@link #addNote}, {@link #deleteNote} and {@link #retypeNote}
+     */
     @Override
-    public Map<Feature, LiftNote> getNotes() {
-        return notesProperty.get();
+    public ObservableMap<Feature, LiftNote> getNotes() {
+        if (notesView == null) {
+            notesView = FXCollections.unmodifiableObservableMap(notes);
+        }
+        return notesView;
     }
 
-    public MapProperty<Feature, LiftNote> notesProperty() {
-        return notesProperty;
+    /**
+     * @deprecated use {@link #getNotes()}, which is observable; this returns a read-only
+     *             property over it, and will be removed
+     */
+    @Deprecated(forRemoval = true)
+    public ReadOnlyMapProperty<Feature, LiftNote> notesProperty() {
+        return new ReadOnlyMapWrapper<>(this, "notes", getNotes()).getReadOnlyProperty();
     }
 
     /**
@@ -109,11 +118,11 @@ public abstract sealed class AbstractNotable
      */
     @Override
     public void retypeNote(LiftNote note, Feature type) throws DuplicateTypeException {
-        requireChild(note, note != null && notesProperty.get(note.getType()) == note);
+        requireChild(note, note != null && notes.get(note.getType()) == note);
         if (type == null) throw new IllegalArgumentException("note type cannot be null");
         Feature old = note.getType();
         if (type == old) return;
-        if (notesProperty.containsKey(type)) {
+        if (notes.containsKey(type)) {
             throw new DuplicateTypeException(
                 "Duplicate note type '" +
                     type.getId() +
@@ -123,9 +132,10 @@ public abstract sealed class AbstractNotable
                     noteTypeIds()
             );
         }
-        notesProperty.remove(old);
+        notes.remove(old);
+        notes.put(type, note);
+        // Last, so that the change is reported once the note is under its new key.
         note.assignType(type);
-        notesProperty.put(type, note);
     }
 
     // --------------------------------------------------------
@@ -142,9 +152,8 @@ public abstract sealed class AbstractNotable
     public void deleteNote(LiftNote note) {
         requireChild(
             note,
-            note != null && notesProperty.get(note.getType()) == note
+            note != null && notes.get(note.getType()) == note
         );
-        orphaned(note);
-        note.detach();
+        removeChild(note);
     }
 }

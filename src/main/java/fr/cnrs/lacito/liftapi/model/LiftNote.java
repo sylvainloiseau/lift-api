@@ -1,7 +1,8 @@
 package fr.cnrs.lacito.liftapi.model;
 
+import fr.cnrs.lacito.liftapi.change.ModelProperty;
+
 import javafx.beans.property.ReadOnlyObjectProperty;
-import javafx.beans.property.ReadOnlyObjectWrapper;
 
 /**
  * A Lift note (not to be confused with {@link LiftTrait}, {@link LiftAnnotation}, {@link LiftField}; for comparison see {@link LiftTrait}).
@@ -27,11 +28,8 @@ public final class LiftNote
 
     protected AbstractNotable parent;
 
-    private final ReadOnlyObjectWrapper<Feature> typeProperty = new ReadOnlyObjectWrapper<>(
-        this,
-        "type",
-        null
-    );
+    private final TrackedProperty<Feature> typeProperty =
+        new TrackedProperty<>(this, ModelProperty.TYPE, null);
 
     public LiftNote() {}
 

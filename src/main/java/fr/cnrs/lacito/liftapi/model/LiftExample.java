@@ -5,9 +5,9 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
-import javafx.beans.property.MapProperty;
-import javafx.beans.property.SimpleMapProperty;
-import javafx.beans.property.SimpleStringProperty;
+import fr.cnrs.lacito.liftapi.change.ModelProperty;
+import javafx.beans.property.ReadOnlyMapProperty;
+import javafx.beans.property.ReadOnlyMapWrapper;
 import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableMap;
@@ -16,7 +16,11 @@ public final class LiftExample extends AbstractNotable {
 
     public static final String DEFAULT_TRANSLATION_TYPE = "";
 
-    protected Optional<String> source = Optional.empty();
+    // Plain field until a property is asked for (see AbstractExtensibleWithoutField).
+    // It used to be both an Optional and a property, which disagreed as soon as the
+    // property was set.
+    private String source;
+    private TrackedStringProperty sourceProperty;
 
     /**
      * The translations of this example, by type, in document order.
@@ -25,34 +29,21 @@ public final class LiftExample extends AbstractNotable {
      * {@code Feature -> MultiText} view handed out by {@link #getTranslations()}.
      */
     private final Map<Feature, LiftTranslation> translations = new LinkedHashMap<>();
-
     private final ObservableMap<Feature, MultiText> translationTexts =
         FXCollections.observableMap(new LinkedHashMap<>());
-
     /**
      * Read-only: a translation is a component ({@link LiftTranslation}), added with
      * {@link #addTranslation(LiftTranslation)} or {@link #createTranslation(Feature)} so
      * that it is registered in the dictionary. Putting a bare MultiText in this map
      * would bypass that.
      */
-    protected final MapProperty<Feature, MultiText> translationsProperty =
-        new SimpleMapProperty<>(
-            this,
-            "translations",
-            FXCollections.unmodifiableObservableMap(translationTexts)
-        );
+    private final ObservableMap<Feature, MultiText> translationsView =
+        FXCollections.unmodifiableObservableMap(translationTexts);
 
     protected LiftSense parent;
 
-    private final StringProperty sourceProperty = new SimpleStringProperty(
-        this,
-        "source",
-        ""
-    );
-
     protected LiftExample(String source) {
-        this.source = Optional.of(source);
-        this.sourceProperty.set(source);
+        this.source = source;
     }
 
     public LiftExample() {}
@@ -108,8 +99,7 @@ public final class LiftExample extends AbstractNotable {
             translation,
             translation != null && translations.get(translation.getType()) == translation
         );
-        orphaned(translation);
-        translation.detach();
+        removeChild(translation);
     }
 
     /**
@@ -135,9 +125,10 @@ public final class LiftExample extends AbstractNotable {
         );
         translations.remove(old);
         translationTexts.remove(old);
-        translation.assignType(type);
         translations.put(type, translation);
         translationTexts.put(type, translation.getTranslation());
+        // Last, so that the change is reported once the translation is under its new key.
+        translation.assignType(type);
     }
 
     /**
@@ -155,7 +146,7 @@ public final class LiftExample extends AbstractNotable {
      * @param parent the sense this belongs to, or {@code null} when detaching
      *        (see {@link AbstractLiftRoot#detach()})
      */
-    public void setParent(LiftSense parent) {
+    protected void setParent(LiftSense parent) {
         this.parent = parent;
     }
 
@@ -178,13 +169,25 @@ public final class LiftExample extends AbstractNotable {
         return getMainMultiText();
     }
 
+    /**
+     * @return the source, empty when there is none (or it is empty)
+     */
     public Optional<String> getSource() {
-        return source;
+        String v = sourceProperty != null ? sourceProperty.get() : source;
+        return v == null || v.isEmpty() ? Optional.empty() : Optional.of(v);
     }
 
+    /**
+     * @param value the source, or {@code null} for none
+     */
     public void setSource(String value) {
-        this.source = Optional.of(value);
-        this.sourceProperty.set(value);
+        if (sourceProperty != null) {
+            sourceProperty.set(value);
+        } else {
+            String old = source;
+            source = value;
+            Changes.valueChanged(this, ModelProperty.SOURCE, old, value);
+        }
     }
 
     public LiftSense getParent() {
@@ -194,8 +197,8 @@ public final class LiftExample extends AbstractNotable {
     /**
      * @return an unmodifiable view of the text of each translation, by type
      */
-    public Map<Feature, MultiText> getTranslations() {
-        return translationsProperty.get();
+    public ObservableMap<Feature, MultiText> getTranslations() {
+        return translationsView;
     }
 
     /**
@@ -205,11 +208,21 @@ public final class LiftExample extends AbstractNotable {
         return Collections.unmodifiableCollection(translations.values());
     }
 
-    public MapProperty<Feature, MultiText> translationsProperty() {
-        return translationsProperty;
+    /**
+     * @deprecated use {@link #getTranslations()}, which is observable; this returns a
+     *             read-only property over it, and will be removed
+     */
+    @Deprecated(forRemoval = true)
+    public ReadOnlyMapProperty<Feature, MultiText> translationsProperty() {
+        return new ReadOnlyMapWrapper<>(this, "translations", translationsView).getReadOnlyProperty();
     }
 
+    /** The source; {@code null} when there is none. */
     public StringProperty sourceProperty() {
+        if (sourceProperty == null) {
+            sourceProperty = new TrackedStringProperty(this, ModelProperty.SOURCE, source);
+            source = null;
+        }
         return sourceProperty;
     }
 

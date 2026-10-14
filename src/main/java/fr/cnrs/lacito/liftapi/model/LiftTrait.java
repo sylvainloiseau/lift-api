@@ -1,20 +1,25 @@
 package fr.cnrs.lacito.liftapi.model;
 
+import fr.cnrs.lacito.liftapi.change.ModelProperty;
+
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleListProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleSetProperty;
-import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
+import javafx.collections.ObservableList;
+import javafx.collections.SetChangeListener;
 
 /**
  * A Lift trait (not to be confused with {@link LiftNote}, {@link LiftAnnotation}, {@link LiftField}).
@@ -74,7 +79,8 @@ import javafx.collections.FXCollections;
  */
 public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
 
-    protected final List<LiftAnnotation> annotations = new ArrayList<>();
+    final ObservableList<LiftAnnotation> annotations = FXCollections.observableArrayList();
+    private ObservableList<LiftAnnotation> annotationsView;
 
     protected HasTrait parent;
 
@@ -102,10 +108,10 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
     public LiftTrait(LiftFieldAndTraitDefinition spec) {
         this.specification = new SimpleObjectProperty<>(this, "definition", spec);
         switch (spec.getDataModel().get()) {
-            case STRING -> this.stringValueProperty = new SimpleStringProperty(this, "value", "");
-            case INTEGER -> this.integerProperty = new SimpleIntegerProperty(this, "value", 0);
-            case DATETIME -> this.dateTimeProperty = new SimpleObjectProperty<>(this, "value", null);
-            case FEATURE -> this.featureProperty = new SimpleObjectProperty<>(this, "value", null);
+            case STRING -> this.stringValueProperty = new TrackedStringProperty(this, ModelProperty.TRAIT_VALUE, "");
+            case INTEGER -> this.integerProperty = new TrackedIntegerProperty(this, ModelProperty.TRAIT_VALUE, 0);
+            case DATETIME -> this.dateTimeProperty = new TrackedProperty<ZonedDateTime>(this, ModelProperty.TRAIT_VALUE, null);
+            case FEATURE -> this.featureProperty = new TrackedProperty<Feature>(this, ModelProperty.TRAIT_VALUE, null);
             // A FEATURE_SET is backed by a set and a FEATURE_LIST by a list; the two used
             // to be crossed over, and both wrapped a null collection so any addAll() threw.
             case FEATURE_SET -> this.featureSetProperty = new SimpleSetProperty<>(
@@ -120,6 +126,7 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
             );
             default -> throw new IllegalArgumentException("Unknown definition type: " + spec.getDataModel().get());
         }
+        trackCollectionValue();
     }
 
     public LiftTrait(LiftFieldAndTraitDefinition def, String value) {
@@ -254,13 +261,84 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
                 }
             }
             case LiftFieldAndTraitDefinitionDataModel.FEATURE_SET -> {
-                featureSetProperty.addAll(getFeaturesFromString(value));
+                replaceFeatureSet(getFeaturesFromString(value));
             }
             case LiftFieldAndTraitDefinitionDataModel.FEATURE_LIST -> {
-                featureListProperty.addAll(getFeaturesFromString(value));
+                featureListProperty.setAll(getFeaturesFromString(value));
             }
             case LiftFieldAndTraitDefinitionDataModel.INTEGER -> this.integerProperty.set(Integer.parseInt(value));
             default -> throw new IllegalArgumentException("Illegal trait type: " + specification.get().getTypeStr());
+        }
+    }
+
+    /**
+     * The value, typed after the definition's data model: a {@code String}, an
+     * {@code Integer}, a {@code ZonedDateTime}, a {@link Feature} (or {@code null}), or
+     * an unmodifiable {@code Set} or {@code List} of features (a copy).
+     *
+     * This is the value reported in {@link fr.cnrs.lacito.liftapi.change.ValueChanged}
+     * events ({@link ModelProperty#TRAIT_VALUE}).
+     */
+    public Object getTypedValue() {
+        return switch (specification.get().getDataModel().get()) {
+            case STRING -> stringValueProperty.get();
+            case INTEGER -> integerProperty.get();
+            case DATETIME -> dateTimeProperty.get();
+            case FEATURE -> featureProperty.get();
+            case FEATURE_SET -> Set.copyOf(featureSetProperty.get());
+            case FEATURE_LIST -> List.copyOf(featureListProperty.get());
+            case MULTISTRING, MULTITEXT -> throw new IllegalStateException(
+                "A trait cannot have a field's data model: " + specification.get().getName());
+        };
+    }
+
+    /**
+     * Set the value from an object of the type {@link #getTypedValue()} returns.
+     *
+     * @param value the new value; {@code null} clears an object value, and stands for an
+     *        empty string, zero, or an empty collection otherwise
+     */
+    @SuppressWarnings("unchecked")
+    public void setTypedValue(Object value) {
+        switch (specification.get().getDataModel().get()) {
+            case STRING -> stringValueProperty.set(value == null ? "" : (String) value);
+            case INTEGER -> integerProperty.set(value == null ? 0 : (Integer) value);
+            case DATETIME -> dateTimeProperty.set((ZonedDateTime) value);
+            case FEATURE -> featureProperty.set((Feature) value);
+            case FEATURE_SET -> replaceFeatureSet(value == null ? List.of() : (Collection<Feature>) value);
+            case FEATURE_LIST -> featureListProperty.setAll(value == null ? List.of() : (Collection<Feature>) value);
+            case MULTISTRING, MULTITEXT -> throw new IllegalStateException(
+                "A trait cannot have a field's data model: " + specification.get().getName());
+        }
+    }
+
+    private void replaceFeatureSet(Collection<Feature> features) {
+        Set<Feature> wanted = new HashSet<>(features);
+        featureSetProperty.retainAll(wanted);
+        featureSetProperty.addAll(wanted);
+    }
+
+    /**
+     * The collection-valued traits are reported from a listener on their content (a
+     * set or a list changes without its property being invalidated); the other ones by
+     * their tracked property.
+     */
+    private void trackCollectionValue() {
+        if (featureSetProperty != null) {
+            Object[] last = {Set.copyOf(featureSetProperty)};
+            featureSetProperty.addListener((SetChangeListener<Feature>) c -> {
+                Object now = Set.copyOf(featureSetProperty);
+                Changes.valueChanged(this, ModelProperty.TRAIT_VALUE, last[0], now);
+                last[0] = now;
+            });
+        }
+        if (featureListProperty != null) {
+            Object[] last = {List.copyOf(featureListProperty)};
+            featureListProperty.addListener((ListChangeListener<Feature>) c -> {
+                Object now = List.copyOf(featureListProperty);
+                Changes.valueChanged(this, ModelProperty.TRAIT_VALUE, last[0], now);
+                last[0] = now;
+            });
         }
     }
 
@@ -401,13 +479,19 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
 
     @Override
     public void addAnnotation(LiftAnnotation a) {
-        this.annotations.add(a);
+        addAnnotation(annotations.size(), a);
+    }
+
+    @Override
+    public void addAnnotation(int index, LiftAnnotation a) {
+        annotations.add(index, a);
         a.setParent(this);
         adopted(a);
     }
 
-    public List<LiftAnnotation> getAnnotations() {
-        return annotations;
+    public ObservableList<LiftAnnotation> getAnnotations() {
+        if (annotationsView == null) annotationsView = FXCollections.unmodifiableObservableList(annotations);
+        return annotationsView;
     }
 
 
@@ -429,8 +513,7 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
     @Override
     public void deleteAnnotation(LiftAnnotation a) {
         requireChild(a, annotations.contains(a));
-        orphaned(a);
-        a.detach();
+        removeChild(a);
     }
 
     @Override

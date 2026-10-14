@@ -1,6 +1,7 @@
 package fr.cnrs.lacito.liftapi.model;
 
-import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.ReadOnlyObjectProperty;
+import javafx.beans.property.ReadOnlyObjectWrapper;
 
 /**
  * A Lift field (not to be confused with {@link LiftTrait}, {@link LiftAnnotation}, {@link LiftNote}; for comparison see {@link LiftTrait}).
@@ -16,11 +17,11 @@ public final class LiftField extends AbstractExtensibleWithoutField {
 
     protected AbstractExtensibleWithField parent;
 
-    private final SimpleObjectProperty<LiftFieldAndTraitDefinition> specification;
+    private final ReadOnlyObjectWrapper<LiftFieldAndTraitDefinition> specification;
 
     public LiftField(LiftFieldAndTraitDefinition name) {
         if (name == null) throw new IllegalArgumentException("Name is null");
-        this.specification = new SimpleObjectProperty<>(
+        this.specification = new ReadOnlyObjectWrapper<>(
             this,
             "name",
             name
@@ -35,8 +36,12 @@ public final class LiftField extends AbstractExtensibleWithoutField {
         return this.specification.get();
     }
 
-    public SimpleObjectProperty<LiftFieldAndTraitDefinition> specificationProperty() {
-        return this.specification;
+    /**
+     * The definition of this field, read-only: the parent holds its fields by the
+     * definition's name, which must not change under it.
+     */
+    public ReadOnlyObjectProperty<LiftFieldAndTraitDefinition> specificationProperty() {
+        return this.specification.getReadOnlyProperty();
     }
 
     // --------------------------------------------------------

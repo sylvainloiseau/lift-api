@@ -1,3 +1,3 @@
-Form-level annotations — an <annotation> inside a <form>/<gloss> is held by the Form, which isn’t an AbstractLiftRoot, so nothing can reach it. Never registered; its MultiText never counts toward the dictionary’s languages. Documented on DictionaryCensusTest, whose SAX counter excludes precisely those annotations so the rest of the assertion stays strict.
+No known open issue.
 
-Variant has no type. Should be withdrawn.
+Done in October 2026 (see .claude/plan/observable-model-and-changes-2026-10.md): form-level annotations are registered (a Form knows its MultiText), and the variant type was withdrawn (a variant's type is the `variant-type` trait).

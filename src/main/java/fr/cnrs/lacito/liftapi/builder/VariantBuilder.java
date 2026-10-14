@@ -51,16 +51,6 @@ public class VariantBuilder extends AbstractLiftElementWithFieldBuilder<LiftVari
         return this;
     }
 
-    public VariantBuilder withType(String type) {
-        if (type == null || type.isBlank()) throw new IllegalArgumentException("Type cannot be null or empty.");
-        // Create the type on demand, like every other builder.
-        Feature f = dictionary
-            .getHeader()
-            .getVariantTypeManager()
-            .getOrCreateFeature(type);
-        super.withType(f);
-        return this;
-    }
 
     /**
      * Set the reference ID for this variant.

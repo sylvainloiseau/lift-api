@@ -1,7 +1,10 @@
 package fr.cnrs.lacito.liftapi.model;
 
-import java.util.List;
-import java.util.ArrayList;
+import fr.cnrs.lacito.liftapi.change.ModelProperty;
+import javafx.beans.property.ReadOnlyObjectProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+
 
 /**
  * A component containing a reference to part of speech together with {@link LiftTrait}, to be registered to a {@link LiftSense}.
@@ -26,14 +29,15 @@ public final class GrammaticalInfo
     extends AbstractLiftRoot
     implements HasTrait {
 
-    protected Feature value;
+    private final TrackedProperty<Feature> value;
 
-    protected final List<LiftTrait> traits = new ArrayList<>();
+    final ObservableList<LiftTrait> traits = FXCollections.observableArrayList();
+    private ObservableList<LiftTrait> traitsView;
 
     private LiftSense parent;
 
     protected GrammaticalInfo(Feature v) {
-        this.value = v;
+        this.value = new TrackedProperty<>(this, ModelProperty.GRAMMATICAL_INFO_VALUE, v);
     }
 
     /**
@@ -50,7 +54,21 @@ public final class GrammaticalInfo
     }
 
     public Feature getGramInfoValue() {
-        return this.value;
+        return value.get();
+    }
+
+    /**
+     * Change the part of speech of this grammatical info.
+     *
+     * @param v the new value
+     */
+    public void setGramInfoValue(Feature v) {
+        value.set(v);
+    }
+
+    /** The part of speech, read-only: it changes through {@link #setGramInfoValue}. */
+    public ReadOnlyObjectProperty<Feature> gramInfoValueProperty() {
+        return value.getReadOnlyProperty();
     }
 
     /**
@@ -74,14 +92,20 @@ public final class GrammaticalInfo
 
     @Override
     public void addTrait(LiftTrait t) {
-        traits.add(t);
+        addTrait(traits.size(), t);
+    }
+
+    @Override
+    public void addTrait(int index, LiftTrait t) {
+        traits.add(index, t);
         t.setParent(this);
         adopted(t);
     }
 
     @Override
-    public List<LiftTrait> getTraits() {
-        return traits;
+    public ObservableList<LiftTrait> getTraits() {
+        if (traitsView == null) traitsView = FXCollections.unmodifiableObservableList(traits);
+        return traitsView;
     }
 
     // --------------------------------------------------------
@@ -130,7 +154,6 @@ public final class GrammaticalInfo
     @Override
     public void deleteTrait(LiftTrait t) {
         requireChild(t, traits.contains(t));
-        orphaned(t);
-        t.detach();
+        removeChild(t);
     }
 }

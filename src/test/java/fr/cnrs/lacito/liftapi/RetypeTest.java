@@ -167,7 +167,6 @@ public class RetypeTest {
         LiftEtymology etymology = LiftEtymology.create(a, "src");
         entry.addEtymology(etymology);
         LiftVariant variant = new LiftVariant();
-        variant.setType(a);
         entry.addVariant(variant);
         LiftRelation onEntry = new LiftRelation(a);
         entry.addRelation(onEntry);
@@ -187,7 +186,7 @@ public class RetypeTest {
         entry.getForms().addAnnotation(onText);
 
         List<fr.cnrs.lacito.liftapi.model.HasType> all = List.of(
-            etymology, variant, onEntry, onSense, onVariant,
+            etymology, onEntry, onSense, onVariant,
             reversal, nested, main, onComponent, onText
         );
         for (var component : all) {
@@ -206,15 +205,14 @@ public class RetypeTest {
         LiftEntry entry = entry(d);
         LiftEntry other = d.getComponentBuilder().entry().withForm("qyz", "walk").build();
         Feature a = new Feature("a", null);
-        LiftVariant variant = new LiftVariant();
-        variant.setType(a);
-        entry.addVariant(variant);
+        LiftEtymology etymology = LiftEtymology.create(a, "src");
+        entry.addEtymology(etymology);
         LiftNote note = new LiftNote(noteType(d, "source"));
         entry.addNote(note);
         LiftAnnotation annotation = new LiftAnnotation(a);
         entry.getForms().addAnnotation(annotation);
 
-        assertThrows(IllegalArgumentException.class, () -> other.retypeVariant(variant, a));
+        assertThrows(IllegalArgumentException.class, () -> other.retypeEtymology(etymology, a));
         assertThrows(
             IllegalArgumentException.class,
             () -> other.retypeNote(note, noteType(d, "general"))

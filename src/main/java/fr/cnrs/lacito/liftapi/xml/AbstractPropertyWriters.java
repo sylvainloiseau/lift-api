@@ -1,5 +1,7 @@
 package fr.cnrs.lacito.liftapi.xml;
 
+import fr.cnrs.lacito.liftapi.model.LiftNote;
+
 import fr.cnrs.lacito.liftapi.LiftVersion;
 
 import javax.xml.stream.XMLStreamWriter;
@@ -38,7 +40,8 @@ public class AbstractPropertyWriters {
             XMLStreamWriter w,
             AbstractExtensibleWithField obj,
             LiftVersion version) throws Exception {
-        for (LiftField f : obj.getFields().values()) {
+        // Fields are held in a map: sort them by name so that the output is stable.
+        for (LiftField f : sortedBy(obj.getFields().values(), x -> x.getSpecification().getName())) {
             writeField(w, f, version);
         }
     }
@@ -58,8 +61,9 @@ public class AbstractPropertyWriters {
             XMLStreamWriter w,
             AbstractNotable obj,
             LiftVersion version) throws Exception {
-        for (var entry : obj.getNotes().entrySet()) {
-            writeNote(w, entry.getValue(), version);
+        // Notes are held in a map: sort them by type so that the output is stable.
+        for (LiftNote note : sortedBy(obj.getNotes().values(), n -> n.getType() == null ? "" : n.getType().getId())) {
+            writeNote(w, note, version);
         }
     }
 
@@ -131,5 +135,15 @@ public class AbstractPropertyWriters {
         writeAbstractExtensibleWithField(w, n, version);
         MultiTextWriters.writeMultiText(w, n.getText());
         w.writeEndElement();
+    }
+
+    /**
+     * The elements of a map-held collection, sorted by a key: the maps are hash maps, so
+     * writing them in iteration order would reorder them from one save to the next.
+     */
+    static <T> java.util.List<T> sortedBy(java.util.Collection<T> items, java.util.function.Function<T, String> key) {
+        java.util.List<T> sorted = new java.util.ArrayList<>(items);
+        sorted.sort(java.util.Comparator.comparing(key, java.util.Comparator.nullsFirst(java.util.Comparator.naturalOrder())));
+        return sorted;
     }
 }

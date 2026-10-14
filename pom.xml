@@ -26,6 +26,9 @@
         <maven.compiler.target>25</maven.compiler.target>
         <maven.compiler.release>25</maven.compiler.release>
         <javafx.version>25</javafx.version>
+        <!-- Test tags left out of the default build. LoadingCostTest is a measurement:
+             mvn test -Dgroups=perf -DexcludedTestGroups=none -Dtest=LoadingCostTest -->
+        <excludedTestGroups>perf</excludedTestGroups>
     </properties>
     <distributionManagement>
       <repository>
@@ -115,6 +118,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.2</version>
                 <configuration>
+                    <excludedGroups>${excludedTestGroups}</excludedGroups>
                     <systemProperties>
                         <property>
                         <name>java.util.logging.config.file</name>

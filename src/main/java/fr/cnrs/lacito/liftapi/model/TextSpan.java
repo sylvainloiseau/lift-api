@@ -98,6 +98,9 @@ public final class TextSpan extends TextComponent {
             if (sClass.isPresent()) {
                 strb.append(" class=\"").append(sClass.get()).append("\"");
             }
+            if (sHref.isPresent()) {
+                strb.append(" href=\"").append(sHref.get()).append("\"");
+            }
             strb.append(">");
             for (TextSpan ts : innerContent) {
                 ts.toString(strb);

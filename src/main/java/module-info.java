@@ -17,6 +17,8 @@ module fr.cnrs.lacito.liftapi {
     exports fr.cnrs.lacito.liftapi;
     exports fr.cnrs.lacito.liftapi.builder;
     exports fr.cnrs.lacito.liftapi.model;
+    // The changes of a dictionary, as reversible events (undo, transactions).
+    exports fr.cnrs.lacito.liftapi.change;
 
     // fr.cnrs.lacito.liftapi.xml and fr.cnrs.lacito.liftapi.internal are deliberately
     // NOT exported. Serialization is reached through LiftDictionary.loadDictionaryFromFile
@@ -27,6 +29,7 @@ module fr.cnrs.lacito.liftapi {
     opens fr.cnrs.lacito.liftapi;
     opens fr.cnrs.lacito.liftapi.builder;
     opens fr.cnrs.lacito.liftapi.model;
+    opens fr.cnrs.lacito.liftapi.change;
 
     // cli.Main is the jar's main class and annotates a private field, which picocli
     // reads reflectively: without this the CLI throws InaccessibleObjectException on

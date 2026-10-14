@@ -71,5 +71,42 @@
  *
  * Attaching a component that is still registered in <em>another</em> dictionary is
  * refused, rather than silently accepted: delete it from its current parent first.
+ *
+ * <h2>Naming</h2>
+ *
+ * <ul>
+ * <li>{@code addX} / {@code deleteX} for components: they register and unregister (see
+ * above).</li>
+ * <li>{@link AbstractLiftRoot#detach()} to move a component: it unlinks and keeps the
+ * registration.</li>
+ * <li>{@code removeX} for what is not a component: forms
+ * ({@link MultiText#removeForm}), features, feature sets, definitions, languages.</li>
+ * <li>{@code setX} for a value; {@code retypeX} on a parent, which {@code setType} calls.</li>
+ * </ul>
+ *
+ * <h2>One way to change each thing</h2>
+ *
+ * The collections a getter returns ({@code getSenses()}, {@code getNotes()},
+ * {@code getFields()}...) are read-only observable views: a UI binds to them, and changes
+ * them with {@code addX}/{@code deleteX}, which keep the registry in step. Values are
+ * JavaFX properties: writable ones ({@code dateModifiedProperty()},
+ * {@code Form.textProperty()}...) when setting them has no other consequence, read-only
+ * ones with a setter that does the rest otherwise ({@code idProperty()} and
+ * {@code setId}, {@code typeProperty()} and {@code setType}). Every change made through
+ * either is reported to the dictionary's listeners (see the {@code change} package).
+ *
+ * Most of these properties are created on the first call to their accessor: until then
+ * the value lives in a plain field. A dictionary holds a great many components, few of
+ * which are ever bound to a UI.
+ *
+ * <h2>Order</h2>
+ *
+ * The components held in a list - senses, examples, traits, annotations, relations,
+ * variants, pronunciations, etymologies, reversals, media, illustrations - are in a
+ * meaningful order, and every {@code addX} has an {@code addX(int index, X)} counterpart;
+ * {@link AbstractLiftRoot#positionInParent()} gives the position of one. Those held in a
+ * map - notes, fields, translations, the forms of a multitext - are keyed by type, name or
+ * language, and have no order: the writer sorts them, so that a file saved twice is the
+ * same.
  */
 package fr.cnrs.lacito.liftapi.model;

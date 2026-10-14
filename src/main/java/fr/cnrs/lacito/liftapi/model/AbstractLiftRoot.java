@@ -1,9 +1,15 @@
 package fr.cnrs.lacito.liftapi.model;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
+import fr.cnrs.lacito.liftapi.change.ComponentAdded;
+import fr.cnrs.lacito.liftapi.change.ComponentRemoved;
+import fr.cnrs.lacito.liftapi.internal.ModelInternals;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.OptionalInt;
 import java.util.UUID;
 
 /**
@@ -23,6 +29,13 @@ import java.util.UUID;
  * question, and it is the single rule governing registration: {@code addX()} registers
  * its argument, and {@code deleteX()} unregisters it, if and only if the receiver is
  * attached. See the {@code package-info} of this package for the full contract.
+ *
+ * <h2>Reporting changes</h2>
+ *
+ * Adding and removing components goes through {@link #adopted(AbstractLiftRoot)} and
+ * {@link #removeChild(AbstractLiftRoot)} here, and {@link #detach()}: these are the
+ * places that report {@link ComponentAdded} and {@link ComponentRemoved} to the
+ * dictionary's listeners (see the {@code change} package).
  */
 public abstract sealed class AbstractLiftRoot implements LiftObject
     permits
@@ -38,8 +51,15 @@ public abstract sealed class AbstractLiftRoot implements LiftObject
         LiftReversal
 {
 
+    static {
+        // Hand the internal wiring (setUUID, setOwningDictionary...) to the rest of the
+        // module; see ModelInternals.
+        ModelInternals.install(new InternalAccess());
+    }
+
     private final MultiText mainMultiText = new MultiText(this);
-    protected final Map<String, String> otherXmlAttributes = new HashMap<>();
+    /** Allocated on the first unknown attribute: almost every component has none. */
+    private Map<String, String> otherXmlAttributes;
     private UUID uuid;
 
     /**
@@ -50,8 +70,27 @@ public abstract sealed class AbstractLiftRoot implements LiftObject
         return mainMultiText;
     }
 
+    /**
+     * The XML attributes the reader found on this element and does not know.
+     *
+     * They are kept "just in case", and should normally be absent: nothing in the model
+     * edits them, they are not reported as changes, and the writer does not write them
+     * back.
+     *
+     * @return an unmodifiable map, empty in the normal case
+     */
     public Map<String, String> getOtherXmlAttributes() {
-        return otherXmlAttributes;
+        return otherXmlAttributes == null
+            ? Map.of()
+            : Collections.unmodifiableMap(otherXmlAttributes);
+    }
+
+    /** For the XML reader, through {@link ModelInternals}. */
+    void putOtherXmlAttribute(String name, String value) {
+        if (otherXmlAttributes == null) {
+            otherXmlAttributes = new HashMap<>(4);
+        }
+        otherXmlAttributes.put(name, value);
     }
 
     protected void addToMainMultiText(Form t) {
@@ -74,6 +113,15 @@ public abstract sealed class AbstractLiftRoot implements LiftObject
     public abstract AbstractLiftRoot getParentNode();
 
     /**
+     * The object that holds this component: its parent component, or for an annotation
+     * the {@link MultiText} or {@link Form} it annotates. The {@code parent} of the
+     * change events.
+     */
+    Object holder() {
+        return getParentNode();
+    }
+
+    /**
      * The dictionary this component belongs to, or {@code null} if it is detached.
      *
      * Only a {@link LiftEntry} knows its dictionary directly; every other component
@@ -93,7 +141,26 @@ public abstract sealed class AbstractLiftRoot implements LiftObject
     }
 
     /**
-     * Register {@code child} in this component's dictionary, if there is one.
+     * The dictionary changes of this component are reported to: the owning dictionary
+     * of an entry's subtree, as {@link #getOwningDictionary()}, but also the dictionary
+     * of the header for the header's features, feature sets and definitions, which are
+     * not registered in the indexes but are data all the same.
+     */
+    final LiftDictionary eventDictionary() {
+        for (AbstractLiftRoot n = this; n != null; n = n.getParentNode()) {
+            if (n instanceof LiftEntry e) {
+                return e.owningDictionary();
+            }
+            if (n instanceof LiftHeader h) {
+                return h.getDictionary();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Register {@code child} in this component's dictionary, if there is one, and report
+     * its addition.
      *
      * Every {@code addX()} method ends with a call to this, and that is what closes the
      * gap between the two creation paths: wiring a component into an attached parent
@@ -104,25 +171,49 @@ public abstract sealed class AbstractLiftRoot implements LiftObject
      *
      * Registration is idempotent for a component already registered in this same
      * dictionary, so re-attaching a detached-but-still-registered subtree is free.
+     * If registration fails (a duplicate LIFT id in the subtree, for instance), the
+     * child is unwired again before the exception propagates: the addition did not
+     * happen, and nothing is reported.
      *
      * @param child the component just wired into this one
      * @return {@code child}, for chaining
      */
     protected final <T extends AbstractLiftRoot> T adopted(T child) {
-        LiftDictionary dictionary = getOwningDictionary();
-        if (dictionary != null) {
-            dictionary.getMutator().adoptSubtree(child);
-        }
+        adoptedIn(this, child);
         return child;
+    }
+
+    /**
+     * {@link #adopted(AbstractLiftRoot)}, for a child wired into {@code holder}: this
+     * component, or a {@link MultiText} or {@link Form} of it for an annotation.
+     */
+    final void adoptedIn(Object holder, AbstractLiftRoot child) {
+        LiftDictionary dictionary = getOwningDictionary();
+        boolean registers = dictionary != null && child.getUUID() == null;
+        if (dictionary != null) {
+            try {
+                dictionary.getMutator().adoptSubtree(child);
+            } catch (RuntimeException e) {
+                child.unlink();
+                throw e;
+            }
+        }
+        LiftDictionary observer = Changes.observing(this);
+        if (observer != null) {
+            Changes.fire(observer, new ComponentAdded(
+                observer, holder, child, child.positionInParent(), registers
+            ));
+        }
     }
 
     /**
      * Unregister {@code child} from this component's dictionary, if there is one.
      *
      * The mirror of {@link #adopted(AbstractLiftRoot)}: every {@code deleteX()} method
-     * calls this before unlinking, so that a component cannot be taken out of the tree
-     * while staying in the dictionary's indexes - the same defect as {@code addX()}
-     * leaving a component out of them, only in reverse.
+     * calls this before unlinking (through {@link #removeChild(AbstractLiftRoot)}), so
+     * that a component cannot be taken out of the tree while staying in the dictionary's
+     * indexes - the same defect as {@code addX()} leaving a component out of them, only
+     * in reverse.
      *
      * Unregistering happens first precisely because it is the half that can fail: a
      * component still referred to from elsewhere is refused, and the tree is then left
@@ -145,6 +236,33 @@ public abstract sealed class AbstractLiftRoot implements LiftObject
                     "registered: attach it again, or remove the whole subtree from its " +
                     "dictionary, before deleting anything from it."
             );
+        }
+    }
+
+    /**
+     * Delete {@code child} from this component: unregister it (see
+     * {@link #orphaned(AbstractLiftRoot)}), unlink it, and report its removal. The body
+     * of every {@code deleteX()} method, once it has checked that it holds the child.
+     *
+     * @param child a component held by this one
+     */
+    protected final void removeChild(AbstractLiftRoot child) {
+        removeChildIn(child.holder(), child);
+    }
+
+    /**
+     * {@link #removeChild(AbstractLiftRoot)}, for a child held by {@code holder}.
+     */
+    final void removeChildIn(Object holder, AbstractLiftRoot child) {
+        LiftDictionary observer = Changes.observing(this);
+        OptionalInt position = observer == null ? OptionalInt.empty() : child.positionInParent();
+        boolean unregisters = getOwningDictionary() != null;
+        orphaned(child);
+        child.unlink();
+        if (observer != null) {
+            Changes.fire(observer, new ComponentRemoved(
+                observer, holder, child, position, unregisters
+            ));
         }
     }
 
@@ -173,13 +291,86 @@ public abstract sealed class AbstractLiftRoot implements LiftObject
         }
     }
 
-    // TODO should be protected, but it is used in the builder, which is in another package. We should move the builder to the same package as the model
-    public void setUUID(UUID uuid) {
+    /**
+     * Set by the dictionary when it registers this component, and cleared when it
+     * unregisters it. Package-private: the mutator reaches it through
+     * {@link ModelInternals}.
+     */
+    void setUUID(UUID uuid) {
         this.uuid = uuid;
     }
 
     public UUID getUUID() {
         return this.uuid;
+    }
+
+    /**
+     * The position of this component in its parent's list.
+     *
+     * The order of the components held in a list (senses, examples, traits, relations,
+     * variants...) is meaningful; this is what a removal records so that it can be
+     * undone in place. For an entry, it is its position among the dictionary's entries.
+     *
+     * @return the index, or empty for a component held in a map (a note, a field, a
+     *         translation), in a single slot (a grammatical info, the main of a
+     *         reversal), or without a parent
+     */
+    public final OptionalInt positionInParent() {
+        if (this instanceof LiftEntry e) {
+            LiftDictionary d = e.owningDictionary();
+            return d == null
+                ? OptionalInt.empty()
+                : indexIn(d.getLiftDictionaryRegistry().getEntries());
+        }
+        if (getParentNode() == null) {
+            return OptionalInt.empty();
+        }
+        return switch (this) {
+            case LiftSense s -> switch (s.getParent()) {
+                case LiftEntry p -> indexIn(p.senses);
+                case LiftSense p -> indexIn(p.subSenses);
+            };
+            case LiftExample o -> indexIn(o.getParent().examples);
+            case LiftVariant o -> indexIn(o.getParent().variants);
+            case LiftEtymology o -> indexIn(o.getParent().etymologies);
+            case LiftIllustration o -> indexIn(o.getParent().illustrations);
+            case LiftMedia o -> indexIn(o.getParent().medias);
+            case LiftPronunciation o -> switch (o.getParent()) {
+                case LiftEntry p -> indexIn(p.pronunciations);
+                case LiftVariant p -> indexIn(p.pronunciations);
+            };
+            case LiftRelation o -> switch (o.getParent()) {
+                case LiftEntry p -> indexIn(p.relations);
+                case LiftSense p -> indexIn(p.relations);
+                case LiftVariant p -> indexIn(p.relations);
+            };
+            case LiftReversal o -> switch (o.getParent()) {
+                case LiftSense p -> indexIn(p.reversals);
+                case LiftReversal p -> p.getMain() == o
+                    ? OptionalInt.empty()
+                    : indexIn(p.reversals);
+            };
+            case LiftTrait o -> switch (o.getParent()) {
+                case AbstractExtensibleWithoutField p -> indexIn(p.traits);
+                case GrammaticalInfo p -> indexIn(p.traits);
+            };
+            case LiftAnnotation o -> switch (o.getParent()) {
+                case AbstractExtensibleWithoutField p -> indexIn(p.annotations);
+                case LiftTrait p -> indexIn(p.annotations);
+                case MultiText p -> indexIn(p.annotationsOrEmpty());
+                case Form p -> indexIn(p.annotationsOrEmpty());
+            };
+            default -> OptionalInt.empty();
+        };
+    }
+
+    private OptionalInt indexIn(List<?> list) {
+        for (int i = 0; i < list.size(); i++) {
+            if (list.get(i) == this) {
+                return OptionalInt.of(i);
+            }
+        }
+        return OptionalInt.empty();
     }
 
     /**
@@ -195,6 +386,8 @@ public abstract sealed class AbstractLiftRoot implements LiftObject
      * {@link fr.cnrs.lacito.liftapi.LiftDictionary#removeEntry(LiftEntry)} for an entry.
      * Those unregister as well as unlink.
      *
+     * Reported as a {@link ComponentRemoved} whose {@code unregistered} is {@code false}.
+     *
      * Detaching a node that has no parent is a no-op.
      */
     public void detach() {
@@ -202,84 +395,116 @@ public abstract sealed class AbstractLiftRoot implements LiftObject
             // A root (an entry, the header), or a node already detached.
             return;
         }
+        Object holder = holder();
+        LiftDictionary observer = Changes.observing(this);
+        OptionalInt position = observer == null ? OptionalInt.empty() : positionInParent();
+        unlink();
+        if (observer != null) {
+            Changes.fire(observer, new ComponentRemoved(observer, holder, this, position, false));
+        }
+    }
+
+    /**
+     * Remove the links between this node and its parent, both ways, without reporting
+     * anything: the common part of {@link #detach()} and of the {@code deleteX} methods.
+     */
+    final void unlink() {
         switch (this) {
             case LiftSense s -> {
-                s.getParent().getSenses().removeIf(x -> x == s);
+                switch (s.getParent()) {
+                    case LiftEntry p -> p.senses.removeIf(x -> x == s);
+                    case LiftSense p -> p.subSenses.removeIf(x -> x == s);
+                    case null -> { }
+                }
                 s.setParent(null);
             }
-            case LiftExample o -> {o.getParent()
-                .getExamples()
-                .removeIf(x -> x == o);
+            case LiftExample o -> {
+                if (o.getParent() != null) o.getParent().examples.removeIf(x -> x == o);
                 o.setParent(null);
             }
-            case LiftVariant o -> { o.getParent()
-                .getVariants()
-                .removeIf(x -> x == o);
+            case LiftVariant o -> {
+                if (o.getParent() != null) o.getParent().variants.removeIf(x -> x == o);
                 o.setParent(null);
             }
-            case LiftTrait o -> { o.getParent()
-                .getTraits()
-                .removeIf(x -> x == o);
+            case LiftTrait o -> {
+                switch (o.getParent()) {
+                    case AbstractExtensibleWithoutField p -> p.traits.removeIf(x -> x == o);
+                    case GrammaticalInfo p -> p.traits.removeIf(x -> x == o);
+                    case null -> { }
+                }
                 o.setParent(null);
             }
             case LiftReversal o -> {
-                // A reversal is held either in its parent's list or in its <main> slot.
-                boolean wasInList = o.getParent().getReversals().removeIf(x -> x == o);
-                if (!wasInList
-                    && o.getParent() instanceof LiftReversal r
-                    && r.getMain() == o) {
-                    r.setMain(null);
+                switch (o.getParent()) {
+                    case LiftSense p -> p.reversals.removeIf(x -> x == o);
+                    case LiftReversal p -> {
+                        // A reversal is held either in its parent's list or in its <main> slot.
+                        if (!p.reversals.removeIf(x -> x == o) && p.getMain() == o) {
+                            p.clearMain();
+                        }
+                    }
+                    case null -> { }
                 }
                 o.setParent(null);
             }
             case LiftRelation o -> {
-                o.getParent()
-                .getRelations().
-                removeIf(x -> x == this);
+                switch (o.getParent()) {
+                    case LiftEntry p -> p.relations.removeIf(x -> x == o);
+                    case LiftSense p -> p.relations.removeIf(x -> x == o);
+                    case LiftVariant p -> p.relations.removeIf(x -> x == o);
+                    case null -> { }
+                }
                 o.setParent(null);
             }
-            case LiftPronunciation o -> { o.getParent()
-                .getPronunciations()
-                .removeIf(x -> x == this);
+            case LiftPronunciation o -> {
+                switch (o.getParent()) {
+                    case LiftEntry p -> p.pronunciations.removeIf(x -> x == o);
+                    case LiftVariant p -> p.pronunciations.removeIf(x -> x == o);
+                    case null -> { }
+                }
                 o.setParent(null);
             }
-            case LiftNote o -> { o.getParent()
-                .getNotes()
-                .remove(o.getType());
+            case LiftNote o -> {
+                if (o.getParent() != null && o.getParent().notes.get(o.getType()) == o) {
+                    o.getParent().notes.remove(o.getType());
+                }
                 o.setParent(null);
             }
-            case LiftMedia o -> { o.getParent()
-                .getMedias()
-                .removeIf(x -> x == this);
+            case LiftMedia o -> {
+                if (o.getParent() != null) o.getParent().medias.removeIf(x -> x == o);
                 o.setParent(null);
             }
-            case LiftIllustration o -> { o.getParent()
-                .getIllustrations()
-                .removeIf(x -> x == this);
+            case LiftIllustration o -> {
+                if (o.getParent() != null) o.getParent().illustrations.removeIf(x -> x == o);
                 o.setParent(null);
             }
-            case LiftField o -> { o.getParent()
-                .getFields()
-                .remove(o.getSpecification().getName());
+            case LiftField o -> {
+                String name = o.getSpecification().getName();
+                if (o.getParent() != null && o.getParent().fields.get(name) == o) {
+                    o.getParent().fields.remove(name);
+                }
                 o.setParent(null);
             }
-            case LiftEtymology o -> { o.getParent()
-                .getEtymologies()
-                .removeIf(x -> x == this);
+            case LiftEtymology o -> {
+                if (o.getParent() != null) o.getParent().etymologies.removeIf(x -> x == o);
                 o.setParent(null);
             }
             case LiftAnnotation o -> {
-                o.getParent()
-                .getAnnotations()
-                .removeIf(x -> x == this);
+                switch (o.getParent()) {
+                    case AbstractExtensibleWithoutField p -> p.annotations.removeIf(x -> x == o);
+                    case LiftTrait p -> p.annotations.removeIf(x -> x == o);
+                    case MultiText p -> p.annotations().removeIf(x -> x == o);
+                    case Form p -> p.annotations().removeIf(x -> x == o);
+                    case null -> { }
+                }
                 o.setParent(null);
             }
             case LiftTranslation o -> {
-                o.getParent().removeTranslation(o);
+                if (o.getParent() != null) o.getParent().removeTranslation(o);
                 o.setParent(null);
             }
             case GrammaticalInfo o -> {
-                o.getParent().clearGrammaticalInfo();
+                if (o.getParent() != null) o.getParent().clearGrammaticalInfo();
                 o.setParent(null);
             }
             default -> throw new IllegalStateException(

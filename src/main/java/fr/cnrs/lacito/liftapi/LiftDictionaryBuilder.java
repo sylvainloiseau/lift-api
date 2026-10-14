@@ -130,10 +130,6 @@ public class LiftDictionaryBuilder {
         return this;
     }
 
-    public LiftDictionaryBuilder withVariantType(String... variantTypes) {
-        addTypes(this.dictionary.getHeader().getVariantTypeManager(), variantTypes);
-        return this;
-    }
 
     public LiftDictionaryBuilder withTranslationType(String... translationTypes) {
         addTypes(this.dictionary.getHeader().getTranslationTypeManager(), translationTypes);

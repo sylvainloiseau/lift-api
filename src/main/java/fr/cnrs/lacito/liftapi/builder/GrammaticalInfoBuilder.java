@@ -100,10 +100,8 @@ public final class GrammaticalInfoBuilder
      */
     @Override
     public GrammaticalInfo build() {
-        // A sense holds a single grammatical information. Take any previous one out of
-        // the dictionary first, so that replacing it does not leave a registered
-        // component nothing refers to.
-        parent.deleteGrammaticalInfo();
+        // A sense holds a single grammatical information: LiftSense.setGrammaticalInfo,
+        // which attach() calls, deletes the previous one first.
         super.attach();
         return element;
     }

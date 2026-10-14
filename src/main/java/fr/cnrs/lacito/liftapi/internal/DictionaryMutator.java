@@ -8,6 +8,7 @@ import fr.cnrs.lacito.liftapi.model.AbstractIdentifiable;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
 import fr.cnrs.lacito.liftapi.model.AbstractNotable;
 import fr.cnrs.lacito.liftapi.model.DuplicateIdException;
+import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.GrammaticalInfo;
 import fr.cnrs.lacito.liftapi.model.HasAnnotation;
 import fr.cnrs.lacito.liftapi.model.HasField;
@@ -36,8 +37,11 @@ import fr.cnrs.lacito.liftapi.model.LiftVariant;
 import fr.cnrs.lacito.liftapi.model.MultiText;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import javafx.collections.ObservableMap;
@@ -88,6 +92,9 @@ import javafx.collections.ObservableMap;
  */
 public final class DictionaryMutator {
 
+    /** The model's package-private wiring (setUUID, setOwningDictionary...). */
+    private static final ModelInternals.Access MODEL = ModelInternals.get();
+
     private final DictionaryRegisters registers;
 
     /**
@@ -123,14 +130,13 @@ public final class DictionaryMutator {
      * The operation is not recursive. Sub-components of the child has already
      * been attached to the child.
      *
-     * The component is registered <em>before</em> it is wired to its parent, because
-     * registration is what can fail (a duplicate LIFT id, for instance). Wiring first
-     * would leave the parent holding a child the dictionary does not know about.
-     *
-     * The {@code addX} method that {@link #wire} calls is itself self-registering (see
-     * {@code AbstractLiftRoot.adopted}), so the child is offered to the dictionary a
-     * second time; adoption is idempotent for a component this dictionary already holds,
-     * which is what makes the two safe to combine.
+     * The component is wired to its parent with the parent's {@code addX} method, which
+     * registers it when the parent is attached (see {@code AbstractLiftRoot.adopted}),
+     * and reports the addition: a builder goes through the same path as any other
+     * caller. Registration is all-or-nothing, and a failed one (a duplicate LIFT id, for
+     * instance) unwires the child again, so the parent is never left holding a child the
+     * dictionary does not know about. An entry is added with
+     * {@link LiftDictionary#addEntry(LiftEntry)}.
      *
      * @param child the newly created component
      * @param parent the component it belongs to; ignored for a {@link LiftEntry},
@@ -138,8 +144,11 @@ public final class DictionaryMutator {
      * @return {@code child}, for chaining
      */
     public <T extends AbstractLiftRoot> T attach(T child, Object parent) {
-        register(child);
-        wire(child, parent);
+        if (child instanceof LiftEntry e) {
+            owner.addEntry(e);
+        } else {
+            wire(child, parent);
+        }
         return child;
     }
 
@@ -181,7 +190,15 @@ public final class DictionaryMutator {
                     root.getClass().getSimpleName() + " must be wired to its parent first."
             );
         }
-        adoptRecursively(root);
+        // All or nothing: a failure part-way (a duplicate LIFT id deep in the subtree)
+        // takes back what was registered before it.
+        List<AbstractLiftRoot> registered = new ArrayList<>();
+        try {
+            adoptRecursively(root, registered);
+        } catch (RuntimeException e) {
+            rollback(registered);
+            throw e;
+        }
     }
 
     /**
@@ -208,15 +225,32 @@ public final class DictionaryMutator {
         registers.entries.add(index, entry);
     }
 
-    private void adoptRecursively(AbstractLiftRoot node) {
+    private void adoptRecursively(AbstractLiftRoot node, List<AbstractLiftRoot> registered) {
         // 1. register the node and its MultiText(s), unless we already hold it
         if (!isRegisteredHere(node)) {
             register(node);
+            registered.add(node);
         }
         // 2. recursively add its descendants, using the same child enumeration as
         // releaseSubtree so the two stay mirror images.
         for (AbstractLiftRoot child : childrenOf(node)) {
-            adoptRecursively(child);
+            adoptRecursively(child, registered);
+        }
+    }
+
+    /**
+     * Take back the registration of the nodes of a failed adoption, last first.
+     */
+    private void rollback(List<AbstractLiftRoot> registered) {
+        for (int i = registered.size() - 1; i >= 0; i--) {
+            AbstractLiftRoot node = registered.get(i);
+            if (node instanceof HasRefId source) {
+                String target = referenceTarget(source);
+                if (target != null) {
+                    registers.removeReference(target, source);
+                }
+            }
+            unregister(node);
         }
     }
 
@@ -270,17 +304,12 @@ public final class DictionaryMutator {
             );
         }
         UUID uuid = registers.newUUID();
-        node.setUUID(uuid);
 
-        registers.nodesById(node).put(uuid, node);
-
-        // Only entries and senses carry a LIFT id of their own; every other kind of
-        // node needed nothing beyond the registration above.
+        // Only entries and senses carry a LIFT id of their own. Everything that can fail
+        // is checked before anything is changed, so that a refusal leaves no trace.
+        // The default id is set before the UUID, as on any unregistered component.
         switch (node) {
             case LiftEntry e -> {
-                // The one back reference from the component graph to the dictionary:
-                // everything below this entry resolves getOwningDictionary() through it.
-                e.setOwningDictionary(owner);
                 if (e.getId().isEmpty()) {
                     e.setId(uuid.toString());
                 }
@@ -289,9 +318,6 @@ public final class DictionaryMutator {
                         "Duplicate lift id: " + e.getId().get()
                     );
                 }
-                registers.entriesByLiftId.put(e.getId().get(), e);
-                registers.entryLiftId2Uuid.put(e.getId().get(), e.getUUID());
-                registers.entries.add(e);
             }
             case LiftSense s -> {
                 if (s.getId().isEmpty()) {
@@ -304,8 +330,26 @@ public final class DictionaryMutator {
                         "Duplicate lift id: " + s.getId().get()
                     );
                 }
+            }
+            default -> {
+            }
+        }
+
+        MODEL.setUUID(node, uuid);
+        registers.nodesById(node).put(uuid, node);
+
+        switch (node) {
+            case LiftEntry e -> {
+                // The one back reference from the component graph to the dictionary:
+                // everything below this entry resolves getOwningDictionary() through it.
+                MODEL.setOwningDictionary(e, owner);
+                registers.entriesByLiftId.put(e.getId().get(), e);
+                registers.entryLiftId2Uuid.put(e.getId().get(), uuid);
+                registers.entries.add(e);
+            }
+            case LiftSense s -> {
                 registers.sensesByLiftId.put(s.getId().get(), s);
-                registers.senseLiftId2Uuid.put(s.getId().get(), s.getUUID());
+                registers.senseLiftId2Uuid.put(s.getId().get(), uuid);
             }
             default -> {
                 // nodesById above already rejected an unknown kind of node.
@@ -328,16 +372,8 @@ public final class DictionaryMutator {
         }
 
         if (node instanceof HasRefId hasref) {
-            String target = null;
-
-            // TODO : which is available here, depending on high/low level ?
-            // Try to avoid the test
-            if (hasref.getRefId().isPresent() )
-                target = hasref.getRefId().get();
-            else if (hasref.getRefObject() != null && hasref.getRefObject().getId().isPresent())
-                target = hasref.getRefObject().getId().get();
-
-            if (target != null && !target.trim().isEmpty()) {
+            String target = referenceTarget(hasref);
+            if (target != null) {
                 registers.addReference(target, hasref);
             }
         }
@@ -363,14 +399,14 @@ public final class DictionaryMutator {
             throw new IllegalArgumentException("UUID already set");
         }
         UUID uuid = registers.newUUID();
-        element.setUUID(uuid);
+        MODEL.setUUID(element, uuid);
         textById.put(uuid, element);
         for (String lang : element.getLangs()) {
             if (!languagesManager.hasLanguage(lang)) {
                 languagesManager.addLanguage(lang);
             }
         }
-        element.setLanguagesManager(languagesManager);
+        MODEL.setLanguagesManager(element, languagesManager);
     }
 
     // ------------------------------------------------------------------
@@ -393,45 +429,46 @@ public final class DictionaryMutator {
      * @throws IllegalStateException if the subtree is still referred to from elsewhere
      */
     public void releaseSubtree(AbstractLiftRoot root) {
-        // 1. First, manage reference counting
-        if (root instanceof LiftRelation r) {
-            final String target = r
-                .getRefObject().getId()
-                .orElseThrow(() ->
-                    new IllegalArgumentException("Reference ID is missing")
-                );
-            registers.removeReference(target, r);
-        } else if (root instanceof LiftVariant a) {
-            final String target = a
-                .getRefObject().getId()
-                .orElseThrow(() ->
-                    new IllegalArgumentException("Reference ID is missing")
-                );
-            registers.removeReference(target, a);
-
-        // 2. check that this node is not refered from another node
-        } else if (root instanceof AbstractIdentifiable i) {
-            final String refId = i
-                .getId()
-                .orElseThrow(() ->
-                    new IllegalArgumentException("Reference ID is missing")
-                );
-            if (registers.isReferenced(refId)) {
-                throw new IllegalStateException(
-                    "Cannot delete this node: it is referenced from other nodes."
-                );
+        // All or nothing: check the whole subtree before changing anything. A component
+        // may only be referred to by relations and variants of the subtree visited
+        // before it (an entry's own relations to its senses, for instance), whose
+        // references are released first.
+        List<AbstractLiftRoot> nodes = new ArrayList<>();
+        collect(root, nodes);
+        Set<HasRefId> released = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (AbstractLiftRoot node : nodes) {
+            if (node instanceof HasRefId source) {
+                released.add(source);
+            } else if (node instanceof AbstractIdentifiable i) {
+                String id = i.getId().orElse(null);
+                if (id != null) {
+                    for (HasRefId source : registers.referencesTo(id)) {
+                        if (!released.contains(source)) {
+                            throw new IllegalStateException(
+                                "Cannot delete this node: it is referenced from other nodes."
+                            );
+                        }
+                    }
+                }
             }
         }
+        for (AbstractLiftRoot node : nodes) {
+            if (node instanceof HasRefId source) {
+                String target = referenceTarget(source);
+                if (target != null) {
+                    registers.removeReference(target, source);
+                }
+            }
+            // unregister() also unregisters the node's own MultiTexts.
+            unregister(node);
+        }
+    }
 
-        // 3. remove this node from the indexes.
-        // unregister() already unregisters the node's own MultiTexts; doing it again
-        // here would decrement every language counter twice.
-        unregister(root);
-
-        // 4. recursively unregister its descendants, using the same child
-        // enumeration as adoptSubtree so the two stay mirror images.
-        for (AbstractLiftRoot child : childrenOf(root)) {
-            releaseSubtree(child);
+    /** The nodes of a subtree, in the traversal order of {@link #childrenOf}. */
+    private static void collect(AbstractLiftRoot node, List<AbstractLiftRoot> nodes) {
+        nodes.add(node);
+        for (AbstractLiftRoot child : childrenOf(node)) {
+            collect(child, nodes);
         }
     }
 
@@ -447,7 +484,7 @@ public final class DictionaryMutator {
         }
         map.remove(node.getUUID());
 
-        node.setUUID(null);
+        MODEL.setUUID(node, null);
 
         if (node instanceof AbstractIdentifiable identifiable) {
             String liftId = identifiable.getId().get();
@@ -468,7 +505,7 @@ public final class DictionaryMutator {
             registers.entries.removeIf(x -> x == e);
             // Mirrors register(): the subtree below this entry becomes detached, so
             // mutating it no longer touches this dictionary.
-            e.setOwningDictionary(null);
+            MODEL.setOwningDictionary(e, null);
         }
 
         for (MultiText text : objectTextsOf(node)) {
@@ -484,9 +521,9 @@ public final class DictionaryMutator {
         ObservableMap<UUID, MultiText> textById
     ) {
         textById.remove(element.getUUID());
-        element.unregister();
-        element.setUUID(null);
-        element.setLanguagesManager(null);
+        MODEL.unregister(element);
+        MODEL.setUUID(element, null);
+        MODEL.setLanguagesManager(element, null);
     }
 
     // ------------------------------------------------------------------
@@ -596,6 +633,19 @@ public final class DictionaryMutator {
             children.addAll(p.getMedias());
         }
 
+        if (node instanceof LiftTrait t) {
+            // A trait is not an AbstractExtensibleWithoutField either.
+            children.addAll(t.getAnnotations());
+        }
+
+        // The annotations held by the node's texts, and by their forms.
+        for (MultiText text : objectTextsOf(node)) {
+            textAnnotations(text, children);
+        }
+        for (MultiText text : metaTextsOf(node)) {
+            textAnnotations(text, children);
+        }
+
         if (node instanceof AbstractExtensibleWithoutField a) {
             children.addAll(a.getAnnotations());
             children.addAll(a.getTraits());
@@ -631,6 +681,85 @@ public final class DictionaryMutator {
         }
 
         return children;
+    }
+
+    private static void textAnnotations(MultiText text, List<AbstractLiftRoot> children) {
+        // hasAnnotations() first: getAnnotations() would allocate a list on every text.
+        if (text.hasAnnotations()) {
+            children.addAll(text.getAnnotations());
+        }
+        for (Form f : text.getForms()) {
+            if (f.hasAnnotations()) {
+                children.addAll(f.getAnnotations());
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // References and ids
+    // ------------------------------------------------------------------
+
+    /**
+     * The LIFT id a relation or a variant refers to, as the reference counts know it:
+     * its {@code ref} if it has one, otherwise the id of the component it points to.
+     *
+     * @return the id, or {@code null} when it refers to nothing
+     */
+    public static String referenceTarget(HasRefId source) {
+        String target = source.getRefId().orElse(null);
+        if (target == null && source.getRefObject() != null) {
+            target = source.getRefObject().getId().orElse(null);
+        }
+        return target == null || target.isBlank() ? null : target;
+    }
+
+    /**
+     * Move the reference count of {@code source} from {@code oldTarget} to
+     * {@code newTarget}, after it changed what it refers to.
+     */
+    public void retarget(HasRefId source, String oldTarget, String newTarget) {
+        if (java.util.Objects.equals(oldTarget, newTarget)) {
+            return;
+        }
+        if (oldTarget != null) {
+            registers.removeReference(oldTarget, source);
+        }
+        if (newTarget != null) {
+            registers.addReference(newTarget, source);
+        }
+    }
+
+    /**
+     * Rename a registered entry or sense in the LIFT-id indexes. Called by
+     * {@code setId} before it changes the id.
+     *
+     * @throws DuplicateIdException if another entry (or sense) has {@code newId}
+     * @throws IllegalStateException if relations or variants refer to {@code oldId}
+     */
+    public void changeLiftId(AbstractIdentifiable node, String oldId, String newId) {
+        Map<String, ? extends AbstractIdentifiable> byId = node instanceof LiftEntry
+            ? registers.entriesByLiftId
+            : registers.sensesByLiftId;
+        Map<String, UUID> toUuid = node instanceof LiftEntry
+            ? registers.entryLiftId2Uuid
+            : registers.senseLiftId2Uuid;
+        if (byId.containsKey(newId)) {
+            throw new DuplicateIdException("Duplicate lift id: " + newId);
+        }
+        if (oldId != null && registers.isReferenced(oldId)) {
+            throw new IllegalStateException(
+                "Cannot change the id " + oldId + ": it is referenced from other nodes."
+            );
+        }
+        if (oldId != null) {
+            byId.remove(oldId);
+            toUuid.remove(oldId);
+        }
+        switch (node) {
+            case LiftEntry e -> registers.entriesByLiftId.put(newId, e);
+            case LiftSense s -> registers.sensesByLiftId.put(newId, s);
+        }
+        toUuid.put(newId, node.getUUID());
     }
 
     // ------------------------------------------------------------------

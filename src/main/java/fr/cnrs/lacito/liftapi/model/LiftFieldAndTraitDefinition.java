@@ -1,9 +1,14 @@
 package fr.cnrs.lacito.liftapi.model;
 
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import fr.cnrs.lacito.liftapi.change.ModelProperty;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.ReadOnlyObjectProperty;
 
 // between 0.13 and 0.15 : field -> field-definition, field/@tag -> field-definition/@name,
 /**
@@ -79,92 +84,93 @@ repeated.
 public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
 
     final String name;
-
     final LiftHeader parent;
 
-    private Optional<FeatureSet> resolvedRange = Optional.empty();
+    // Every attribute is a tracked property: a definition is edited from the header
+    // views, and there are few of them.
+    private final TrackedProperty<FeatureSet> resolvedRange =
+        new TrackedProperty<>(this, ModelProperty.DEFINITION_RANGE, null);
+    private final TrackedProperty<String> writingSystem =
+        new TrackedProperty<>(this, ModelProperty.DEFINITION_WRITING_SYSTEM, null);
+    private final TrackedProperty<LiftFieldAndTraitDefinitionKind> kind =
+        new TrackedProperty<>(this, ModelProperty.DEFINITION_KIND, LiftFieldAndTraitDefinitionKind.UNKNOWN);
+    private final TrackedProperty<Set<LiftFieldAndTraitDefinitionTarget>> targets =
+        new TrackedProperty<>(this, ModelProperty.DEFINITION_TARGETS, Set.of());
+    /** The data model used to read and write values: the declared one, or STRING. */
+    private LiftFieldAndTraitDefinitionDataModel definitionType = LiftFieldAndTraitDefinitionDataModel.STRING;
+    /** The declared data model ({@code @type}), {@code null} when there is none. */
+    private final TrackedProperty<LiftFieldAndTraitDefinitionDataModel> declaredDataModel =
+        new TrackedProperty<>(this, ModelProperty.DEFINITION_DATA_MODEL, null);
+
+    MultiText label = new MultiText(this);
 
     /**
-     * If the datamodel of this trait definition is one of 
-     * {@link LiftFieldAndTraitDefinitionDataModel#FEATURE_SET},
-     * {@link LiftFieldAndTraitDefinitionDataModel#FEATURE_LIST} or
-     * {@link LiftFieldAndTraitDefinitionDataModel#FEATURE}, then
-     * this method give the {@link FeatureSet} object which defines the actual
-     * values availables.
-     * 
-     * In LIFT-XML, this corresponde to the values{@code option}, {@code
-     * option-collection}, or {@code option-sequence} on the attribute type of the field-definition element;
-     * the range is given by the value of {@code @option-range}
-     * attribute.
+     * Creates a definition for the given header. Use the header's {@code create...}
+     * methods, which also add it there.
      */
+    public LiftFieldAndTraitDefinition(String name, LiftHeader parent) {
+        this.name = name;
+        this.parent = parent;
+    }
+
     public Optional<FeatureSet> getResolvedFeatureSet() {
-        return resolvedRange;
+        return Optional.ofNullable(resolvedRange.get());
     }
 
     public void setResolvedRange(Optional<FeatureSet> resolvedRange) {
-        this.resolvedRange = resolvedRange;
+        this.resolvedRange.set(resolvedRange == null ? null : resolvedRange.orElse(null));
     }
 
-    Optional<String> writingSystem = Optional.empty();
+    /** The range of an option definition; {@code null} when there is none. */
+    public ObjectProperty<FeatureSet> resolvedRangeProperty() {
+        return resolvedRange;
+    }
 
     public Optional<String> getWritingSystem() {
-        return writingSystem;
+        return Optional.ofNullable(writingSystem.get());
     }
 
     public void setWritingSystem(Optional<String> writingSystem) {
-        this.writingSystem = writingSystem;
+        this.writingSystem.set(writingSystem == null ? null : writingSystem.orElse(null));
     }
 
-    MultiText label = new MultiText(this);
+    /** The writing systems listed; {@code null} when there are none. */
+    public ObjectProperty<String> writingSystemProperty() {
+        return writingSystem;
+    }
 
     public MultiText getLabel() {
         return label;
     }
 
-    private LiftFieldAndTraitDefinitionKind kind =
-        LiftFieldAndTraitDefinitionKind.UNKNOWN;
-
     public void setKind(LiftFieldAndTraitDefinitionKind kind) {
-        this.kind = kind;
+        this.kind.set(kind);
     }
 
     public LiftFieldAndTraitDefinitionKind getKind() {
+        return kind.get();
+    }
+
+    /** Whether this definition is for fields, traits, or not known yet. */
+    public ObjectProperty<LiftFieldAndTraitDefinitionKind> kindProperty() {
         return kind;
     }
 
-    private Optional<LiftFieldAndTraitDefinitionDataModel> definitionType =
-        Optional.empty();
-
     /**
-     * Whether {@link #definitionType} came from an explicit {@code @type} attribute
-     * rather than from the {@link LiftFieldAndTraitDefinitionDataModel#STRING} default
-     * applied by the constructor.
+     * The data model used to read and write the values: the declared one, or
+     * {@link LiftFieldAndTraitDefinitionDataModel#STRING} when none is declared.
      */
-    private boolean dataModelDeclared = false;
-
     public Optional<LiftFieldAndTraitDefinitionDataModel> getDataModel() {
-        return definitionType;
+        return Optional.of(definitionType);
     }
-
-    public void setDefinitionType(Optional<LiftFieldAndTraitDefinitionDataModel> definitionType) {
-        this.definitionType = definitionType;
-    }
-
-    private Set<LiftFieldAndTraitDefinitionTarget> targets = EnumSet.noneOf(
-        LiftFieldAndTraitDefinitionTarget.class
-    );
 
     /**
-     * Creates a new field or trait definition with the given name and parent header.
-     *
-     * By default, the kind is set to {@link LiftFieldAndTraitDefinitionKind#UNKNOWN}
-     * and the definition type to {@link LiftFieldAndTraitDefinitionDataModel#STRING}.
+     * @deprecated use {@link #setDataModel(Optional)}, which also records that the data
+     *             model is declared
      */
-    public LiftFieldAndTraitDefinition(String name, LiftHeader parent) {
-        this.name = name;
-        this.parent = parent;
-        kind = LiftFieldAndTraitDefinitionKind.UNKNOWN;
-        definitionType = Optional.of(LiftFieldAndTraitDefinitionDataModel.STRING);
+    @Deprecated(forRemoval = true)
+    public void setDefinitionType(Optional<LiftFieldAndTraitDefinitionDataModel> definitionType) {
+        setDataModel(definitionType.map(LiftFieldAndTraitDefinitionDataModel::toStringValue));
     }
 
     public String getName() {
@@ -175,81 +181,103 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
         return getMainMultiText();
     }
 
+    /**
+     * @return the components this definition applies to, an unmodifiable set
+     */
     public Set<LiftFieldAndTraitDefinitionTarget> getTargets() {
-        return targets;
+        return targets.get();
     }
 
-    /** Raw @class value (for backward compat / serialization). */
+    /** The components this definition applies to, read-only: see {@link #setTargets(Set)}. */
+    public ReadOnlyObjectProperty<Set<LiftFieldAndTraitDefinitionTarget>> targetsProperty() {
+        return targets.getReadOnlyProperty();
+    }
+
     public String getTargetAsString() {
-        return targets.stream().map(LiftFieldAndTraitDefinitionTarget::toStringValue)
+        return getTargets().stream().map(LiftFieldAndTraitDefinitionTarget::toStringValue)
             .collect(Collectors.joining(" "));
     }
 
-    /**
-     * Set targets from a list of space-separated tokens
-    . */
+    /** Set the targets from the space-separated list of the {@code class} attribute. */
     public void setTargets(String targetString) {
-        this.targets = LiftFieldAndTraitDefinitionTarget.parseTargetString(targetString);
+        setTargets(LiftFieldAndTraitDefinitionTarget.parseTargetString(targetString));
+    }
+
+    /**
+     * @param targets the components this definition applies to; {@code null} for none
+     */
+    public void setTargets(Set<LiftFieldAndTraitDefinitionTarget> targets) {
+        Set<LiftFieldAndTraitDefinitionTarget> copy = targets == null || targets.isEmpty()
+            ? Set.of()
+            : Collections.unmodifiableSet(EnumSet.copyOf(targets));
+        this.targets.set(copy);
     }
 
     public Optional<LiftFieldAndTraitDefinitionDataModel> getType() {
-        return definitionType;
+        return getDataModel();
     }
 
-    /** Raw @type value. */
     public Optional<String> getTypeStr() {
-        return definitionType.map(LiftFieldAndTraitDefinitionDataModel::toStringValue);
+        return getDataModel().map(LiftFieldAndTraitDefinitionDataModel::toStringValue);
     }
 
-    /**
-     * Raw {@code @type} value, but only when one was actually declared.
-     *
-     * Serialization must use this rather than {@link #getTypeStr()}: the constructor
-     * defaults the data model to {@link LiftFieldAndTraitDefinitionDataModel#STRING},
-     * so writing {@link #getTypeStr()} unconditionally would add a
-     * {@code type="string"} attribute that the source document never had — and on
-     * re-read that attribute promotes an {@link LiftFieldAndTraitDefinitionKind#UNKNOWN}
-     * definition to {@link LiftFieldAndTraitDefinitionKind#TRAIT}, which then clashes
-     * with any {@code <field>} using the same name.
-     */
+    /** The declared {@code @type}, empty when none was declared. */
     public Optional<String> getDeclaredTypeStr() {
-        return dataModelDeclared ? getTypeStr() : Optional.empty();
+        return isDataModelDeclared() ? getTypeStr() : Optional.empty();
     }
 
     /** Whether a {@code @type} was explicitly declared for this definition. */
     public boolean isDataModelDeclared() {
-        return dataModelDeclared;
+        return declaredDataModel.get() != null;
     }
 
-    /** Set from raw @type attribute string, resolving the enum and kind. */
+    /** The declared data model, read-only: see {@link #setDataModel(Optional)}. */
+    public ReadOnlyObjectProperty<LiftFieldAndTraitDefinitionDataModel> declaredDataModelProperty() {
+        return declaredDataModel.getReadOnlyProperty();
+    }
+
+    /**
+     * Set the declared data model from the raw {@code @type} string. An unknown or absent
+     * type leaves the definition undeclared, read and written as a string. A definition
+     * whose kind is still unknown takes the kind the data model implies.
+     *
+     * @throws IllegalStateException if the data model would change while fields or traits
+     *         use this definition
+     *
+     * @param typeStr the {@code @type} value, or empty
+     */
     public void setDataModel(Optional<String> typeStr) {
-        this.definitionType = typeStr.flatMap(
-            LiftFieldAndTraitDefinitionDataModel::fromStringValue
-        );
-        this.dataModelDeclared = this.definitionType.isPresent();
-        // If the kind is still UNKNOWN, resolve it from the definition type.
-        if (this.kind == LiftFieldAndTraitDefinitionKind.UNKNOWN) {
-            this.kind = this.definitionType
-            .map(LiftFieldAndTraitDefinitionKind::fromType)
-            .orElse(LiftFieldAndTraitDefinitionKind.UNKNOWN);
+        LiftFieldAndTraitDefinitionDataModel declared = typeStr == null ? null : typeStr
+            .flatMap(LiftFieldAndTraitDefinitionDataModel::fromStringValue)
+            .orElse(null);
+        LiftFieldAndTraitDefinitionDataModel effective =
+            declared == null ? LiftFieldAndTraitDefinitionDataModel.STRING : declared;
+        if (effective != definitionType && parent != null && parent.isUsed(this)) {
+            // The values of its traits are held in properties of the old data model.
+            throw new IllegalStateException(
+                "The data model of the definition " + name + " cannot change: fields or traits use it.");
+        }
+        this.definitionType = effective;
+        this.declaredDataModel.set(declared);
+        if (getKind() == LiftFieldAndTraitDefinitionKind.UNKNOWN && declared != null) {
+            setKind(LiftFieldAndTraitDefinitionKind.fromType(declared));
         }
     }
 
     public boolean isFieldDefinition() {
-        return kind == LiftFieldAndTraitDefinitionKind.FIELD;
+        return getKind() == LiftFieldAndTraitDefinitionKind.FIELD;
     }
 
     public boolean isTraitDefinition() {
-        return kind == LiftFieldAndTraitDefinitionKind.TRAIT;
+        return getKind() == LiftFieldAndTraitDefinitionKind.TRAIT;
     }
 
     @Override
     public String toString() {
         return "LiftFieldAndTraitDefinition{" +
             "name='" + name + '\'' +
-            ", kind=" + kind +
-            ", targets=" + targets.stream().map(LiftFieldAndTraitDefinitionTarget::toStringValue)
-                .collect(Collectors.joining(" ")) +
+            ", kind=" + getKind() +
+            ", targets=" + getTargetAsString() +
             ", definitionType=" + definitionType +
             '}';
     }

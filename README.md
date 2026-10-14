@@ -91,6 +91,40 @@ import fr.cnrs.lacito.liftapi.LiftDictionary;
             .addNote("source", "en", "From Old English 'irnan'")
             .build();
 ```
+
+## Listening to changes
+
+Every change of a dictionary is reported as a reversible event: a component added or
+removed, a value changed (a text, a date, a type…), a form, a feature, a definition, a
+language. Each can be reverted and reapplied, which is what an undo history needs.
+
+```java
+import fr.cnrs.lacito.liftapi.change.ModelChange;
+
+        List<ModelChange> changes = new ArrayList<>();
+        Subscription s = dictionary.addChangeListener(changes::add);
+
+        word.getSenses().getFirst().getGlosses().formTextProperty("en").set("to sprint");
+
+        // Undo everything, last change first.
+        for (int i = changes.size() - 1; i >= 0; i--) {
+            changes.get(i).revert();
+        }
+        s.unsubscribe();
+```
+
+Loading a file reports nothing, and costs nothing more. See the javadoc of the
+`fr.cnrs.lacito.liftapi.change` package for the rules.
+
+## Transactions
+
+```java
+        try (ChangeRecorder rec = dictionary.recordChanges()) {
+            importEntries(dictionary, file);  // any changes; an exception skips the commit
+            rec.commit();                     // keep them; without commit, all are reverted
+        }
+```
+
 ## CLI
 
 Utility for loading a dictionary:

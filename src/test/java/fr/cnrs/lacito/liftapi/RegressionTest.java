@@ -2,6 +2,7 @@ package fr.cnrs.lacito.liftapi;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
@@ -16,11 +17,14 @@ import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
+import fr.cnrs.lacito.liftapi.model.LiftMedia;
 import fr.cnrs.lacito.liftapi.model.LiftNote;
+import fr.cnrs.lacito.liftapi.model.LiftPronunciation;
 import fr.cnrs.lacito.liftapi.model.LiftRelation;
 import fr.cnrs.lacito.liftapi.model.LiftReversal;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
+import fr.cnrs.lacito.liftapi.model.LiftVariant;
 import fr.cnrs.lacito.liftapi.LiftVersion;
 
 import java.time.Duration;
@@ -397,10 +401,8 @@ public class RegressionTest {
             "annotation-type",
             dictionary.getHeader().getAnnotationTypeManager().getId()
         );
-        assertEquals(
-            "variant-type",
-            dictionary.getHeader().getVariantTypeManager().getId()
-        );
+        // A variant's type is a trait: there is no built-in variant-type range.
+        assertFalse(dictionary.getHeader().hasFeatureSet("variant-type"));
         assertEquals(
             dictionary.getHeader().getFeatureSets().size(),
             dictionary
@@ -595,5 +597,95 @@ public class RegressionTest {
             IllegalArgumentException.class,
             () -> manager.removeLanguageOccurrence("xyz")
         );
+    }
+
+    // ------------------------------------------------------------------
+    // Ids and positions
+    // ------------------------------------------------------------------
+
+    /**
+     * {@code setId} used to set the field only: the dictionary's id index still knew the
+     * entry under its old id, and a duplicate went unnoticed.
+     */
+    @Test
+    public void renamingAnEntryUpdatesTheIdIndex() {
+        LiftEntry a = dictionary.getComponentBuilder().entry().withForm("tww", "a").build();
+        LiftEntry b = dictionary.getComponentBuilder().entry().withForm("tww", "b").build();
+        String old = a.getId().orElseThrow();
+        a.setId("renamed");
+        var registry = dictionary.getLiftDictionaryRegistry();
+        assertSame(a, registry.getEntryOrSenseByLiftId("renamed"));
+        assertNull(registry.getEntryOrSenseByLiftId(old));
+        assertThrows(DuplicateIdException.class, () -> b.setId("renamed"));
+        assertEquals(b.getId().orElseThrow(), registry.getEntryOrSenseByLiftId(b.getId().orElseThrow()).getId().orElseThrow());
+    }
+
+    /**
+     * Renaming an entry something refers to would leave the relation pointing at nothing,
+     * as deleting it would: refused the same way.
+     */
+    @Test
+    public void aReferencedEntryCannotBeRenamed() {
+        dictionary.getHeader().getRelationTypeManager().addFeature("synonym");
+        LiftEntry target = dictionary.getComponentBuilder().entry().withForm("tww", "a").build();
+        dictionary.getComponentBuilder().entry().withForm("tww", "b")
+            .addRelation(r -> r.withRef(target).withType("synonym")).build();
+        assertThrows(IllegalStateException.class, () -> target.setId("renamed"));
+    }
+
+    /**
+     * Only senses, examples and entries could be inserted at a position: undoing the
+     * deletion of a trait, a relation... moved it to the end of its list.
+     */
+    @Test
+    public void listHeldComponentsCanBeInsertedAtAPosition() {
+        LiftEntry entry = dictionary.getComponentBuilder().entry().withForm("tww", "a").build();
+        var def = dictionary.getHeader().getOrCreateTraitsDefinitions("status");
+        LiftTrait first = new LiftTrait(def, "1");
+        LiftTrait second = new LiftTrait(def, "2");
+        entry.addTrait(first);
+        entry.addTrait(0, second);
+        assertEquals(List.of(second, first), entry.getTraits());
+        assertEquals(java.util.OptionalInt.of(1), first.positionInParent());
+
+        LiftVariant v1 = new LiftVariant();
+        LiftVariant v2 = new LiftVariant();
+        entry.addVariant(v1);
+        entry.addVariant(0, v2);
+        assertEquals(java.util.OptionalInt.of(0), v2.positionInParent());
+
+        LiftPronunciation p = new LiftPronunciation();
+        entry.addPronunciation(p);
+        LiftMedia m1 = new LiftMedia("a.wav");
+        LiftMedia m2 = new LiftMedia("b.wav");
+        p.addMedia(m1);
+        p.addMedia(0, m2);
+        assertEquals(List.of(m2, m1), p.getMedias());
+    }
+
+    /**
+     * FieldWorks exports may declare a field definition twice. Reading such a file used
+     * to keep the last declaration; it must not stop the whole load.
+     */
+    @Test
+    public void aDefinitionDeclaredTwiceInAFileKeepsTheLastOne(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+        java.nio.file.Path file = dir.resolve("twice.lift");
+        java.nio.file.Files.writeString(file, """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <lift version="0.13" producer="test">
+            <header>
+            <fields>
+            <field-definition name="note-a" class="entry" type="multistring"/>
+            <field-definition name="note-a" class="sense" type="multitext"/>
+            </fields>
+            </header>
+            <entry id="e1"><lexical-unit><form lang="tww"><text>a</text></form></lexical-unit></entry>
+            </lift>
+            """);
+        LiftDictionary d = LiftDictionary.loadDictionaryFromFile(file.toFile());
+        assertEquals(1, d.getLiftDictionaryRegistry().getEntries().size());
+        assertEquals("sense", d.getHeader().getFieldsAndTraitsDefinitions("note-a").getTargetAsString());
+        assertEquals(1, d.getHeader().getFieldsAndTraitsDefinitions().stream()
+            .filter(x -> x.getName().equals("note-a")).count());
     }
 }

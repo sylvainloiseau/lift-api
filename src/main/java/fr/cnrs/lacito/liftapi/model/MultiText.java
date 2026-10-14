@@ -3,6 +3,8 @@ package fr.cnrs.lacito.liftapi.model;
 import fr.cnrs.lacito.liftapi.LiftDictionaryLanguagesManager;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.LiftDictionary;
+import fr.cnrs.lacito.liftapi.change.FormAdded;
+import fr.cnrs.lacito.liftapi.change.FormRemoved;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -14,13 +16,14 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import javafx.beans.property.MapProperty;
-import javafx.beans.property.SimpleMapProperty;
+import javafx.beans.property.ReadOnlyMapProperty;
+import javafx.beans.property.ReadOnlyMapWrapper;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.collections.FXCollections;
 import javafx.collections.MapChangeListener;
+import javafx.collections.ObservableList;
 import javafx.collections.ObservableMap;
 
 /**
@@ -52,11 +55,15 @@ public final class MultiText
 
     protected LiftDictionaryRegistry registry;
 
-    protected final MapProperty<String, Form> lang2FormMap =
-        new SimpleMapProperty<>(FXCollections.observableHashMap());
+    /** The forms, by language: a map, their order is not data. */
+    private final ObservableMap<String, Form> lang2FormMap = FXCollections.observableHashMap();
+    private ObservableMap<String, Form> formsView;
     protected static final Set<String> EMPTY_LANG_SET =
         Collections.unmodifiableSet(new HashSet<>());
-    protected final List<LiftAnnotation> annotations = new ArrayList<>();
+    // Allocated on the first annotation, or the first call to getAnnotations(): there
+    // are many MultiTexts, and very few have annotations.
+    private ObservableList<LiftAnnotation> annotations;
+    private ObservableList<LiftAnnotation> annotationsView;
     private final ConcurrentHashMap<
         String,
         StringProperty
@@ -83,12 +90,42 @@ public final class MultiText
         return Optional.ofNullable(lang2FormMap.get(lang));
     }
 
+    /**
+     * @return the forms, read-only; change them with {@link #add(Form)},
+     *         {@link #removeForm(String)} or {@link #formTextProperty(String)}
+     */
     public Collection<Form> getForms() {
-        return lang2FormMap.values();
+        return Collections.unmodifiableCollection(lang2FormMap.values());
     }
 
-    public List<LiftAnnotation> getAnnotations() {
+    /**
+     * @return the annotations, as a read-only observable list
+     */
+    @Override
+    public ObservableList<LiftAnnotation> getAnnotations() {
+        if (annotationsView == null) annotationsView = FXCollections.unmodifiableObservableList(annotations());
+        return annotationsView;
+    }
+
+    /**
+     * Whether this multitext has annotations; unlike {@link #getAnnotations()}, it does
+     * not allocate anything.
+     */
+    public boolean hasAnnotations() {
+        return annotations != null && !annotations.isEmpty();
+    }
+
+    /** The annotations, created on demand. */
+    ObservableList<LiftAnnotation> annotations() {
+        if (annotations == null) {
+            annotations = FXCollections.observableArrayList();
+        }
         return annotations;
+    }
+
+    /** The annotations, without allocating: an empty list when there are none. */
+    java.util.List<LiftAnnotation> annotationsOrEmpty() {
+        return annotations == null ? java.util.List.of() : annotations;
     }
 
     public boolean containsLang(String lang) {
@@ -102,15 +139,26 @@ public final class MultiText
         if (!lang2FormMap.containsKey(lang)) {
             throw new IllegalArgumentException("No text in language: " + lang);
         }
-        lang2FormMap.remove(lang);
+        LiftDictionary observer = Changes.observing(this);
+        Form removed = lang2FormMap.remove(lang);
         if (languageManager != null) {
             languageManager.removeLanguageOccurrence(lang);
+        }
+        LiftDictionary registry = parent == null ? null : parent.getOwningDictionary();
+        if (registry != null) {
+            for (LiftAnnotation a : removed.annotationsOrEmpty()) {
+                registry.getMutator().releaseSubtree(a);
+            }
+        }
+        removed.setOwner(null);
+        if (observer != null) {
+            Changes.fire(observer, new FormRemoved(observer, this, removed));
         }
     }
 
     public Set<String> getLangs() {
         if (isEmpty()) return EMPTY_LANG_SET;
-        return lang2FormMap.keySet();
+        return Collections.unmodifiableSet(lang2FormMap.keySet());
     }
 
     public void add(Form f) {
@@ -125,33 +173,66 @@ public final class MultiText
             "Duplicate lang: " + f.lang + "; form '" + f.toPlainText() + "'"
             + " already exists in this MultiText: '" + lang2FormMap.get(f.lang).toPlainText() + "'"
         );
+        if (f.getOwner() != null && f.getOwner() != this) throw new IllegalArgumentException(
+            "This form already belongs to another MultiText: remove it from there first."
+        );
+        f.setOwner(this);
         lang2FormMap.put(f.lang, f);
         if (languageManager != null) {
             languageManager.addLanguageOccurrence(f.lang);
+        }
+        // The annotations of the form come with it, as a subtree does.
+        LiftDictionary registry = parent == null ? null : parent.getOwningDictionary();
+        if (registry != null) {
+            for (LiftAnnotation a : f.annotationsOrEmpty()) {
+                registry.getMutator().adoptSubtree(a);
+            }
+        }
+        LiftDictionary observer = Changes.observing(this);
+        if (observer != null) {
+            Changes.fire(observer, new FormAdded(observer, this, f));
         }
     }
 
     @Override
     public void addAnnotation(LiftAnnotation a) {
-        annotations.add(a);
-        a.setParent(this);
+        addAnnotation(annotationsOrEmpty().size(), a);
     }
 
     /**
-     * A {@code MultiText} is not an {@code AbstractLiftRoot}, so the annotations it
-     * holds are never registered in a dictionary (see {@code DictionaryCensusTest});
-     * this only has a link to undo.
+     * Add an annotation at a given position; it is registered when this multitext's
+     * component belongs to a dictionary.
+     */
+    @Override
+    public void addAnnotation(int index, LiftAnnotation a) {
+        annotations().add(index, a);
+        a.setParent(this);
+        if (parent != null) {
+            parent.adoptedIn(this, a);
+        }
+    }
+
+    /**
+     * Remove an annotation, unregistering it if this multitext's component belongs to a
+     * dictionary.
      */
     @Override
     public void deleteAnnotation(LiftAnnotation a) {
-        if (annotations.removeIf(x -> x == a)) {
-            a.setParent(null);
+        if (a == null || annotationsOrEmpty().stream().noneMatch(x -> x == a)) {
+            throw new IllegalArgumentException(
+                "This annotation is not held by this " + getClass().getSimpleName() + "."
+            );
+        }
+        if (parent != null) {
+            parent.removeChildIn(this, a);
+        } else {
+            a.unlink();
         }
     }
 
     @Override
     public void retypeAnnotation(LiftAnnotation a, Feature type) {
-        if (a == null || annotations.stream().noneMatch(x -> x == a)) {
+        if (a == null || annotationsOrEmpty().stream().noneMatch(x -> x == a)) {
             throw new IllegalArgumentException(
                 "This annotation is not held by this " + getClass().getSimpleName() + "."
             );
@@ -160,10 +241,20 @@ public final class MultiText
     }
 
     /**
-     * JavaFX observable access to underlying forms map.
+     * The forms by language, as a read-only observable map.
      */
-    public MapProperty<String, Form> formsProperty() {
-        return lang2FormMap;
+    public ObservableMap<String, Form> getFormsByLanguage() {
+        if (formsView == null) formsView = FXCollections.unmodifiableObservableMap(lang2FormMap);
+        return formsView;
+    }
+
+    /**
+     * @deprecated use {@link #getFormsByLanguage()}, which is observable; this returns a
+     *             read-only property over it, and will be removed
+     */
+    @Deprecated(forRemoval = true)
+    public ReadOnlyMapProperty<String, Form> formsProperty() {
+        return new ReadOnlyMapWrapper<>(this, "forms", getFormsByLanguage()).getReadOnlyProperty();
     }
 
     /**
@@ -252,7 +343,7 @@ public final class MultiText
 
             // When map changes (add/remove/replace) -> update property value
             // The property value is updated, but we have also to listen to the new Form : call runnable.
-            ObservableMap<String, Form> map = lang2FormMap.get();
+            ObservableMap<String, Form> map = lang2FormMap;
             MapChangeListener<String, Form> listener = change -> {
                 if (!l.equals(change.getKey())) return;
                 String newText = Optional.ofNullable(lang2FormMap.get(l))
@@ -275,7 +366,8 @@ public final class MultiText
         });
     }
 
-    public void setUUID(UUID uuid) {
+    /** Package-private: the mutator reaches it through ModelInternals. */
+    void setUUID(UUID uuid) {
         this.uuid = uuid;
     }
 
@@ -290,7 +382,7 @@ public final class MultiText
     ///
     /// Passing `null` detaches this MultiText from its dictionary: it stops
     /// contributing to that dictionary's language counters.
-    public void setLanguagesManager(LiftDictionaryLanguagesManager languageManager) {
+    void setLanguagesManager(LiftDictionaryLanguagesManager languageManager) {
         // can be set on null on purpose, when unregistering the parent component.
         if (languageManager == null) {
             this.languageManager = null;
@@ -311,7 +403,7 @@ public final class MultiText
         }
     }
 
-    public void unregister() {
+    void unregister() {
         if (languageManager == null) return;
         for (String lang : lang2FormMap.keySet()) {
             languageManager.removeLanguageOccurrence(lang);

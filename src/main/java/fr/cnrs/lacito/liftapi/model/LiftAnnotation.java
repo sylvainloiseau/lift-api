@@ -1,8 +1,8 @@
 package fr.cnrs.lacito.liftapi.model;
 
+import fr.cnrs.lacito.liftapi.change.ModelProperty;
+
 import javafx.beans.property.ReadOnlyObjectProperty;
-import javafx.beans.property.ReadOnlyObjectWrapper;
-import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 
 /**
@@ -20,14 +20,14 @@ public final class LiftAnnotation extends AbstractLiftRoot implements HasType {
 
     protected HasAnnotation parent;
 
-    private final ReadOnlyObjectWrapper<Feature> typeProperty = new ReadOnlyObjectWrapper<>(
-        this,
-        "type",
-        null
-    );
-    private final StringProperty valueProperty = new SimpleStringProperty(this, "value", "");;
-    private final StringProperty whoProperty = new SimpleStringProperty(this, "who", "");
-    private final StringProperty whenProperty = new SimpleStringProperty(this, "when", "");
+    private final TrackedProperty<Feature> typeProperty =
+        new TrackedProperty<>(this, ModelProperty.TYPE, null);
+    private final StringProperty valueProperty =
+        new TrackedStringProperty(this, ModelProperty.ANNOTATION_VALUE, "");
+    private final StringProperty whoProperty =
+        new TrackedStringProperty(this, ModelProperty.ANNOTATION_WHO, "");
+    private final StringProperty whenProperty =
+        new TrackedStringProperty(this, ModelProperty.ANNOTATION_WHEN, "");
 
 
     public LiftAnnotation() {
@@ -48,6 +48,12 @@ public final class LiftAnnotation extends AbstractLiftRoot implements HasType {
     }
 
     public HasAnnotation getParent() {
+        return parent;
+    }
+
+    /** The component, multitext or form this annotation is on. */
+    @Override
+    Object holder() {
         return parent;
     }
 
@@ -139,15 +145,16 @@ public final class LiftAnnotation extends AbstractLiftRoot implements HasType {
     /**
      * An annotation can hang off a component, but also off a {@link MultiText} or a
      * {@link Form}, neither of which is an {@code AbstractLiftRoot}. In the
-     * {@code MultiText} case the chain continues through the text's own owner; in the
-     * {@code Form} case it stops here, which is the known reason form-level annotations
-     * are never registered (see {@code DictionaryCensusTest}).
+     * {@code MultiText} case the chain continues through the text's own owner, and in
+     * the {@code Form} case through the multitext holding the form: so form-level
+     * annotations are registered like the others.
      */
     @Override
     public AbstractLiftRoot getParentNode() {
         return switch (parent) {
             case AbstractLiftRoot r -> r;
             case MultiText m -> m.getParent();
+            case Form f -> f.getOwner() == null ? null : f.getOwner().getParent();
             case null, default -> null;
         };
     }

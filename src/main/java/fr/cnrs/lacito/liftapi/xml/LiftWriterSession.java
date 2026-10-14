@@ -238,7 +238,8 @@ public class LiftWriterSession implements AutoCloseable {
             header.getDescription()
         );
 
-        List<FeatureSet> ranges = header.getFeatureSets();
+        // Sorted by id, so that the output is stable.
+        List<FeatureSet> ranges = AbstractPropertyWriters.sortedBy(header.getFeatureSets(), FeatureSet::getId);
         if (ranges != null && !ranges.isEmpty()) {
             out.writeStartElement(LiftVocabulary.HEADER_RANGES_LOCAL_NAME);
             for (FeatureSet r : ranges) {
@@ -247,8 +248,8 @@ public class LiftWriterSession implements AutoCloseable {
             out.writeEndElement();
         }
 
-        Collection<LiftFieldAndTraitDefinition> fields =
-            header.getFieldsAndTraitsDefinitions();
+        Collection<LiftFieldAndTraitDefinition> fields = AbstractPropertyWriters.sortedBy(
+            header.getFieldsAndTraitsDefinitions(), LiftFieldAndTraitDefinition::getName);
         if (fields != null && !fields.isEmpty()) {
             out.writeStartElement(
                 LiftVocabulary.HEADER_FIELDS_DEFINITION_LOCAL_NAME
@@ -314,7 +315,7 @@ public class LiftWriterSession implements AutoCloseable {
                 LiftVocabulary.HEADER_RANGE_ABBREV_LOCAL_NAME,
                 range.getAbbrev()
             );
-            for (Feature e : range.getFeatures().values()) {
+            for (Feature e : AbstractPropertyWriters.sortedBy(range.getFeatures().values(), Feature::getId)) {
                 writeHeaderRangeElement(w, e);
             }
         }
@@ -363,7 +364,7 @@ public class LiftWriterSession implements AutoCloseable {
         String elementName,
         MultiText mt
     ) throws Exception {
-        if (mt == null || (mt.isEmpty() && mt.getAnnotations().isEmpty())) return;
+        if (mt == null || (mt.isEmpty() && !mt.hasAnnotations())) return;
         w.writeStartElement(elementName);
         MultiTextWriters.writeMultiText(w, mt);
         w.writeEndElement();
@@ -767,8 +768,12 @@ public class LiftWriterSession implements AutoCloseable {
 
         MultiTextWriters.writeMultiText(out, ex.getExample());
 
-        ex.getTranslations().forEach(
-            biunchecked((type, mt) -> {
+        // Translations are held in a map: sort them by type so that the output is stable.
+        new java.util.TreeMap<String, java.util.Map.Entry<Feature, MultiText>>(
+            ex.getTranslations().entrySet().stream().collect(java.util.stream.Collectors.toMap(
+                t -> t.getKey().getId(), t -> t))
+        ).values().forEach(
+            unchecked(t -> { Feature type = t.getKey(); MultiText mt = t.getValue();
                 out.writeStartElement(LiftVocabulary.TRANSLATION_LOCAL_NAME);
                 out.writeAttribute(LiftVocabulary.TYPE_ATTRIBUTE, type.getId());
                 MultiTextWriters.writeMultiText(out, mt);
@@ -827,25 +832,10 @@ public class LiftWriterSession implements AutoCloseable {
         };
     }
 
-    private static <T, U> java.util.function.BiConsumer<T, U> biunchecked(
-        ThrowingBiConsumer<T, U> f
-    ) {
-        return (t, u) -> {
-            try {
-                f.accept(t, u);
-            } catch (Exception ex) {
-                throw new RuntimeException(ex);
-            }
-        };
-    }
 
     @FunctionalInterface
     interface ThrowingConsumer<T> {
         void accept(T t) throws Exception;
     }
 
-    @FunctionalInterface
-    interface ThrowingBiConsumer<T, U> {
-        void accept(T t, U u) throws Exception;
-    }
 }

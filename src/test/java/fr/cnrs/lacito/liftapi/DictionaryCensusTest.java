@@ -38,15 +38,9 @@ import org.xml.sax.helpers.DefaultHandler;
  * compares them with the registry, so omitting a component type from the traversal
  * fails here rather than silently losing a user's data.
  *
- * <h2>One known gap, deliberately not asserted</h2>
- *
- * An {@code <annotation>} inside a {@code <form>} or {@code <gloss>} is held by the
- * {@link fr.cnrs.lacito.liftapi.model.Form}, and a {@code Form} is not an
- * {@code AbstractLiftRoot}, so no traversal over components can reach it. Such
- * annotations are therefore never registered, and the MultiText each of them carries is
- * never counted towards the dictionary's languages. Closing that needs a model change,
- * so this test counts only annotations outside a form and the gap is recorded here
- * rather than hidden.
+ * Annotations are counted wherever they are: on a component, on a multitext, or inside a
+ * {@code <form>} or {@code <gloss>}. The last ones used to be out of reach of the
+ * traversal, and were never registered; a form now knows its multitext, and they are.
  */
 public class DictionaryCensusTest {
 
@@ -123,13 +117,10 @@ public class DictionaryCensusTest {
             inFile.of("etymology"),
             () -> registry.getEtymologies().size()
         );
-        // Annotations attached to a <form> or <gloss> are held by the Form, which is
-        // not an AbstractLiftRoot, so the traversal cannot reach them and they are not
-        // registered. See the note on the class. Only component-level annotations are
-        // asserted here.
+        // Including the annotations inside a <form> or <gloss>.
         check(
             mismatches,
-            "annotation (outside a form)",
+            "annotation",
             inFile.of("annotation"),
             () -> registry.getAnnotations().size()
         );
@@ -236,7 +227,6 @@ public class DictionaryCensusTest {
                 file,
                 new DefaultHandler() {
                     private int headerDepth = 0;
-                    private int formDepth = 0;
 
                     @Override
                     public void startElement(
@@ -248,14 +238,6 @@ public class DictionaryCensusTest {
                         if ("header".equals(localName) || headerDepth > 0) {
                             headerDepth++;
                             return;
-                        }
-                        // Annotations inside a form are held by the Form, not by a
-                        // component, and are not registered; do not count them.
-                        if (formDepth > 0 && "annotation".equals(localName)) {
-                            return;
-                        }
-                        if ("form".equals(localName) || "gloss".equals(localName)) {
-                            formDepth++;
                         }
                         counts.merge(localName, 1, Integer::sum);
                     }
@@ -269,9 +251,6 @@ public class DictionaryCensusTest {
                         if (headerDepth > 0) {
                             headerDepth--;
                             return;
-                        }
-                        if ("form".equals(localName) || "gloss".equals(localName)) {
-                            formDepth--;
                         }
                     }
                 }

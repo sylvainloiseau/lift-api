@@ -1,5 +1,7 @@
 package fr.cnrs.lacito.liftapi.xml;
 
+import fr.cnrs.lacito.liftapi.internal.ModelInternals;
+
 import fr.cnrs.lacito.liftapi.LiftVersion;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
@@ -21,6 +23,12 @@ import org.xml.sax.Attributes;
  * using a lower-level API than the builder API for efficiency object generation.
  */
 public final class LiftXMLFactory {
+
+    private static final java.util.logging.Logger LOGGER =
+        java.util.logging.Logger.getLogger(LiftXMLFactory.class.getName());
+
+    /** The model's package-private wiring: here, recording unknown attributes. */
+    private static final ModelInternals.Access MODEL = ModelInternals.get();
 
     public void setLiftVersion(LiftVersion liftVersion) {
         this.dictionary.setLiftVersion(liftVersion);
@@ -343,13 +351,13 @@ public final class LiftXMLFactory {
                 if (liftObject instanceof AbstractIdentifiable ai) {
                     ai.setId(value);
                 } else {
-                    liftObject.getOtherXmlAttributes().put(name, value);
+                    MODEL.putOtherXmlAttribute(liftObject, name, value);
                 }
             } else if (name.equals(LiftVocabulary.GUID_ATTRIBUTE)) {
                 if (liftObject instanceof AbstractIdentifiable ai) {
                     ai.setGuid(value);
                 } else {
-                    liftObject.getOtherXmlAttributes().put(name, value);
+                    MODEL.putOtherXmlAttribute(liftObject, name, value);
                 }
             } else if (name.equals(LiftVocabulary.TYPE_ATTRIBUTE)) {
                 if (liftObject instanceof LiftEtymology _) {
@@ -357,14 +365,14 @@ public final class LiftXMLFactory {
                 } else if (liftObject instanceof LiftRelation _) {
                 } else if (liftObject instanceof LiftNote _) {
                 } else {
-                    liftObject.getOtherXmlAttributes().put(name, value);
+                    MODEL.putOtherXmlAttribute(liftObject, name, value);
                 }
             } else if (name.equals(LiftVocabulary.SOURCE_ATTRIBUTE)) {
                 if (liftObject instanceof LiftEtymology _) {
                 } else if (liftObject instanceof LiftExample le) {
                     le.setSource(value);
                 } else {
-                    liftObject.getOtherXmlAttributes().put(name, value);
+                    MODEL.putOtherXmlAttribute(liftObject, name, value);
                 }
             } else if (name.equals(LiftVocabulary.REF_ATTRIBUTE)) {
                 if (! value.trim().isEmpty()) {
@@ -381,7 +389,7 @@ public final class LiftXMLFactory {
                         //     .computeIfAbsent(value, k -> new ArrayList<>())
                         //     .add(lr);
                     } else {
-                        liftObject.getOtherXmlAttributes().put(name, value);
+                        MODEL.putOtherXmlAttribute(liftObject, name, value);
                     }
                 }
             } else if (name.equals(LiftVocabulary.DATE_DELETED_ATTRIBUTE)) {
@@ -389,7 +397,7 @@ public final class LiftXMLFactory {
                 if (liftObject instanceof LiftEntry le) {
                     le.setDateDeleted(value);
                 } else {
-                    liftObject.getOtherXmlAttributes().put(name, value);
+                    MODEL.putOtherXmlAttribute(liftObject, name, value);
                 }
             } else if (name.equals(LiftVocabulary.ORDER_ATTRIBUTE)) {
                 if (liftObject instanceof LiftSense ls) {
@@ -397,14 +405,14 @@ public final class LiftXMLFactory {
                 } else if (liftObject instanceof LiftRelation lr) {
                     lr.setOrder(Integer.parseInt(value));
                 } else {
-                    liftObject.getOtherXmlAttributes().put(name, value);
+                    MODEL.putOtherXmlAttribute(liftObject, name, value);
                 }
             } else if (name.equals(LiftVocabulary.DATE_CREATED_ATTRIBUTE)) {
                 liftObject.setDateCreated(value);
             } else if (name.equals(LiftVocabulary.DATE_MODIFIED_ATTRIBUTE)) {
                 liftObject.setDateModified(value);
             } else {
-                liftObject.getOtherXmlAttributes().put(name, value);
+                MODEL.putOtherXmlAttribute(liftObject, name, value);
             }
         }
     }
@@ -461,6 +469,12 @@ public final class LiftXMLFactory {
         if (name == null) throw new IllegalArgumentException(
             "An attribute 'name', 'tag', or 'guid' is required on field-definition"
         );
+        if (header.containsFieldsAndTraitsDefinitions(name)) {
+            // Files exported by FieldWorks may declare a definition twice: the last
+            // declaration wins, as it always did.
+            LOGGER.warning("Field or trait definition declared twice, the last one is kept: " + name);
+            header.removeFieldOrTraitDefinition(header.getFieldsAndTraitsDefinitions(name));
+        }
         LiftFieldAndTraitDefinition f = header.createUnknownDefinition(name);
 
         String fieldclass = attributes.getValue(

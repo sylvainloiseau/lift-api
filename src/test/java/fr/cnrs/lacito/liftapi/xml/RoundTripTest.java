@@ -173,6 +173,20 @@ public class RoundTripTest {
         );
     }
 
+    /**
+     * Notes, fields, forms, translations, features, ranges and definitions are held in
+     * hash maps; the writer sorts them, so that saving an unchanged dictionary gives the
+     * same file every time (stable diffs under version control).
+     */
+    @Test
+    public void savingTwiceGivesTheSameBytes() throws Exception {
+        LiftDictionary first = Utils.loadDictionaryForTest(Utils.resourceFile("lift/20240828Lift.lift"));
+        File a = save(first, "first.lift");
+        LiftDictionary second = Utils.loadDictionaryForTest(a);
+        File b = save(second, "second.lift");
+        assertEquals(Files.readString(a.toPath()), Files.readString(b.toPath()));
+    }
+
     // ------------------------------------------------------------------
 
     private void assertRoundTrip(String resource) throws Exception {

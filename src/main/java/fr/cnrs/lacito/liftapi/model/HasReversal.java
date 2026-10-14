@@ -15,6 +15,14 @@ public sealed interface HasReversal extends LiftObject permits LiftSense, LiftRe
     public void addReversal(LiftReversal reversal);
 
     /**
+     * Adds a reversal at a given position among the reversals of this component.
+     *
+     * @param index where to insert the reversal.
+     * @param reversal the reversal to add.
+     */
+    public void addReversal(int index, LiftReversal reversal);
+
+    /**
      * Removes a reversal from this component, and from the dictionary if this component
      * belongs to one.
      *

@@ -1,18 +1,15 @@
 package fr.cnrs.lacito.liftapi.model;
 
-import java.util.List;
-import javafx.beans.property.ListProperty;
-import javafx.beans.property.SimpleListProperty;
+import javafx.beans.property.ReadOnlyListProperty;
+import javafx.beans.property.ReadOnlyListWrapper;
 import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+
 
 public final class LiftPronunciation extends AbstractExtensibleWithField {
 
-    protected final ListProperty<LiftMedia> mediasProperty =
-        new SimpleListProperty<>(
-            this,
-            "medias",
-            FXCollections.observableArrayList()
-        );
+    final ObservableList<LiftMedia> medias = FXCollections.observableArrayList();
+    private ObservableList<LiftMedia> mediasView;
 
     private HasPronunciation parent;
 
@@ -36,18 +33,31 @@ public final class LiftPronunciation extends AbstractExtensibleWithField {
         this.parent = parent;
     }
 
-    public List<LiftMedia> getMedias() {
-        return mediasProperty.get();
+    public ObservableList<LiftMedia> getMedias() {
+        if (mediasView == null) mediasView = FXCollections.unmodifiableObservableList(medias);
+        return mediasView;
     }
 
     public void addMedia(LiftMedia m) {
-        mediasProperty.add(m);
+        addMedia(medias.size(), m);
+    }
+
+    /**
+     * Add a media at a given position.
+     *
+     * @param index where to insert the media
+     * @param m the media to add
+     */
+    public void addMedia(int index, LiftMedia m) {
+        medias.add(index, m);
         m.setParent(this);
         adopted(m);
     }
 
-    public ListProperty<LiftMedia> mediasProperty() {
-        return mediasProperty;
+    /** @deprecated use {@link #getMedias()}; read-only, will be removed */
+    @Deprecated(forRemoval = true)
+    public ReadOnlyListProperty<LiftMedia> mediasProperty() {
+        return new ReadOnlyListWrapper<>(this, "medias", getMedias()).getReadOnlyProperty();
     }
 
     public static LiftPronunciation create() {
@@ -70,8 +80,7 @@ public final class LiftPronunciation extends AbstractExtensibleWithField {
      * @param m a media of this pronunciation
      */
     public void deleteMedia(LiftMedia m) {
-        requireChild(m, mediasProperty.contains(m));
-        orphaned(m);
-        m.detach();
+        requireChild(m, medias.contains(m));
+        removeChild(m);
     }
 }
