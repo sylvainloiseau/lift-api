@@ -293,4 +293,18 @@ class ChangeEventsTest {
         changed.revert();
         assertEquals("draft", t.getValue());
     }
+
+    @Test
+    void aTextChangeLeadsBackToItsComponent() {
+        Form f = sense().getGlosses().getForm("en").orElseThrow();
+        assertSame(sense().getGlosses(), f.getMultiText());
+        f.changeText("to amble");
+        ValueChanged<?> changed = assertInstanceOf(ValueChanged.class, events.getLast());
+        Form owner = assertInstanceOf(Form.class, changed.owner());
+        assertSame(sense(), owner.getMultiText().getParent());
+
+        sense().getGlosses().removeForm("en");
+        assertNull(f.getMultiText(), "a removed form belongs to no multitext");
+        assertNull(new Form("en", "loose").getMultiText());
+    }
 }

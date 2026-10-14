@@ -182,8 +182,17 @@ public final class Form implements HasAnnotation {
         return strb.toString();
     }
 
-    /** The multitext holding this form, or {@code null}. */
-    MultiText getOwner() {
+    /**
+     * The multitext holding this form: set when the form is added to it, cleared when it
+     * is removed. From there, {@link MultiText#getParent()} gives the component.
+     *
+     * For instance, a {@link fr.cnrs.lacito.liftapi.change.ValueChanged} of the text of a
+     * form has the form as its owner: this is how to tell which text of which component
+     * changed.
+     *
+     * @return the multitext, or {@code null} for a form that is in none
+     */
+    public MultiText getMultiText() {
         return owner;
     }
 

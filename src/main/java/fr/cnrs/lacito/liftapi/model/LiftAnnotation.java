@@ -154,7 +154,7 @@ public final class LiftAnnotation extends AbstractLiftRoot implements HasType {
         return switch (parent) {
             case AbstractLiftRoot r -> r;
             case MultiText m -> m.getParent();
-            case Form f -> f.getOwner() == null ? null : f.getOwner().getParent();
+            case Form f -> f.getMultiText() == null ? null : f.getMultiText().getParent();
             case null, default -> null;
         };
     }

@@ -517,6 +517,8 @@ for one version, so their removal (the rest of phase 5) is for the next one. 158
   of heap.
 - **The value of a form's text is its markup** (`Form.getMarkup()`, new): `toString()`
   wraps the root span and does not parse back.
+- **`Form.getMultiText()`** (new, public): the owner of a text change is a `Form`; this
+  leads to its multitext, then `MultiText.getParent()` to the component.
 
 **Defects found on the way (by the new tests) and fixed:**
 - The registry's component lists and `FeatureSet.featuresProperty()` were writable

@@ -173,7 +173,7 @@ public final class MultiText
             "Duplicate lang: " + f.lang + "; form '" + f.toPlainText() + "'"
             + " already exists in this MultiText: '" + lang2FormMap.get(f.lang).toPlainText() + "'"
         );
-        if (f.getOwner() != null && f.getOwner() != this) throw new IllegalArgumentException(
+        if (f.getMultiText() != null && f.getMultiText() != this) throw new IllegalArgumentException(
             "This form already belongs to another MultiText: remove it from there first."
         );
         f.setOwner(this);

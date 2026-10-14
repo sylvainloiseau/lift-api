@@ -43,7 +43,7 @@ final class Changes {
         return switch (owner) {
             case AbstractLiftRoot r -> r.eventDictionary();
             case MultiText m -> m.getParent() == null ? null : m.getParent().eventDictionary();
-            case Form f -> f.getOwner() == null ? null : dictionaryOf(f.getOwner());
+            case Form f -> f.getMultiText() == null ? null : dictionaryOf(f.getMultiText());
             case null, default -> null;
         };
     }
