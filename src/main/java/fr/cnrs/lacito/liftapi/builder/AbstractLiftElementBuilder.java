@@ -1,7 +1,9 @@
 package fr.cnrs.lacito.liftapi.builder;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
+import fr.cnrs.lacito.liftapi.internal.BuilderInternals;
 import fr.cnrs.lacito.liftapi.internal.DictionaryMutator;
+import fr.cnrs.lacito.liftapi.internal.ModelInternals;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
 import fr.cnrs.lacito.liftapi.model.AbstractNotable;
 import fr.cnrs.lacito.liftapi.model.Feature;
@@ -35,6 +37,21 @@ import fr.cnrs.lacito.liftapi.model.LiftVariant;
  * @param <U> the type of the parent element
  */
 public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot, U extends LiftObject> {
+
+    static {
+        // Hands the XML reader the element under construction (see BuilderInternals).
+        BuilderInternals.install(new BuilderInternals.Access() {
+            @Override
+            public <E extends AbstractLiftRoot> E element(AbstractLiftElementBuilder<E, ?> builder) {
+                return builder.element;
+            }
+
+            @Override
+            public void putOtherXmlAttribute(AbstractLiftElementBuilder<?, ?> builder, String name, String value) {
+                ModelInternals.get().putOtherXmlAttribute(builder.element, name, value);
+            }
+        });
+    }
 
     protected final T element;
     protected final LiftDictionary dictionary;
@@ -116,13 +133,25 @@ public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot, U e
      * itself).
      */
     protected void attach() {
-        if (attached) {
-            throw new IllegalStateException("This builder has already been used.");
-        }
         // Registering and wiring to the parent both happen in DictionaryMutator, the
         // single place that knows the correct order (register first, so that a failed
         // registration cannot leave a half-built graph behind).
-        dictionary.getMutator().attach(this.element, this.parent);
+        attach(() -> dictionary.getMutator().attach(this.element, this.parent));
+    }
+
+    /**
+     * Attach the element with the given wiring, for the builders whose element does not
+     * go into the slot its type designates: the {@code <main>} of a reversal, the
+     * components of the header.
+     *
+     * @param wiring adds the element to its parent
+     * @throws IllegalStateException if this builder was already built
+     */
+    final void attach(Runnable wiring) {
+        if (attached) {
+            throw new IllegalStateException("This builder has already been used.");
+        }
+        wiring.run();
         this.attached = true;
     }
 }

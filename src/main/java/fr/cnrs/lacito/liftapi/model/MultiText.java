@@ -375,10 +375,10 @@ public final class MultiText
         return uuid;
     }
 
-    /// With the fluent API, this method is called before any Form has been added.
-    /// With the low-level API (for loading from XML), this method is called after
-    /// all Forms in the XML document have been added: the LiftFactory take care
-    /// of computing the numbers of occurrences.
+    /// Called on registration. A MultiText built into an attached parent is empty at
+    /// that point; one built into a detached parent - every text of a file being read,
+    /// whose entry is registered once complete - is already filled, and its forms are
+    /// counted here.
     ///
     /// Passing `null` detaches this MultiText from its dictionary: it stops
     /// contributing to that dictionary's language counters.

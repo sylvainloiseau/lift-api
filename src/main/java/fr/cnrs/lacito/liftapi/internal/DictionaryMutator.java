@@ -8,6 +8,8 @@ import fr.cnrs.lacito.liftapi.model.AbstractIdentifiable;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
 import fr.cnrs.lacito.liftapi.model.AbstractNotable;
 import fr.cnrs.lacito.liftapi.model.DuplicateIdException;
+import fr.cnrs.lacito.liftapi.model.Feature;
+import fr.cnrs.lacito.liftapi.model.FeatureSet;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.GrammaticalInfo;
 import fr.cnrs.lacito.liftapi.model.HasAnnotation;
@@ -24,6 +26,8 @@ import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftEtymology;
 import fr.cnrs.lacito.liftapi.model.LiftExample;
 import fr.cnrs.lacito.liftapi.model.LiftField;
+import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
+import fr.cnrs.lacito.liftapi.model.LiftHeader;
 import fr.cnrs.lacito.liftapi.model.LiftIllustration;
 import fr.cnrs.lacito.liftapi.model.LiftMedia;
 import fr.cnrs.lacito.liftapi.model.LiftNote;
@@ -77,10 +81,26 @@ import javafx.collections.ObservableMap;
  * <ul>
  * <li> <em>wiring</em> means creating the parent<->child references between two components</li>
  * <li> <em>registring</em> means adding the component to the dictionary's internal indexes</li>
- * <li> <em>attaching</em> means wiring+registering non recursively an element without UUID. Sub-components of the child not must already have been attached to it. It is the way the builder API works: it builds a subtree bottom first, registering each node as it goes, and then attach the top leaf to its parent in the dictionary</li>
- * <li> <em>adding</em></li>
- * <li> <em>adopting/release or orpheaning</em> means recursively registering a component already wired to its parent and that can, itself or its subcomponents, already have UUID belonging to the dictionary: if the UUID already exist, adopt is idempotent</li>
+ * <li> <em>attaching</em> means wiring a freshly built component to its parent with the
+ * parent's {@code addX} (see {@link #attach(AbstractLiftRoot, Object)}). It is what a
+ * builder's {@code build()} does. Its sub-components were attached to it before, by the
+ * nested builders. Whether anything is registered then follows the one rule below.</li>
+ * <li> <em>adopting / releasing</em> means recursively registering (unregistering) a
+ * component already wired to its parent, with everything under it; adoption is
+ * idempotent for the components this dictionary already holds.</li>
  * </ul>
+ *
+ * The one rule: a subtree is registered the first time it is wired into an attached
+ * parent, and not before. A builder building into an attached parent registers its
+ * component at once; nested builders build into a parent that is not attached yet, so
+ * nothing is registered until the outermost component is attached, and the single
+ * adoption it triggers registers the whole subtree. The XML reader relies on it: it
+ * builds every component of an {@code <entry>} into the detached entry, and the entry's
+ * own {@code build()} registers it all at once.
+ *
+ * The components of the header (feature sets, features, definitions) are not
+ * registered; their texts are, as meta-language texts, when they join the header (see
+ * {@link #registerHeaderTexts(AbstractLiftRoot)}).
  *
  * <h2>Not public API</h2>
  *
@@ -122,13 +142,12 @@ public final class DictionaryMutator {
     // ------------------------------------------------------------------
 
     /**
-     * Add a freshly created component to the dictionary: used by the builders
-     * ({@see AbstractLiftElementBuilder#attach()}).
+     * Wire a freshly created component to its parent: used by the builders
+     * ({@code AbstractLiftElementBuilder.attach()}).
      *
-     * The component cannot have an UUID.
-     *
-     * The operation is not recursive. Sub-components of the child has already
-     * been attached to the child.
+     * The component has no UUID yet. Its sub-components were attached to it before, by
+     * the nested builders, so this does not recurse; the registration it triggers, when
+     * the parent is attached, covers the whole subtree.
      *
      * The component is wired to its parent with the parent's {@code addX} method, which
      * registers it when the parent is attached (see {@code AbstractLiftRoot.adopted}),
@@ -153,6 +172,19 @@ public final class DictionaryMutator {
     }
 
     /**
+     * Set a freshly created reversal as the {@code <main>} of another: the one slot
+     * whose child the type of the component does not designate, since a
+     * {@link LiftReversal} also goes into the list of reversals of its parent (see
+     * {@link #attach(AbstractLiftRoot, Object)}).
+     *
+     * @param main the newly created reversal
+     * @param parent the reversal it is the main of; its current main is deleted
+     */
+    public void attachMain(LiftReversal main, LiftReversal parent) {
+        parent.setMain(main);
+    }
+
+    /**
      * Register a subtree, and everything under it, in this dictionary.
      *
      * The parent and child references are expected to be wired already; only
@@ -161,12 +193,10 @@ public final class DictionaryMutator {
      * Used by {@link AbstractLiftRoot#adopted()}.
      *
      * This is the path every {@code addX} on an attached component takes, and the one
-     * the XML reader takes for a whole {@code <entry>}. For performance sake, no
-     * builder is allocated during a parse. The SAX reader assembles an
-     * entry - senses, examples, traits and all - before the entry is complete, so it
-     * cannot register components one at a time as the builders do; while the entry is
-     * being built it belongs to no dictionary, so none of the {@code addX} calls along
-     * the way register anything, and this single traversal still does all the work.
+     * a whole {@code <entry>} read from a file takes: the XML reader builds its senses,
+     * examples, traits and all into the entry before the entry itself is built, so none
+     * of those builds registers anything, and this single traversal, when the entry is
+     * added, does all the work.
      *
      * Adoption is idempotent for components this dictionary already holds, so a subtree
      * that was detached without being unregistered - a move within the dictionary, an
@@ -411,6 +441,91 @@ public final class DictionaryMutator {
             }
         }
         MODEL.setLanguagesManager(element, languagesManager);
+    }
+
+    // ------------------------------------------------------------------
+    // The texts of the header
+    // ------------------------------------------------------------------
+
+    /**
+     * Register the MultiTexts of a component of the header, and of the components under
+     * it, as meta-language texts.
+     *
+     * The components of the header - feature sets, features, field and trait
+     * definitions, and the header itself - are not indexed and get no UUID: they are
+     * reached through {@code LiftHeader}, report their own changes, and nothing needs to
+     * look them up by UUID. Their labels, abbreviations and descriptions are text all the
+     * same, in the meta-languages of the dictionary, and registering them gives them
+     * what every other meta-language text has: their languages are declared and counted
+     * in {@code getMetaLanguageManager()}, and a form in a language the dictionary does
+     * not declare is refused.
+     *
+     * Called by the header when a component joins it (and for the whole header when it
+     * joins its dictionary). A text that is already registered is left as it is, so
+     * calling this again - when a feature set is put back by an undo, say - is harmless.
+     *
+     * @param node the header, a feature set, a feature or a definition
+     */
+    public void registerHeaderTexts(AbstractLiftRoot node) {
+        for (MultiText text : headerTextsOf(node)) {
+            if (text.getUUID() == null) {
+                registerMultiText(text, registers.metaTextById, owner.getMetaLanguageManager());
+            }
+        }
+        for (AbstractLiftRoot child : headerChildrenOf(node)) {
+            registerHeaderTexts(child);
+        }
+    }
+
+    /**
+     * Unregister the MultiTexts of a component of the header, and of the components under
+     * it: the mirror of {@link #registerHeaderTexts(AbstractLiftRoot)}, called when the
+     * component leaves the header.
+     *
+     * @param node the header, a feature set, a feature or a definition
+     */
+    public void releaseHeaderTexts(AbstractLiftRoot node) {
+        for (MultiText text : headerTextsOf(node)) {
+            if (text.getUUID() != null && registers.metaTextById.get(text.getUUID()) == text) {
+                unregisterMultiText(text, registers.metaTextById);
+            }
+        }
+        for (AbstractLiftRoot child : headerChildrenOf(node)) {
+            releaseHeaderTexts(child);
+        }
+    }
+
+    /**
+     * The MultiTexts of a component of the header, all of them meta-language texts.
+     *
+     * @param node the header, a feature set, a feature or a definition
+     * @return its texts
+     */
+    public static List<MultiText> headerTextsOf(AbstractLiftRoot node) {
+        return switch (node) {
+            case LiftHeader h -> List.of(h.getDescription());
+            case FeatureSet fs -> List.of(fs.getLabel(), fs.getAbbrev(), fs.getDescription());
+            case Feature f -> List.of(f.getLabel(), f.getAbbrev(), f.getDescription());
+            case LiftFieldAndTraitDefinition d -> List.of(d.getLabel(), d.getDescription());
+            default -> throw new IllegalStateException(
+                "Not a component of the header: " + node.getClass()
+            );
+        };
+    }
+
+    /** The components of the header held by {@code node}. */
+    private static List<AbstractLiftRoot> headerChildrenOf(AbstractLiftRoot node) {
+        List<AbstractLiftRoot> children = new ArrayList<>();
+        switch (node) {
+            case LiftHeader h -> {
+                children.addAll(h.getFeatureSets());
+                children.addAll(h.getFieldsAndTraitsDefinitions());
+            }
+            case FeatureSet fs -> children.addAll(fs.getFeatures().values());
+            default -> {
+            }
+        }
+        return children;
     }
 
     // ------------------------------------------------------------------
@@ -793,9 +908,13 @@ public final class DictionaryMutator {
             case LiftTrait trait -> ((HasTrait) parent).addTrait(trait);
             case LiftRelation relation -> ((HasRelations) parent).addRelation(relation);
             case LiftEtymology etymology -> ((LiftEntry) parent).addEtymology(etymology);
+            // The list of reversals: the <main> slot has its own method, attachMain.
             case LiftReversal reversal -> ((HasReversal) parent).addReversal(reversal);
             case GrammaticalInfo gi ->
                 ((LiftSense) parent).setGrammaticalInfo(gi);
+            case LiftMedia media -> ((LiftPronunciation) parent).addMedia(media);
+            case LiftIllustration illustration ->
+                ((LiftSense) parent).addIllustration(illustration);
             default -> throw new IllegalArgumentException(
                 "Unsupported element type: " + child
             );

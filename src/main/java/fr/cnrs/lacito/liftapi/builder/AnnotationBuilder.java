@@ -35,7 +35,8 @@ public class AnnotationBuilder extends AbstractLiftElementBuilder<LiftAnnotation
     }
 
     public AnnotationBuilder withType(String type) {
-        if (type == null || type.isBlank()) throw new IllegalArgumentException("Type cannot be null or empty.");
+        // An empty name is a valid attribute value: files have such annotations.
+        if (type == null) throw new IllegalArgumentException("Type cannot be null.");
         // Create the annotation type on demand, as NoteBuilder and RelationBuilder do:
         // getFeature() throws, which made addAnnotation() always fail on a fresh dictionary.
         Feature f = dictionary

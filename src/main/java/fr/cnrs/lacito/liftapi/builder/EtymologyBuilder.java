@@ -6,7 +6,6 @@ import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftEtymology;
-import fr.cnrs.lacito.liftapi.model.Feature;
 
 /**
  * Builder for creating LiftEtymology instances with a fluent API.
@@ -37,12 +36,10 @@ public class EtymologyBuilder
         if (type == null) {
             throw new IllegalArgumentException("Etymology type cannot be null");
         }
-        if (!dictionary.getHeader().getEtymologyTypeManager().hasFeature(type)) {
-            dictionary.getHeader().getEtymologyTypeManager().addFeature(type);
+        if (source == null) {
+            throw new IllegalArgumentException("Etymology source cannot be null");
         }
-        Feature e = dictionary.getHeader().getEtymologyTypeManager().getFeature(type);
-
-        this.element.setType(e);
+        this.element.setType(dictionary.getHeader().getEtymologyTypeManager().getOrCreateFeature(type));
         this.element.setSource(source);
 
     }
@@ -97,11 +94,7 @@ public class EtymologyBuilder
 
     public EtymologyBuilder withType(String type) {
         if (type == null || type.isBlank()) throw new IllegalArgumentException("Type cannot be null or empty.");
-        if (!dictionary.getHeader().getEtymologyTypeManager().hasFeature(type)) {
-            dictionary.getHeader().getEtymologyTypeManager().addFeature(type);
-        }
-        Feature f = dictionary.getHeader().getEtymologyTypeManager().getFeature(type);
-        super.withType(f);
+        super.withType(dictionary.getHeader().getEtymologyTypeManager().getOrCreateFeature(type));
         return this;
     }
 

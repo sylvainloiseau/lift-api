@@ -14,6 +14,9 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
+import fr.cnrs.lacito.liftapi.builder.AbstractLiftElementBuilder;
+import fr.cnrs.lacito.liftapi.builder.DictionaryComponentBuilderFactory;
+import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
 import javafx.beans.property.ListProperty;
@@ -56,6 +59,28 @@ class EncapsulationTest {
             }
         }
         assertTrue(writable.isEmpty(), "Getters returning a modifiable collection: " + writable);
+    }
+
+    /**
+     * The XML reader reaches the element under construction through
+     * {@code internal.BuilderInternals}; an application must not, or it could wire the
+     * element by hand behind the builder's back.
+     */
+    @Test
+    void noBuilderHandsOutItsElementBeforeBuild() {
+        List<String> leaks = new ArrayList<>();
+        for (Method factoryMethod : DictionaryComponentBuilderFactory.class.getMethods()) {
+            Class<?> builder = factoryMethod.getReturnType();
+            if (!AbstractLiftElementBuilder.class.isAssignableFrom(builder)) {
+                continue;
+            }
+            for (Method m : builder.getMethods()) {
+                if (!m.getName().equals("build") && AbstractLiftRoot.class.isAssignableFrom(m.getReturnType())) {
+                    leaks.add(builder.getSimpleName() + "." + m.getName() + "()");
+                }
+            }
+        }
+        assertTrue(leaks.isEmpty(), "Builder methods handing out the element: " + leaks);
     }
 
     @Test

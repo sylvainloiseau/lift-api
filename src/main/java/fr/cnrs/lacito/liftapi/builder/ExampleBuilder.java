@@ -15,7 +15,8 @@ import fr.cnrs.lacito.liftapi.model.LiftSense;
 /**
  * Builder for creating LiftExample instances with a fluent API.
  *
- * At least one form is the minimum requirement in order to build the entry.
+ * An example may be built without any text: the LIFT schema does not require one,
+ * and files contain such examples. Requiring it is the application's choice.
  *
  * Usage:
  * <pre>
@@ -96,10 +97,7 @@ public final class ExampleBuilder extends AbstractLiftElementWithFieldAndNoteBui
         if (type == null || translation == null) {
             throw new IllegalArgumentException("Type and translation cannot be null");
         }
-        if (!dictionary.getHeader().getTranslationTypeManager().hasFeature(type)) {
-            dictionary.getHeader().getTranslationTypeManager().addFeature(type);
-        }
-        Feature f = dictionary.getHeader().getTranslationTypeManager().getFeature(type);
+        Feature f = dictionary.getHeader().getTranslationTypeManager().getOrCreateFeature(type);
         requireNoBuiltTranslation(f);
         pendingTranslations.computeIfAbsent(f, k -> new ArrayList<>()).add(translation);
         return this;
@@ -200,8 +198,6 @@ public final class ExampleBuilder extends AbstractLiftElementWithFieldAndNoteBui
      */
     @Override
     public LiftExample build() {
-        if (element.getExample().isEmpty())
-            throw new IllegalStateException("In order to build an example, it should contain at least one example");
         for (Map.Entry<Feature, List<Form>> pending : pendingTranslations.entrySet()) {
             TranslationBuilder tb = new TranslationBuilder(dictionary, element, pending.getKey());
             pending.getValue().forEach(tb::addText);

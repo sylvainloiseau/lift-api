@@ -5,8 +5,9 @@ import fr.cnrs.lacito.liftapi.change.ModelProperty;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collection;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -66,7 +67,8 @@ import javafx.collections.SetChangeListener;
  * 
  * According to the datamodel, the string provided to {@link #setValue(String)} is parsed differently. For instance,
  * if the data model is {@link LiftFieldAndTraitDefinitionDataModel#FEATURE_SET}, the value is interpreted
- * as a whitespace-separated list of RangeElement id to be fount in the range of {@link LiftFieldAndTraitDefinition#getResolvedFeatureSet()}.
+ * as a list of feature ids to be found in the range of {@link LiftFieldAndTraitDefinition#getResolvedFeatureSet()}.
+ * See {@link #parseValue(LiftFieldAndTraitDefinition, String)} for the format.
  *
  * A Trait can receive annotation, but no notes or fields.
  *
@@ -206,8 +208,12 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
      * 
      * For a {@link LiftFieldAndTraitDefinitionDataModel#FEATURE_SET}
      * or a {@link LiftFieldAndTraitDefinitionDataModel#FEATURE_LIST}, it
-     * is a comma-separated list of the ID of the features.
-     * @return
+     * is the ids of the features separated by a comma and a space: this is the value
+     * written to the file. Commas rather than whitespace, because feature ids may
+     * contain spaces (FLEx semantic domains are {@code "1.5 Plant"}).
+     * {@link #parseValue(LiftFieldAndTraitDefinition, String)} reads it back.
+     *
+     * @return the value as written in the {@code value} attribute of a {@code <trait>}
      */
     public String getValue() {
         return switch (specification.get().getType().get()) {
@@ -233,42 +239,105 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
 
     /**
      * Parse the given string in order to set the value.
-     * 
-     * The string will be parsed according to the data model of this trait:
-     * 
-     * <ul>
-     * <li> for a DATETIME, it will be parsed as a date time expression.</li>
-     * <li> for a FEATURE, it will be considered as the id of a feature in the feature set of this trait.</li>
-     * <li> for a FEATURE_SET, it will be considered as the comma separated set of feature ids belonging to the feature set of this trait.</li>
-     * <li>etc.</li>
-     * </ul>
-     * 
-     * @param value
+     *
+     * The string is parsed as {@link #parseValue(LiftFieldAndTraitDefinition, String)}
+     * does, except that a feature id the trait's feature set does not contain is
+     * refused rather than created: this is the method an editing interface calls, and
+     * a typo should not silently add a feature to the header.
+     *
+     * @param value the value; {@code null} stands for an empty string
+     * @throws IllegalArgumentException if the value cannot be parsed for the data model
+     *         of this trait, or names a feature that does not exist
      */
-    // TODO complete the implementation
     public void setValue(String value) {
+        setTypedValue(parse(specification.get(), value, false));
+    }
+
+    /**
+     * Parse a trait value written as a string - the {@code value} attribute of a
+     * {@code <trait>} - into the object {@link #setTypedValue(Object)} takes, according
+     * to the data model of {@code definition}:
+     *
+     * <ul>
+     * <li>{@code STRING}: the string itself;</li>
+     * <li>{@code INTEGER}: an {@code Integer};</li>
+     * <li>{@code DATETIME}: a {@code ZonedDateTime}, in ISO format;</li>
+     * <li>{@code FEATURE}: the feature of that id in the definition's feature set;</li>
+     * <li>{@code FEATURE_SET} and {@code FEATURE_LIST}: a {@code Set} or a {@code List}
+     * of features, whose ids are separated by commas; the spaces around each id are
+     * trimmed, those inside it kept (feature ids such as FLEx semantic domains,
+     * {@code "1.5 Plant"}, contain spaces).</li>
+     * </ul>
+     *
+     * A feature id the feature set does not contain yet is added to it. A file - or a
+     * batch import - is the authority on what its values are, so they are declared
+     * rather than refused, as the XML reader always did. {@link #setValue(String)} is
+     * the strict counterpart.
+     *
+     * This is the only parser of trait values: the builders and {@link #setValue(String)}
+     * both go through it, so that the two cannot drift apart again (they once split
+     * multiple values on different separators).
+     *
+     * @param definition the definition of the trait
+     * @param value the value; {@code null} stands for an empty string
+     * @return the typed value
+     * @throws IllegalArgumentException if the value cannot be parsed for the data model,
+     *         or if the data model needs a feature set and the definition has none
+     */
+    public static Object parseValue(LiftFieldAndTraitDefinition definition, String value) {
+        return parse(definition, value, true);
+    }
+
+    private static Object parse(
+        LiftFieldAndTraitDefinition definition,
+        String value,
+        boolean createFeatures
+    ) {
         if (value == null) value = "";
-        //valueProperty.set(value);
-        switch (specification.get().getType().get()) {
-            case LiftFieldAndTraitDefinitionDataModel.DATETIME -> this.dateTimeProperty.set(ZonedDateTime.parse(value, DateTimeFormatter.ISO_ZONED_DATE_TIME));
-            case LiftFieldAndTraitDefinitionDataModel.STRING -> this.stringValueProperty.set(value);
-            case LiftFieldAndTraitDefinitionDataModel.FEATURE -> {
-                if (specification.get().getResolvedFeatureSet().get().hasFeature(value)) {
-                    Feature f = specification.get().getResolvedFeatureSet().get().getFeature(value);
-                    featureProperty.set(f);
-                } else {
-                    throw new IllegalArgumentException("Feature not known: + " + value);
-                }
+        return switch (definition.getDataModel().get()) {
+            case DATETIME -> ZonedDateTime.parse(value, DateTimeFormatter.ISO_ZONED_DATE_TIME);
+            case STRING -> value;
+            case INTEGER -> Integer.valueOf(value);
+            case FEATURE -> feature(definition, value, createFeatures);
+            case FEATURE_SET -> new LinkedHashSet<>(features(definition, value, createFeatures));
+            case FEATURE_LIST -> features(definition, value, createFeatures);
+            case MULTISTRING, MULTITEXT -> throw new IllegalArgumentException(
+                "A trait cannot have a field's data model: " + definition.getName());
+        };
+    }
+
+    private static List<Feature> features(
+        LiftFieldAndTraitDefinition definition,
+        String value,
+        boolean createFeatures
+    ) {
+        List<Feature> features = new ArrayList<>();
+        for (String id : value.split(",")) {
+            id = id.trim();
+            if (!id.isEmpty()) {
+                features.add(feature(definition, id, createFeatures));
             }
-            case LiftFieldAndTraitDefinitionDataModel.FEATURE_SET -> {
-                replaceFeatureSet(getFeaturesFromString(value));
-            }
-            case LiftFieldAndTraitDefinitionDataModel.FEATURE_LIST -> {
-                featureListProperty.setAll(getFeaturesFromString(value));
-            }
-            case LiftFieldAndTraitDefinitionDataModel.INTEGER -> this.integerProperty.set(Integer.parseInt(value));
-            default -> throw new IllegalArgumentException("Illegal trait type: " + specification.get().getTypeStr());
         }
+        return features;
+    }
+
+    private static Feature feature(
+        LiftFieldAndTraitDefinition definition,
+        String id,
+        boolean createFeatures
+    ) {
+        FeatureSet range = definition.getResolvedFeatureSet().orElseThrow(() ->
+            new IllegalArgumentException(
+                "The definition " + definition.getName() + " has no feature set to take the value " + id + " from."
+            )
+        );
+        if (createFeatures) {
+            return range.getOrCreateFeature(id);
+        }
+        if (!range.hasFeature(id)) {
+            throw new IllegalArgumentException("Feature not known: " + id);
+        }
+        return range.getFeature(id);
     }
 
     /**
@@ -340,24 +409,6 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
                 last[0] = now;
             });
         }
-    }
-
-    private List<Feature> getFeaturesFromString(String value) {
-        String[] fIds = value.split(",");
-        Feature[] features = new Feature[fIds.length];
-        int i = 0;
-        for (String fId : fIds) {
-            fId = fId.trim();
-            if (fId.isEmpty()) continue;
-            if (specification.get().getResolvedFeatureSet().get().hasFeature(fId)) {
-                Feature f = specification.get().getResolvedFeatureSet().get().getFeature(fId);
-                features[i] = f;
-                i++;
-            } else {
-                throw new IllegalArgumentException("Feature not known: + " + fId);
-            }
-        }
-        return Arrays.asList(Arrays.<Feature>copyOf(features, i));
     }
 
     // --------------------------------------------------------

@@ -2,6 +2,7 @@ package fr.cnrs.lacito.liftapi.builder;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.model.HasTrait;
+import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
 import java.util.function.Consumer;
 
@@ -24,19 +25,28 @@ public class TraitBuilder extends AbstractLiftElementBuilder<LiftTrait, HasTrait
      * @param value the trait value
      */
     protected TraitBuilder(LiftDictionary dictionary, HasTrait parent, String type, String value) {
-        super(new LiftTrait(dictionary.getHeader().getOrCreateTraitsDefinitions(type)), dictionary, parent);
-        if (type == null || value == null) {
-            throw new IllegalArgumentException("Trait name and value cannot be null");
+        super(new LiftTrait(definition(dictionary, type)), dictionary, parent);
+        if (value == null) {
+            throw new IllegalArgumentException("Trait value cannot be null");
         }
-        element.setValue(value);
+        withValue(value);
+    }
+
+    private static LiftFieldAndTraitDefinition definition(LiftDictionary dictionary, String type) {
+        if (type == null) {
+            throw new IllegalArgumentException("Trait name cannot be null");
+        }
+        return dictionary.getHeader().getOrCreateTraitsDefinitions(type);
     }
 
     /**
-     * Update the trait value.
+     * Update the trait value, parsed after the data model of the trait's definition by
+     * {@link LiftTrait#parseValue(LiftFieldAndTraitDefinition, String)}: a feature id the
+     * definition's feature set does not contain yet is added to it.
      */
     public TraitBuilder withValue(String value) {
         if (value != null) {
-            element.setValue(value);
+            element.setTypedValue(LiftTrait.parseValue(element.getSpecification(), value));
         }
         return this;
     }

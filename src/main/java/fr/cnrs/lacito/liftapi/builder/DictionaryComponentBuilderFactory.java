@@ -4,6 +4,7 @@ import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDictionaryBuilder;
 import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
+import fr.cnrs.lacito.liftapi.model.FeatureSet;
 import fr.cnrs.lacito.liftapi.model.HasAnnotation;
 import fr.cnrs.lacito.liftapi.model.HasField;
 import fr.cnrs.lacito.liftapi.model.HasNote;
@@ -17,6 +18,7 @@ import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftExample;
 import fr.cnrs.lacito.liftapi.model.LiftPronunciation;
 import fr.cnrs.lacito.liftapi.model.LiftRelation;
+import fr.cnrs.lacito.liftapi.model.LiftReversal;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.LiftTranslation;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
@@ -262,11 +264,57 @@ public class DictionaryComponentBuilderFactory {
         return new EtymologyBuilder(dictionary, parent, type, source);
     }
 
+    /**
+     * Create a builder for a feature set (a {@code <range>}) of the header.
+     */
     public FeatureSetBuilder range(String rangeId) {
         return new FeatureSetBuilder(dictionary, rangeId);
     }
 
+    /**
+     * Create a builder for a feature (a {@code <range-element>}) of a feature set.
+     */
+    public FeatureBuilder feature(FeatureSet parent, String id) {
+        return new FeatureBuilder(dictionary, parent, id);
+    }
+
+    /**
+     * Create a builder for the definition of a field or a trait in the header.
+     */
+    public FieldDefinitionBuilder fieldDefinition(String name) {
+        return new FieldDefinitionBuilder(dictionary, name);
+    }
+
+    /**
+     * Create a builder for a reversal, added to the reversals of {@code parent}.
+     */
     public ReversalBuilder reversal(HasReversal parent) {
         return new ReversalBuilder(dictionary, parent);
+    }
+
+    /**
+     * Create a builder for the {@code <main>} of a reversal, which replaces the current
+     * one when built.
+     */
+    public ReversalBuilder reversalMain(LiftReversal parent) {
+        return ReversalBuilder.main(dictionary, parent);
+    }
+
+    /**
+     * Create a builder for a media (a sound file) of a pronunciation.
+     *
+     * @param href the file, required by the LIFT schema
+     */
+    public MediaBuilder media(LiftPronunciation parent, String href) {
+        return new MediaBuilder(dictionary, parent, href);
+    }
+
+    /**
+     * Create a builder for an illustration (a picture) of a sense.
+     *
+     * @param href the file, required by the LIFT schema
+     */
+    public IllustrationBuilder illustration(LiftSense parent, String href) {
+        return new IllustrationBuilder(dictionary, parent, href);
     }
 }

@@ -743,4 +743,138 @@ public class RegressionTest {
         }
         assertEquals(40, reloaded.getLiftDictionaryRegistry().getEntries().size());
     }
+
+    // ------------------------------------------------------------------
+    // Builder-only construction (plan builder-only-construction-2026-10)
+    // ------------------------------------------------------------------
+
+    private static LiftDictionary load(java.nio.file.Path dir, String xml) throws Exception {
+        File file = dir.resolve("test.lift").toFile();
+        java.nio.file.Files.writeString(file.toPath(), xml);
+        return LiftDictionary.loadDictionaryFromFile(file);
+    }
+
+    private static final String MULTI_VALUED_HEADER = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <lift version="0.15" producer="test">
+        <header>
+        <ranges>
+        <range id="colours"><range-element id="red"/><range-element id="light blue"/></range>
+        </ranges>
+        <fields>
+        <field-definition name="colour" kind="trait" type="option-collection" option-range="colours"/>
+        </fields>
+        </header>
+        """;
+
+    /**
+     * {@code LiftTrait.getValue()} joined the features of a multi-valued trait with
+     * {@code ", "} while the reader split on whitespace: reading back gave the ids
+     * {@code "red,"} and {@code "blue"}. Both now use commas, since feature ids may
+     * contain spaces.
+     */
+    @Test
+    public void aMultiValuedTraitSurvivesASaveAndAReload(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+        LiftDictionary d = load(dir, MULTI_VALUED_HEADER + """
+            <entry id="e1"><trait name="colour" value="red, light blue"/></entry>
+            </lift>
+            """);
+        File saved = dir.resolve("saved.lift").toFile();
+        d.save(saved);
+        LiftDictionary reloaded = LiftDictionary.loadDictionaryFromFile(saved);
+
+        LiftTrait trait = reloaded.getLiftDictionaryRegistry().getTraits().iterator().next();
+        Set<String> ids = new HashSet<>();
+        trait.featureSetValueProperty().forEach(f -> ids.add(f.getId()));
+        assertEquals(Set.of("red", "light blue"), ids);
+        assertEquals(
+            Set.of("red", "light blue"),
+            reloaded.getHeader().getFeatureSet("colours").getFeatures().keySet(),
+            "no feature should have been created from a badly split value"
+        );
+    }
+
+    /** The spaces around the ids of a multi-valued trait are not part of them. */
+    @Test
+    public void theSpacesAroundTheIdsOfAMultiValuedTraitAreTrimmed(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+        LiftDictionary d = load(dir, MULTI_VALUED_HEADER + """
+            <entry id="e1"><trait name="colour" value=" red ,light blue,, "/></entry>
+            </lift>
+            """);
+        LiftTrait trait = d.getLiftDictionaryRegistry().getTraits().iterator().next();
+        assertEquals(2, trait.featureSetValueProperty().size());
+        assertEquals(2, d.getHeader().getFeatureSet("colours").getFeatures().size());
+    }
+
+    /**
+     * {@code VariantBuilder.withRefId} looked the target up at once and, when it did not
+     * exist yet, set a null target and forgot the id: a variant referring to an entry
+     * further down a file, or created later in a batch, lost its reference.
+     */
+    @Test
+    public void aReferenceToATargetBuiltLaterIsKept() {
+        DictionaryComponentBuilderFactory b = dictionary.getComponentBuilder();
+        LiftEntry source = b.entry().withId("source").withForm("tww", "nala")
+            .addVariant(v -> v.withRefId("target"))
+            .addRelation("synonym", "target")
+            .build();
+        LiftVariant variant = source.getVariants().get(0);
+        LiftRelation relation = source.getRelations().get(0);
+        assertEquals(Optional.of("target"), variant.getRefId());
+        assertEquals(Optional.of("target"), relation.getRefId());
+        assertNull(variant.getRefObject(), "the target does not exist yet");
+        assertTrue(
+            dictionary.getLiftDictionaryRegistry().isReferenced("target"),
+            "the reference is counted before its target exists"
+        );
+
+        LiftEntry target = b.entry().withId("target").withForm("tww", "pala").build();
+        dictionary.resolveReferences();
+        assertSame(target, variant.getRefObject());
+        assertSame(target, relation.getRefObject());
+        assertThrows(IllegalStateException.class, () -> dictionary.removeEntry(target));
+    }
+
+    /** A reference to an existing target points to it at once. */
+    @Test
+    public void aReferenceToAnExistingTargetIsResolvedAtOnce() {
+        DictionaryComponentBuilderFactory b = dictionary.getComponentBuilder();
+        LiftEntry target = b.entry().withId("target").withForm("tww", "pala").build();
+        LiftEntry source = b.entry().withForm("tww", "nala")
+            .addVariant(v -> v.withRefId("target"))
+            .build();
+        assertSame(target, source.getVariants().get(0).getRefObject());
+    }
+
+    /**
+     * An error raised while building a component during a load says where in the file
+     * the element is: the builders know nothing of the file.
+     */
+    @Test
+    public void anErrorWhileLoadingGivesThePositionInTheFile(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) {
+        LiftDocumentLoadingException e = assertThrows(LiftDocumentLoadingException.class, () -> load(dir, """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <lift version="0.15" producer="test">
+            <entry id="e1">
+            <relation ref="e1"/>
+            </entry>
+            </lift>
+            """));
+        String message = String.valueOf(e.getCause().getMessage());
+        assertTrue(message.contains("line 4"), message);
+        assertTrue(message.contains("type"), message);
+    }
+
+    /** A duplicate id found while loading keeps its type, and gains the position. */
+    @Test
+    public void aDuplicateIdWhileLoadingKeepsItsTypeAndGivesThePosition(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) {
+        DuplicateIdException e = assertThrows(DuplicateIdException.class, () -> load(dir, """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <lift version="0.15" producer="test">
+            <entry id="e1"/>
+            <entry id="e1"/>
+            </lift>
+            """));
+        assertTrue(e.getMessage().contains("line 4"), e.getMessage());
+    }
 }

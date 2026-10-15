@@ -233,6 +233,9 @@ public final class FeatureSet extends AbstractExtensibleWithField {
     /**
      * Adds the given feature to this {@code FeatureSet}.
      *
+     * Once this set is in the header of a dictionary, the texts of the feature are
+     * registered as meta-language texts of that dictionary.
+     *
      * @param element the feature to add
      * @throws IllegalArgumentException if a feature with the same id already exists
      */
@@ -240,6 +243,10 @@ public final class FeatureSet extends AbstractExtensibleWithField {
         if (hasFeature(element.getId()))
             throw new IllegalArgumentException("Duplicate feature in feature set: " + element.getId());
         featureMap.put(element.getId(), element);
+        LiftDictionary dictionary = headerDictionary();
+        if (dictionary != null) {
+            dictionary.getMutator().registerHeaderTexts(element);
+        }
         LiftDictionary observer = Changes.observing(this);
         if (observer != null) {
             Changes.fire(observer, new FeatureAdded(observer, this, element));
@@ -271,6 +278,10 @@ public final class FeatureSet extends AbstractExtensibleWithField {
     public Feature removeFeature(String id) {
         if (!hasFeature(id))
             throw new IllegalArgumentException("Cannot remove non-existing feature: " + id);
+        LiftDictionary dictionary = headerDictionary();
+        if (dictionary != null) {
+            dictionary.getMutator().releaseHeaderTexts(featureMap.get(id));
+        }
         Feature removed = featureMap.remove(id);
         LiftDictionary observer = Changes.observing(this);
         if (observer != null) {
@@ -305,6 +316,15 @@ public final class FeatureSet extends AbstractExtensibleWithField {
     public void changeFeatureId(String oldId, String newId) {
         Feature element = featureMap.get(oldId);
         changeFeatureId(element, newId);
+    }
+
+    /**
+     * The dictionary whose header holds this feature set, or {@code null} while the set
+     * is not in a header yet (being built): the texts of its features are registered
+     * when the set joins the header, not before.
+     */
+    private LiftDictionary headerDictionary() {
+        return parent != null && parent.holds(this) ? parent.getDictionary() : null;
     }
 
     private void initFeatureSet() {

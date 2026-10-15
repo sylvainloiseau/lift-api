@@ -26,11 +26,8 @@ public class NoteBuilder extends AbstractLiftElementWithFieldBuilder<LiftNote, H
      */
     protected NoteBuilder(LiftDictionary dictionary, HasNote parent, String type) {
         super(LiftNote.create(), dictionary, parent);
-        if (!dictionary.getHeader().getNoteTypeManager().hasFeature(type)) {
-            dictionary.getHeader().getNoteTypeManager().addFeature(type);
-        }
-        Feature e = dictionary.getHeader().getNoteTypeManager().getFeature(type);
-        element.setType(e);
+        // A note without a type is keyed under the empty type, as in a file.
+        element.setType(dictionary.getHeader().getNoteTypeManager().getOrCreateFeature(type == null ? "" : type));
     }
 
     /**

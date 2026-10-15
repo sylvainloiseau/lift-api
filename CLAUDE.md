@@ -10,7 +10,7 @@ is a JavaFX editor that binds directly to this model.
 - Java 25 (`maven.compiler.release=25`), JPMS module `fr.cnrs.lacito.liftapi`.
 - From this directory: `mvn test`; one test: `mvn test -Dtest=MultiTextTest#testTextAndSeveralSpan`.
   From the repo root: `mvn test -pl lift-api`; `mvn install` installs both modules.
-- ~160 JUnit 6 tests, all fast (~20 s, most of it `ChangeRoundTripTest`). They are headless —
+- ~190 JUnit 6 tests, all fast (~20 s, most of it `ChangeRoundTripTest`). They are headless —
   no JavaFX toolkit is started.
 - `LoadingCostTest` (tag `perf`) measures the time and heap of loading the corpus; it is
   excluded by default: `mvn test -Dgroups=perf -DexcludedTestGroups=none -Dtest=LoadingCostTest`.
@@ -29,9 +29,9 @@ is a JavaFX editor that binds directly to this model.
 | (root) | yes | `LiftDictionary` (entry point: load/save/addEntry/removeEntry/search), `LiftDictionaryRegistry` (read-only observable views of all components), `LiftDictionaryLanguagesManager` (object- vs meta-language sets + occurrence counts), `LiftDictionaryCounterManager`, `LiftDictionaryBuilder`, `LiftVersion` |
 | `change` | yes | The changes of a dictionary as reversible events: `ModelChange` (sealed) and its records, `ModelProperty`, `ChangeRecorder` (transactions). Read its `package-info` |
 | `model` | yes | The LIFT data model (~50 classes). `Lift*` component classes, `Has*` capability interfaces, `MultiText`/`Form`/`TextSpan` text model, `FeatureSet`/`Feature` (= LIFT `range`/`range-element`), `LiftHeader`, `LiftFieldAndTraitDefinition` |
-| `builder` | yes | Fluent API, reached via `dictionary.getComponentBuilder()` (`DictionaryComponentBuilderFactory`) |
-| `internal` | **no** | `DictionaryMutator` (the only code that writes indexes), `DictionaryRegisters` (the index maps), `ChangeSupport` (listeners), `ModelInternals` (the model's package-private wiring: `setUUID`, `setOwningDictionary`…), `LiftDictionaryUUIDManager` (internal UUIDs: per-dictionary prefix + counter, not random — never write them to a file; default LIFT ids are separate random UUIDs) |
-| `xml` | **no** | SAX reader (`LiftDictionaryXmlReader` → `LiftSaxHandler` → `LiftXMLFactory`), writer (`LiftWriterSession`, `*Writers`), `LiftVocabulary` (element/attribute names) |
+| `builder` | yes | Fluent API, reached via `dictionary.getComponentBuilder()` (`DictionaryComponentBuilderFactory`). The only code that creates components (the XML reader included): builders accept what the LIFT schema accepts, no editorial checks. Read its `package-info` |
+| `internal` | **no** | `DictionaryMutator` (the only code that writes indexes), `DictionaryRegisters` (the index maps), `ChangeSupport` (listeners), `ModelInternals` (the model's package-private wiring: `setUUID`, `setOwningDictionary`…), `BuilderInternals` (what only the XML reader may do with a builder: reach the element under construction, keep unknown attributes), `LiftDictionaryUUIDManager` (internal UUIDs: per-dictionary prefix + counter, not random — never write them to a file; default LIFT ids are separate random UUIDs) |
+| `xml` | **no** | SAX reader (`LiftDictionaryXmlReader` → `LiftSaxHandler`, the document structure → `LiftXmlDecoder`, elements and attributes turned into builder calls), writer (`LiftWriterSession`, `*Writers`), `LiftVocabulary` (element/attribute names) |
 | `cli` | no (opened to picocli) | `Main` |
 
 `internal`/`xml` types are `public` only for cross-package access inside the module; the
@@ -60,8 +60,18 @@ Summary:
 - `detach()` unlinks but **keeps** registration (for moves/undo); `deleteX` unlinks
   **and** unregisters (subtree comes back UUID-free, reusable in another dictionary).
 - Builders call `DictionaryMutator.attach()`, which wires the child with the parent's
-  `addX` (so registration and reporting take the same path as any caller). The XML reader
-  instead assembles a whole detached `<entry>` and adopts it once (`addEntryToDictionary`).
+  `addX` (so registration and reporting take the same path as any caller). Nested
+  builders build into a detached parent, so a subtree is registered once, when its
+  outermost component is attached. The XML reader is a builder client like any other:
+  it keeps the builders of the open elements on a stack, builds each at its end tag,
+  and the `<entry>`'s `build()` registers the whole entry.
+- References (`ref` of relations and variants) may name an entry or sense that does not
+  exist yet: the id is recorded and counted, and `LiftDictionary.resolveReferences()`
+  (called at the end of a load) sets the target objects.
+- The header's components (feature sets, features, definitions) are not indexed and
+  have no UUID, but their MultiTexts are registered as meta-language texts when they
+  join the header (`DictionaryMutator.registerHeaderTexts`): languages declared and
+  counted, undeclared ones refused.
 - Adoption and release are all-or-nothing: a failure part-way (a duplicate id, a
   referenced component) leaves the dictionary as it was, and `addX` unwires the child.
 - Adoption is idempotent for nodes already registered in the same dictionary; a node with a
@@ -102,9 +112,11 @@ A missing case here silently drops components on load and leaves them behind on 
 2. `internal/DictionaryMutator` — `childrenOf`, `objectTextsOf`/`metaTextsOf`, `wire`.
 3. `internal/DictionaryRegisters` — the index map and `nodesById`.
 4. `LiftDictionaryRegistry` — public read-only getter.
-5. `xml/LiftSaxHandler` + `xml/LiftXMLFactory` (read), `xml/LiftWriterSession` (write),
+5. Builder in `builder/` + its factory method in `DictionaryComponentBuilderFactory`
+   (every component is created through a builder, the XML reader included).
+6. `xml/LiftSaxHandler` (element structure, MultiText to fill) + `xml/LiftXmlDecoder`
+   (which builder, attribute mapping) for reading, `xml/LiftWriterSession` (write),
    `xml/LiftVocabulary` (names); watch v0.13 vs v0.15 spelling differences.
-6. Builder in `builder/` + factory method, if it should be creatable fluently.
 7. Tests: `DictionaryCensusTest` (every element in the corpus is registered),
    `xml/RoundTripTest` + `xml/DictionarySnapshot` (load→save→load equality),
    `AttachmentTest`/`DeletionTest` (the add/delete contract), `RetypeTest`.

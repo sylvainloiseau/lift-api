@@ -33,8 +33,6 @@ public final class LiftDictionaryXmlReader {
      */
     private final boolean strict;
 
-    private LiftXMLFactory liftFactory;
-
     private final LiftDictionary dictionary;
 
     /**
@@ -100,8 +98,7 @@ public final class LiftDictionaryXmlReader {
             throw new LiftDocumentLoadingException(e);
         }
 
-        this.liftFactory = new LiftXMLFactory(dictionary);
-        LiftSaxHandler lsh = new LiftSaxHandler(liftFactory, strict);
+        LiftSaxHandler lsh = new LiftSaxHandler(dictionary, strict);
         try {
             saxParser.parse(f, lsh);
         } catch (SAXException e) {

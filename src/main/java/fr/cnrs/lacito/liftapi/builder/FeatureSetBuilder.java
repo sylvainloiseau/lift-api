@@ -76,9 +76,9 @@ public class FeatureSetBuilder
     }
 
     /**
-     * Add a note via nested builder configuration.
+     * Add a feature via nested builder configuration.
      *
-     * @throws IllegalArgumentException if the element built is not an instance of HasNote.
+     * @param type the id of the feature
      */
     public FeatureSetBuilder addFeature(Consumer<FeatureBuilder> config, String type) {
         FeatureBuilder fb = new FeatureBuilder(dictionary, this.element, type);
@@ -87,16 +87,16 @@ public class FeatureSetBuilder
         return this;
     }
 
+    /**
+     * Build the feature set, adding it - with the features built into it - to the
+     * header, where its texts and those of its features are registered as meta-language
+     * texts.
+     *
+     * @throws IllegalArgumentException if the header already has a feature set of this id
+     */
     @Override
     public FeatureSet build() {
-        // super.register();
-        
-        //LiftHeaderRange range = new LiftHeaderRange(rangeId, header);
-        // TODO the LiftHeaderRange.setParent should be performed in addRange, for consistency :
-        dictionary.getHeader().addFeatureSet(element);
-        // TODO datetime
-        // element.setDateCreated(ZonedDateTime.now());
-        // element.setDateModified(ZonedDateTime.now());
+        attach(() -> dictionary.getHeader().addFeatureSet(element));
         return element;
     }
 }

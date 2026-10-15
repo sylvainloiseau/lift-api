@@ -9,7 +9,9 @@ import fr.cnrs.lacito.liftapi.internal.ChangeSupport;
 import fr.cnrs.lacito.liftapi.internal.ModelInternals;
 import fr.cnrs.lacito.liftapi.internal.DictionaryMutator;
 import fr.cnrs.lacito.liftapi.internal.DictionaryRegisters;
+import fr.cnrs.lacito.liftapi.model.AbstractIdentifiable;
 import fr.cnrs.lacito.liftapi.model.Form;
+import fr.cnrs.lacito.liftapi.model.HasRefId;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftHeader;
 import fr.cnrs.lacito.liftapi.model.MultiText;
@@ -335,6 +337,34 @@ public final class LiftDictionary {
         mutator.releaseSubtree(entry);
         if (observed) {
             changeSupport.fire(new ComponentRemoved(this, this, entry, position, true));
+        }
+    }
+
+    /**
+     * Point every relation and variant of the dictionary to the entry or sense its LIFT
+     * id names.
+     *
+     * A relation or a variant built with {@code withRefId} before its target exists
+     * records the id only (see {@code RelationBuilder.withRefId}). The XML reader calls
+     * this at the end of a file, where every target has been read; a batch import that
+     * creates entries in an arbitrary order calls it once they all exist.
+     *
+     * @throws IllegalArgumentException if an id referred to is neither an entry nor a
+     *         sense of this dictionary
+     */
+    public void resolveReferences() {
+        for (String targetId : List.copyOf(registry.getReferencedTargetIds())) {
+            AbstractIdentifiable target = registry.getEntryOrSenseByLiftId(targetId);
+            if (target == null) {
+                throw new IllegalArgumentException(
+                    "Reference id " + targetId + " not found in entries or senses."
+                );
+            }
+            for (HasRefId source : List.copyOf(registry.getReferencesTo(targetId))) {
+                if (source.getRefObject() != target) {
+                    source.setRefObject(target);
+                }
+            }
         }
     }
 

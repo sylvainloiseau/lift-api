@@ -9,7 +9,8 @@ import java.util.function.Consumer;
 /**
  * Builder for creating LiftEntry instances with a fluent API.
  *
- * At least one form is the minimum requirement in order to build the entry.
+ * An entry may be built without a lexical unit: the LIFT schema does not require one.
+ * Requiring it is the application's choice.
  * 
  * Usage:
  *
@@ -229,11 +230,6 @@ public final class EntryBuilder extends AbstractLiftElementWithFieldAndNoteAndId
      */
     @Override
     public LiftEntry build() {
-        if (element.getForms().isEmpty()) {
-            throw new IllegalStateException(
-                "Entry must have at least one form"
-            );
-        }
         super.attach();
         return element;
     }

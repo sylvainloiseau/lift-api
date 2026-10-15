@@ -86,12 +86,24 @@ public final class LiftHeader extends AbstractLiftRoot {
         return dictionary;
     }
 
-    /** Set by the dictionary that creates this header, through ModelInternals. */
+    /**
+     * Set by the dictionary that creates this header, through ModelInternals. The texts
+     * of the header and of what it already holds (the built-in feature sets) are then
+     * registered as meta-language texts of that dictionary.
+     */
     void setDictionary(LiftDictionary dictionary) {
         if (this.dictionary != null && this.dictionary != dictionary) {
             throw new IllegalStateException("This header already belongs to a dictionary.");
         }
         this.dictionary = dictionary;
+        if (dictionary != null) {
+            dictionary.getMutator().registerHeaderTexts(this);
+        }
+    }
+
+    /** Whether {@code fs} is one of the feature sets of this header. */
+    boolean holds(FeatureSet fs) {
+        return featureSetsMap.get(fs.getId()) == fs;
     }
 
     /**
@@ -149,6 +161,10 @@ public final class LiftHeader extends AbstractLiftRoot {
     /**
      * Adds a feature set to this header.
      *
+     * The texts of the feature set and of its features are registered as meta-language
+     * texts of the dictionary (see {@code DictionaryMutator.registerHeaderTexts}): their
+     * languages are declared, and later forms must be in a declared language.
+     *
      * @param fs the feature set to add
      * @throws IllegalArgumentException if a feature set with the same ID already exists,
      *         or if {@code fs} was created for another header
@@ -160,6 +176,9 @@ public final class LiftHeader extends AbstractLiftRoot {
             throw new IllegalArgumentException("This feature set belongs to another header: " + fs.getId());
         featureSetsMap.put(fs.getId(), fs);
         featureSets.add(fs);
+        if (dictionary != null) {
+            dictionary.getMutator().registerHeaderTexts(fs);
+        }
         LiftDictionary observer = Changes.observing(this);
         if (observer != null) {
             Changes.fire(observer, new FeatureSetAdded(observer, this, fs));
@@ -187,6 +206,9 @@ public final class LiftHeader extends AbstractLiftRoot {
                 throw new IllegalStateException(
                     "The feature set " + fs.getId() + " is the range of the definition " + d.getName());
             }
+        }
+        if (dictionary != null) {
+            dictionary.getMutator().releaseHeaderTexts(fs);
         }
         featureSetsMap.remove(fs.getId());
         featureSets.remove(fs);
@@ -263,6 +285,9 @@ public final class LiftHeader extends AbstractLiftRoot {
             throw new IllegalArgumentException("Duplicate field or trait definition: " + fd.getName());
         fieldsAndTraitsDefinition.put(fd.getName(), fd);
         definitions.add(fd);
+        if (dictionary != null) {
+            dictionary.getMutator().registerHeaderTexts(fd);
+        }
         LiftDictionary observer = Changes.observing(this);
         if (observer != null) {
             Changes.fire(observer, new DefinitionAdded(observer, this, fd));
@@ -285,6 +310,9 @@ public final class LiftHeader extends AbstractLiftRoot {
         if (isUsed(fd)) {
             throw new IllegalStateException(
                 "The definition " + fd.getName() + " is used by a field or a trait.");
+        }
+        if (dictionary != null) {
+            dictionary.getMutator().releaseHeaderTexts(fd);
         }
         fieldsAndTraitsDefinition.remove(fd.getName());
         definitions.remove(fd);

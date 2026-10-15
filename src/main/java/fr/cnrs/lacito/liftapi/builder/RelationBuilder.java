@@ -40,11 +40,7 @@ public class RelationBuilder extends AbstractLiftElementWithFieldBuilder<LiftRel
         if (type == null) {
             throw new IllegalArgumentException("Relation type cannot be null");
         }
-        if (!dictionary.getHeader().getRelationTypeManager().hasFeature(type)) {
-            dictionary.getHeader().getRelationTypeManager().addFeature(type);
-        }
-        Feature e = dictionary.getHeader().getRelationTypeManager().getFeature(type);
-        this.element.setType(e);
+        this.element.setType(dictionary.getHeader().getRelationTypeManager().getOrCreateFeature(type));
     }
 
     /**
@@ -74,9 +70,28 @@ public class RelationBuilder extends AbstractLiftElementWithFieldBuilder<LiftRel
         return this;
     }
 
+    /**
+     * Set the LIFT id of the entry or sense this relation refers to.
+     *
+     * The target need not exist yet: the id is recorded, and the relation points to the
+     * target object at once if the dictionary already holds it. Otherwise the object is
+     * set by {@link LiftDictionary#resolveReferences()}, which the XML reader calls at the
+     * end of a file (a relation often refers to an entry further down) and which a batch
+     * import creating entries in any order calls once they all exist.
+     *
+     * @param refId the LIFT id of the target
+     * @throws IllegalArgumentException if {@code refId} is null or blank
+     */
     public RelationBuilder withRefId(String refId) {
+        if (refId == null || refId.isBlank()) {
+            throw new IllegalArgumentException("The id referred to cannot be null or blank");
+        }
+        element.setRefId(refId);
         AbstractIdentifiable target = dictionary.getLiftDictionaryRegistry().getEntryOrSenseByLiftId(refId);
-        return this.withRef(target);
+        if (target != null) {
+            element.setRefObject(target);
+        }
+        return this;
     }
 
     /**

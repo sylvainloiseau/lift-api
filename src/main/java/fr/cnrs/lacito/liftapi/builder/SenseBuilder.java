@@ -11,6 +11,9 @@ import java.util.function.Consumer;
 /**
  * Builder for creating LiftSense instances with a fluent API.
  *
+ * A sense may be built without gloss or definition: the LIFT schema does not require
+ * them, and files contain such senses. Requiring them is the application's choice.
+ *
  * Usage:
  * <pre>
  *   LiftSense sense = Builders.sense()
@@ -227,13 +230,6 @@ public final class SenseBuilder extends AbstractLiftElementWithFieldAndNoteAndId
      */
     @Override
     public LiftSense build() {
-        if (
-            element.getDefinition().getLangs().size() == 0 
-            &&
-            element.getGlosses().getLangs().size() == 0 
-        ) {
-            throw new IllegalStateException("A sense must contain at least one gloss or one definition.");
-        }
         super.attach();
         return element;
     }

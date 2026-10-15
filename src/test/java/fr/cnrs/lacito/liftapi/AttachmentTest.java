@@ -44,7 +44,7 @@ public class AttachmentTest {
         return d.getComponentBuilder().entry().withForm("qyz", form).build();
     }
 
-    /** A sense needs a gloss or a definition to be built; the gloss is meta language. */
+    /** A sense with a gloss, which is meta language. */
     private static LiftSense sense(LiftDictionary d, LiftEntry parent, String gloss) {
         return d.getComponentBuilder().sense(parent).withGloss("en", gloss).build();
     }
@@ -253,5 +253,61 @@ public class AttachmentTest {
             () -> to.addSense(sense),
             "a component registered elsewhere must not be silently adopted"
         );
+    }
+
+    // ------------------------------------------------------------------
+    // Media, illustrations, the main of a reversal
+    // ------------------------------------------------------------------
+
+    @Test
+    public void mediaIllustrationAndMainBuiltIntoAnAttachedParentAreRegistered() {
+        LiftDictionary d = dictionary();
+        LiftDictionaryRegistry registry = d.getLiftDictionaryRegistry();
+        var b = d.getComponentBuilder();
+        LiftEntry entry = entry(d, "run");
+        LiftSense sense = sense(d, entry, "to run");
+        var pronunciation = b.pronunciation(entry, "qyz", "ran");
+
+        var media = b.media(pronunciation, "run.wav").withLabel("en", "slow").build();
+        var illustration = b.illustration(sense, "run.png").build();
+        var reversal = b.reversal(sense).withForm("en", "run").build();
+        var main = b.reversalMain(reversal).withForm("en", "go").build();
+
+        assertSame(pronunciation, media.getParent());
+        assertSame(sense, illustration.getParent());
+        assertSame(main, reversal.getMain());
+        assertTrue(reversal.getReversals().isEmpty(), "the main is not one of the reversals");
+        assertTrue(registry.getMedias().contains(media));
+        assertTrue(registry.getIllustrations().contains(illustration));
+        assertTrue(registry.getReversals().contains(main));
+        assertTrue(registry.getMetaText().contains(media.getLabel()));
+    }
+
+    @Test
+    public void mediaIllustrationAndMainBuiltIntoADetachedParentAreRegisteredOnceWithIt() {
+        LiftDictionary d = dictionary();
+        LiftDictionaryRegistry registry = d.getLiftDictionaryRegistry();
+        var b = d.getComponentBuilder();
+
+        LiftEntry entry = new LiftEntry();
+        LiftSense sense = new LiftSense();
+        entry.addSense(sense);
+        var pronunciation = new fr.cnrs.lacito.liftapi.model.LiftPronunciation();
+        entry.addPronunciation(pronunciation);
+
+        var media = b.media(pronunciation, "run.wav").build();
+        var illustration = b.illustration(sense, "run.png").build();
+        var reversal = b.reversal(sense).withMain(m -> m.withForm("en", "go")).build();
+        assertNull(media.getUUID());
+        assertNull(illustration.getUUID());
+        assertNull(reversal.getMain().getUUID());
+
+        d.addEntry(entry);
+        assertNotNull(media.getUUID());
+        assertNotNull(illustration.getUUID());
+        assertNotNull(reversal.getMain().getUUID());
+        assertEquals(1, registry.getMedias().size());
+        assertEquals(1, registry.getIllustrations().size());
+        assertEquals(2, registry.getReversals().size());
     }
 }

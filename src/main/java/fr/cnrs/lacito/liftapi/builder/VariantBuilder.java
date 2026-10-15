@@ -2,7 +2,6 @@ package fr.cnrs.lacito.liftapi.builder;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.model.AbstractIdentifiable;
-import fr.cnrs.lacito.liftapi.model.Feature;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
@@ -53,11 +52,25 @@ public class VariantBuilder extends AbstractLiftElementWithFieldBuilder<LiftVari
 
 
     /**
-     * Set the reference ID for this variant.
+     * Set the LIFT id of the entry or sense this variant refers to.
+     *
+     * The target need not exist yet: the id is recorded, and the variant points to the
+     * target object at once if the dictionary already holds it, or later through
+     * {@link LiftDictionary#resolveReferences()} (see
+     * {@link RelationBuilder#withRefId(String)}).
+     *
+     * @param refId the LIFT id of the target
+     * @throws IllegalArgumentException if {@code refId} is null or blank
      */
     public VariantBuilder withRefId(String refId) {
-        AbstractIdentifiable e = dictionary.getLiftDictionaryRegistry().getEntryOrSenseByLiftId(refId);
-        element.setRefObject(e);
+        if (refId == null || refId.isBlank()) {
+            throw new IllegalArgumentException("The id referred to cannot be null or blank");
+        }
+        element.setRefId(refId);
+        AbstractIdentifiable target = dictionary.getLiftDictionaryRegistry().getEntryOrSenseByLiftId(refId);
+        if (target != null) {
+            element.setRefObject(target);
+        }
         return this;
     }
 

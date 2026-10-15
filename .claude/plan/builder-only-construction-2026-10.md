@@ -230,7 +230,21 @@ open", the decoder "what this attribute means".
    explicitly, or give the main builder its own `attach` that calls `setMain`. Today the
    type of the child alone decides, which is ambiguous for `LiftReversal`.
 5. **Decision D1 applied to `SenseBuilder`, `ExampleBuilder`, `EntryBuilder`.**
-6. **Tests:** `builder/` tests for each new builder and setter. `AttachmentTest` cases for
+6. **Header MultiTexts registered (D4).** In `DictionaryMutator`, a register/release pair
+   for the MultiTexts of a feature set, a feature or a field definition, as
+   meta-language texts. It is called by `LiftHeader.addFeatureSet`,
+   `FeatureSet.addFeature` and `LiftHeader.addFieldOrTraitDefinition` (and their removals)
+   once the header belongs to a dictionary. A feature set's features are covered when the
+   set is added. The components themselves get no UUID and no index.
+   - Order during a load: the header is read before the entries, so its languages are
+     declared on load (as `registerMultiText` does for entries), and a form added
+     afterwards in an undeclared language is refused.
+   - Undo: the header's own `FeatureSetRemoved`/`FeatureAdded`… events stay the only
+     events; registration follows the add/remove they replay.
+   - Tests: a feature label in an undeclared language is refused once the dictionary is
+     loaded; header languages appear in `LiftDictionaryLanguagesManager` counts;
+     removing a feature set releases its texts; `ChangeRoundTripTest` still passes.
+7. **Tests:** `builder/` tests for each new builder and setter. `AttachmentTest` cases for
    media, illustration and main (registered when built into an attached parent; not
    registered, then registered once, when built into a detached one).
 
@@ -289,6 +303,24 @@ before `build()`.
 
 ## 5. Decisions to take
 
+**Decided (2026-10-15):**
+- **D1: (a).** The editorial checks are removed from `SenseBuilder`, `ExampleBuilder` and
+  `EntryBuilder`; builders follow the schema only.
+- **D2: commas** (revised 2026-10-15; first decided as "write whitespace, read both").
+  `LiftTrait.getValue()` joins with `", "` and the shared parser (P1.2) splits on commas,
+  trimming each id. Whitespace cannot separate values: feature ids contain spaces (FLEx
+  semantic domains, `"1.5 Plant"`). See §7.
+- **D3: option 1.** References to a later target are resolved at the end of a load only;
+  batch imports call a public `LiftDictionary.resolveReferences()`.
+- **D4, builders: yes.** `FeatureSetBuilder`, `FeatureBuilder` and a new
+  `FieldDefinitionBuilder` are the only way the decoder creates header components, for a
+  uniform creation interface. **D4, indexes: MultiTexts only** (the middle way below).
+  The header components themselves are not indexed and get no UUID; their MultiTexts
+  (labels, abbreviations, descriptions) are registered as meta-language texts when the
+  component is added to the header, so their languages are declared, counted and
+  checked like any other meta-language text.
+
+
 **D1. Where do the editorial checks of F2 go?**
 - **(a) Recommended:** remove them from the builders. Builders follow the schema; an
   application that wants "a sense needs a gloss" checks it itself.
@@ -316,6 +348,29 @@ registered in the indexes. Including them (P2.3 `FieldDefinitionBuilder`, header
 handling in P4) completes "every creation through a builder". Leaving the header in
 the decoder would halve P2.3 but keep a second construction layer for it.
 
+*Indexing the header components (decided: MultiTexts only, see above).* Today they are reachable only through
+`LiftHeader` (`getFeatureSets()`, `getFieldsAndTraitsDefinitions()`) and report their
+own `FeatureSetAdded`/`FeatureAdded`/`DefinitionAdded` events; `DictionaryMutator` never
+sees them, so they get no UUID and their MultiTexts (labels, abbreviations,
+descriptions) are not registered.
+- Benefits: (1) their MultiTexts would go through `registerMultiText` like every other
+  meta-language text: languages declared and counted in `LiftDictionaryLanguagesManager`,
+  forms in an undeclared language refused; (2) one creation-and-registration path for
+  the whole document (principle 2), and `childrenOf` would cover the header, so the census
+  test could check it; (3) a UUID for each, if a consumer needs a stable key (none does
+  today: `Feature` is already compared by identity).
+- Costs: (1) a second root besides entries — "attached" is defined as "reaches an entry
+  with an owning dictionary", so it must be extended to the header, and `adoptSubtree`,
+  `releaseSubtree`, `childrenOf`, `nodesById` and the census get header cases; (2) features
+  are mostly created on demand (`getOrCreateFeature`) while entries are being loaded or
+  edited: each would now be registered, and removal would have to unregister it and its
+  MultiTexts; (3) the header keeps its own events, so removing a feature set would raise
+  both its own event and a release, or the events must be unified; (4) about 3 more
+  indexes and a few hundred more registrations per load (negligible next to 25,000).
+- Middle way: do not index the components, but register only their MultiTexts as
+  meta-language texts when they are added to the header. This gives benefit (1), the
+  only one with a visible effect, at a fraction of the cost.
+
 ---
 
 ## 6. Risks
@@ -330,6 +385,97 @@ the decoder would halve P2.3 but keep a second construction layer for it.
 - **Interaction with the UUID plan** (`fast-internal-uuids-2026-10.md`): independent.
   Doing it first gives this plan a stable performance baseline.
 
-## 7. Results
+## 7. Results (2026-10-15)
 
-*(baseline from P0.1, final figures from P4.6)*
+Implemented, uncommitted. `LiftXMLFactory` is deleted; `LiftXmlDecoder` turns elements
+into builder calls and `LiftSaxHandler` keeps a stack of open builders (`Frame`: the
+component, and its builder or `null` for a component that already existed and is only
+filled: the header, a built-in range declared again, a range element declared twice).
+
+### Attribute inventory (P2.1)
+
+What the reader sets, element by element, and the builder call it now goes through.
+"kept" means stored as an unknown attribute (`BuilderInternals.putOtherXmlAttribute`)
+and written back; "dropped" means ignored, as before this change.
+
+| Element | Attribute → builder call | Other attributes |
+|---|---|---|
+| entry | `id` → `withId`, `guid` → `withGuid`, `dateDeleted` → `dateDeleted`, `dateCreated`/`dateModified` → `dateCreated`/`dateModified` | kept (incl. `order`, as before) |
+| sense, subsense | `id`, `guid`, `order` → `withOrder`, dates | kept |
+| etymology | `type`, `source` → constructor, dates | kept |
+| relation | `type` → constructor, `ref` → `withRefId`, `order` → `withOrder`, dates | kept |
+| variant | `ref` → `withRefId`, dates | kept |
+| example | `source` → `withSource`, dates | kept |
+| note | `type` → constructor, dates | kept |
+| pronunciation | dates | kept |
+| translation | `type` → constructor (default type when absent) | dropped |
+| field | `name` (0.15) or `type` (0.13) → constructor | dropped |
+| trait | `name`, `value` → constructor (`LiftTrait.parseValue`) | dropped |
+| annotation | `name` → constructor, `value`/`who`/`when` → `withValue`/`withWho`/`withWhen` | dropped |
+| grammatical-info | `value` → constructor | dropped |
+| reversal | `type` → `withType` | dropped |
+| main | — (`reversalMain`) | dropped |
+| media, illustration | `href` → constructor (required) | dropped |
+| range | `id` → constructor, `href` → `withHref`, `guid` → `withGuid` (new ranges only) | dropped |
+| range-element | `id` → constructor, `guid` → `withGuid`, `parent` → resolved at `</header>` | dropped |
+| field-definition, 0.13 `<field tag>` | `name`/`tag`/`guid` → constructor, `class` → `withTargets`, `type` → `withDataModel`, `writing-system` → `withWritingSystem`, `option-range` → resolved at `</header>` | dropped |
+
+The "dropped" column is unchanged behaviour: keeping those attributes would change what
+is written, which is out of the scope of this plan.
+
+### What changed for applications
+
+- D1: `EntryBuilder`, `SenseBuilder`, `ExampleBuilder` no longer refuse an entry
+  without lexical unit, a sense without gloss or definition, an example without text.
+- Builders accept an empty annotation name, reversal type and part of speech (files
+  have them); they refuse `null`. `EtymologyBuilder` now requires a source, and
+  `MediaBuilder`/`IllustrationBuilder` an `href` (schema requirements; the old reader
+  did not check the media's).
+- `TraitBuilder` parses with `LiftTrait.parseValue`, which adds an unknown feature to the
+  feature set (as the reader always did); `LiftTrait.setValue(String)` keeps refusing it.
+- `RelationBuilder.withRefId` / `VariantBuilder.withRefId` record the id even when the
+  target does not exist yet (D3); new public `LiftDictionary.resolveReferences()`.
+- New builders: `MediaBuilder`, `IllustrationBuilder`, `FieldDefinitionBuilder`,
+  `ReversalBuilder.withMain` / `factory.reversalMain`, plus `factory.feature`,
+  `factory.fieldDefinition`, `FeatureBuilder.withSuperordinate`, `ReversalBuilder.withForm`.
+- D4: header texts registered as meta-language texts. On the corpus: same language set
+  (en, tpi), 301 more registered meta-language texts, 7 more `en` occurrences.
+- Errors raised while building during a load carry the line and column of the element
+  (`SAXParseException` wrapped in `LiftDocumentLoadingException`; a
+  `DuplicateIdException` keeps its type and gains the position in its message).
+
+### Deviation from the work plan
+
+- P1.3 (make the factory delegate before switching) was skipped: the factory was
+  deleted in the same change, and the census and round-trip tests ran on the result.
+
+### D2 revised: commas
+
+Implementing D2 as first decided (write whitespace, read both) broke
+`RegressionTest.traitCanHoldAFeatureSetAndAFeatureList`: feature ids can contain spaces
+(FLEx semantic domains are `"1.5 Plant"`; the corpus has 855 such trait values, all
+single-valued), so a multi-valued (`option-collection`/`option-sequence`) trait with such
+ids could not round trip (`"1.1 Sky"` read back as `1.1` and `Sky`). Decided instead:
+write `", "` (what `getValue()` already wrote) and split on commas only, trimming each
+id. The F4 bug was the reader's whitespace split; it is gone. Only an id containing a
+comma cannot be part of a multi-valued trait.
+
+### Figures
+
+`20240828Lift.lift` (1,927 entries), JDK 26. Long runs: 300 warm-up loads, then
+3 × 200 timed loads, HEAD and the new code alternated twice.
+
+| | HEAD (844ed7b) | Builder-only |
+|---|---|---|
+| Long runs, median | 12.6 / 13.0 / 12.9 / 13.3 / 13.0 / 13.1 ms (mean 12.98) | 13.3 / 13.1 / 12.7 / 13.8 / 13.7 / 13.3 ms (mean 13.32) |
+| `LoadingCostTest`, median | 18 ms | 17 ms |
+| Retained heap (`LoadingCostTest`) | 25.9 MB | 25.7 MB |
+
+About +2.6% load time, within the 5% budget.
+
+Tests: 188 (164 before). New: `HeaderTextsTest` (6), `builder/SchemaLevelBuildersTest`
+(9), `RegressionTest` (+6: multi-valued trait round trip with an id containing a
+space, spaces around ids trimmed, forward references, reference resolved at once, error
+position, duplicate id position),
+`AttachmentTest` (+2: media, illustration and main, attached and detached),
+`EncapsulationTest` (+1: no builder method hands out its element). All pass.

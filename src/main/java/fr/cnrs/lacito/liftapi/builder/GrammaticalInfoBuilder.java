@@ -65,10 +65,9 @@ public final class GrammaticalInfoBuilder
     }
 
     private static Feature resolve(LiftDictionary dictionary, String partOfSpeech) {
-        if (partOfSpeech == null || partOfSpeech.isBlank()) {
-            throw new IllegalArgumentException(
-                "Part of speech cannot be null or empty"
-            );
+        // An empty part of speech is a valid attribute value, and files have it.
+        if (partOfSpeech == null) {
+            throw new IllegalArgumentException("Part of speech cannot be null");
         }
         return dictionary
             .getHeader()
