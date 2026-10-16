@@ -13,8 +13,8 @@
  * are the only code that creates components: a file is loaded the way an application
  * builds a dictionary, through the same type resolution, value parsing and wiring. Only
  * what is specific to XML stays here: element and attribute names, the spellings that
- * differ between versions, the attributes LIFT does not define (kept for the round
- * trip), and the references a file may make before the declaration they point to,
+ * differ between versions, the attributes LIFT does not define (logged as warnings and
+ * not written back), and the references a file may make before the declaration they point to,
  * resolved at the end of the header and of the document.
  *
  * <h2>Writing</h2>

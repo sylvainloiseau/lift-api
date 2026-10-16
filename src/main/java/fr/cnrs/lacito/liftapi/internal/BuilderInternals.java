@@ -11,9 +11,7 @@ import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
  * elements on a stack, creates the builder of a child on the element of its parent's
  * builder before that one is built, and fills the texts of the element as the forms
  * arrive. That needs the element under construction, which a builder keeps to itself
- * so that an application cannot wire it by hand behind the builder's back. It also
- * needs to keep the XML attributes LIFT does not define, for the round trip, which no
- * application has a reason to set.
+ * so that an application cannot wire it by hand behind the builder's back.
  *
  * The same pattern as {@link ModelInternals}: the {@code builder} package implements
  * {@link Access} and installs it from a static initializer; this package is not
@@ -34,12 +32,6 @@ public final class BuilderInternals {
          * builders of its children on it, and filling its texts.
          */
         <T extends AbstractLiftRoot> T element(AbstractLiftElementBuilder<T, ?> builder);
-
-        /**
-         * Record an XML attribute LIFT does not define on the element, to be written back
-         * as it was read.
-         */
-        void putOtherXmlAttribute(AbstractLiftElementBuilder<?, ?> builder, String name, String value);
     }
 
     private static volatile Access access;

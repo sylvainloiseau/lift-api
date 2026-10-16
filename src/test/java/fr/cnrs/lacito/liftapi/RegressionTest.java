@@ -762,7 +762,7 @@ public class RegressionTest {
         <range id="colours"><range-element id="red"/><range-element id="light blue"/></range>
         </ranges>
         <fields>
-        <field-definition name="colour" kind="trait" type="option-collection" option-range="colours"/>
+        <field-definition name="colour" type="option-collection" option-range="colours"/>
         </fields>
         </header>
         """;
@@ -792,6 +792,79 @@ public class RegressionTest {
             reloaded.getHeader().getFeatureSet("colours").getFeatures().keySet(),
             "no feature should have been created from a badly split value"
         );
+    }
+
+    /**
+     * The reader did not map {@code <entry order>}: it was stored as an unknown
+     * attribute, which the writer does not write, so a save dropped it.
+     */
+    @Test
+    public void theOrderOfAnEntrySurvivesASaveAndAReload(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+        LiftDictionary d = load(dir, """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <lift version="0.15" producer="test">
+            <entry id="e1" order="2"/>
+            </lift>
+            """);
+        LiftEntry entry = d.getLiftDictionaryRegistry().getEntries().getFirst();
+        assertEquals("2", entry.getOrder().orElse(null));
+        assertTrue(entry.getOtherXmlAttributes().isEmpty());
+
+        File saved = dir.resolve("saved.lift").toFile();
+        d.save(saved);
+        LiftDictionary reloaded = LiftDictionary.loadDictionaryFromFile(saved);
+        assertEquals("2", reloaded.getLiftDictionaryRegistry().getEntries().getFirst().getOrder().orElse(null));
+    }
+
+    /**
+     * The elements that read their attributes by name (trait, range element...) ignored
+     * the others silently; they are now kept with the unknown attributes, as on the
+     * elements read through {@code populate}, and logged.
+     */
+    @Test
+    public void anUnknownAttributeOnAnElementReadByNameIsKept(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+        LiftDictionary d = load(dir, """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <lift version="0.15" producer="test">
+            <header><ranges>
+            <range id="colours"><range-element id="red" shade="dark"/></range>
+            </ranges></header>
+            <entry id="e1"><trait name="colour" value="red" certainty="low"/></entry>
+            </lift>
+            """);
+        LiftTrait trait = d.getLiftDictionaryRegistry().getTraits().getFirst();
+        assertEquals(java.util.Map.of("certainty", "low"), trait.getOtherXmlAttributes());
+        assertEquals(
+            java.util.Map.of("shade", "dark"),
+            d.getHeader().getFeatureSet("colours").getFeature("red").getOtherXmlAttributes()
+        );
+    }
+
+    /**
+     * The writer writes the dates of fields, ranges and range elements, but the reader
+     * did not read them: a save dropped them.
+     */
+    @Test
+    public void theDatesOfAFieldAndARangeElementSurviveASaveAndAReload(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+        LiftDictionary d = load(dir, """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <lift version="0.15" producer="test">
+            <header><ranges>
+            <range id="colours" dateCreated="2020-01-01"><range-element id="red" dateModified="2021-02-02"/></range>
+            </ranges></header>
+            <entry id="e1"><field name="comment" dateCreated="2022-03-03"><form lang="en"><text>x</text></form></field></entry>
+            </lift>
+            """);
+        File saved = dir.resolve("saved.lift").toFile();
+        d.save(saved);
+        LiftDictionary reloaded = LiftDictionary.loadDictionaryFromFile(saved);
+
+        FeatureSet colours = reloaded.getHeader().getFeatureSet("colours");
+        assertEquals("2020-01-01", colours.getDateCreated().orElse(null));
+        assertEquals("2021-02-02", colours.getFeature("red").getDateModified().orElse(null));
+        assertEquals("2022-03-03",
+            reloaded.getLiftDictionaryRegistry().getFields().getFirst().getDateCreated().orElse(null));
+        assertTrue(colours.getFeature("red").getOtherXmlAttributes().isEmpty());
     }
 
     /** The spaces around the ids of a multi-valued trait are not part of them. */

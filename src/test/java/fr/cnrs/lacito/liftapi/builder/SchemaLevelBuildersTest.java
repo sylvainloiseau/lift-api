@@ -10,6 +10,7 @@ import fr.cnrs.lacito.liftapi.LiftVersion;
 import fr.cnrs.lacito.liftapi.model.FeatureSet;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftExample;
+import fr.cnrs.lacito.liftapi.model.LiftField;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinitionDataModel;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinitionKind;
@@ -75,6 +76,29 @@ public class SchemaLevelBuildersTest {
         assertThrows(IllegalArgumentException.class, () -> b.etymology(entry, "borrowed", null));
         assertThrows(IllegalArgumentException.class, () -> b.relation(null, entry));
         assertThrows(IllegalArgumentException.class, () -> b.illustration(entry.getSenses().get(0), null));
+    }
+
+    /** Field, range and range-element are extensible in LIFT 0.15: they carry dates. */
+    @Test
+    public void aFieldARangeAndARangeElementTakeDates() {
+        FeatureSet colours = b.range("colours")
+            .dateCreated("2020-01-01")
+            .dateModified("2020-06-01")
+            .addFeature(f -> f.dateCreated("2021-01-01").dateModified("2021-06-01"), "red")
+            .build();
+        assertEquals(Optional.of("2020-01-01"), colours.getDateCreated());
+        assertEquals(Optional.of("2020-06-01"), colours.getDateModified());
+        assertEquals(Optional.of("2021-01-01"), colours.getFeature("red").getDateCreated());
+        assertEquals(Optional.of("2021-06-01"), colours.getFeature("red").getDateModified());
+
+        LiftEntry entry = b.entry().withForm("tww", "nala").build();
+        LiftField field = b.field(entry, "comment")
+            .dateCreated("2022-01-01")
+            .dateModified("2022-06-01")
+            .addText("en", "checked")
+            .build();
+        assertEquals(Optional.of("2022-01-01"), field.getDateCreated());
+        assertEquals(Optional.of("2022-06-01"), field.getDateModified());
     }
 
     // ------------------------------------------------------------------

@@ -52,7 +52,19 @@ public class FieldBuilder extends AbstractLiftElementWithoutFieldBuilder<LiftFie
         return this;
     }
 
-    // Override Trait And Annotation builder in order to return the correct type
+    // Override the dates, trait and annotation methods in order to return the correct type
+
+    @Override
+    public FieldBuilder dateCreated(String date) {
+        super.dateCreated(date);
+        return this;
+    }
+
+    @Override
+    public FieldBuilder dateModified(String date) {
+        super.dateModified(date);
+        return this;
+    }
 
     @Override
     public FieldBuilder addTrait(String name, String value) {

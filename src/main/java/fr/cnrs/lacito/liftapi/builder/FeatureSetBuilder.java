@@ -76,6 +76,24 @@ public class FeatureSetBuilder
     }
 
     /**
+     * The date the feature set was created (the {@code dateCreated} attribute, a LIFT date or
+     * date-time, stored as given).
+     */
+    public FeatureSetBuilder dateCreated(String date) {
+        element.setDateCreated(date);
+        return this;
+    }
+
+    /**
+     * The date the feature set was last modified (the {@code dateModified} attribute, a LIFT
+     * date or date-time, stored as given).
+     */
+    public FeatureSetBuilder dateModified(String date) {
+        element.setDateModified(date);
+        return this;
+    }
+
+    /**
      * Add a feature via nested builder configuration.
      *
      * @param type the id of the feature

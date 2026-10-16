@@ -55,6 +55,24 @@ public class FeatureBuilder
     }
 
     /**
+     * The date the feature was created (the {@code dateCreated} attribute, a LIFT date or
+     * date-time, stored as given).
+     */
+    public FeatureBuilder dateCreated(String date) {
+        element.setDateCreated(date);
+        return this;
+    }
+
+    /**
+     * The date the feature was last modified (the {@code dateModified} attribute, a LIFT
+     * date or date-time, stored as given).
+     */
+    public FeatureBuilder dateModified(String date) {
+        element.setDateModified(date);
+        return this;
+    }
+
+    /**
      * The feature above this one in its set's hierarchy (the {@code parent} attribute of
      * a {@code <range-element>}).
      */

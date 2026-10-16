@@ -64,8 +64,9 @@ same thing in two places, sometimes with different idioms
 **F3. What the builders cannot express yet.**
 - **Attributes:**
   - `dateDeleted` on entries;
-  - unknown XML attributes (`otherXmlAttributes`, kept for round-trip; written only
-    through `ModelInternals.putOtherXmlAttribute`, and they must stay non-public);
+  - unknown XML attributes (`otherXmlAttributes`, stored only through
+    `ModelInternals.putOtherXmlAttribute`, and they must stay non-public; despite what
+    this finding first said, they are not written back, see §7);
   - `order` and `guid` wherever `populateWithAttribute` accepts them but no builder method
     exists (to inventory precisely in step P2.1).
 - **Components without a builder:** `LiftMedia` (in a pronunciation), `LiftIllustration`
@@ -395,12 +396,15 @@ filled: the header, a built-in range declared again, a range element declared tw
 ### Attribute inventory (P2.1)
 
 What the reader sets, element by element, and the builder call it now goes through.
-"kept" means stored as an unknown attribute (`BuilderInternals.putOtherXmlAttribute`)
-and written back; "dropped" means ignored, as before this change.
+"kept" means stored as an unknown attribute (`AbstractLiftRoot.getOtherXmlAttributes()`),
+logged as a warning and **not** written back (the writer never read them). Until
+2026-10-16 the elements of the second group (translation to field-definition) ignored
+their other attributes silently ("dropped"); they now hand them to `LiftXmlDecoder.rest`,
+which keeps and logs them too.
 
 | Element | Attribute → builder call | Other attributes |
 |---|---|---|
-| entry | `id` → `withId`, `guid` → `withGuid`, `dateDeleted` → `dateDeleted`, `dateCreated`/`dateModified` → `dateCreated`/`dateModified` | kept (incl. `order`, as before) |
+| entry | `id` → `withId`, `guid` → `withGuid`, `order` → `withOrder` (since 2026-10-16, see below), `dateDeleted` → `dateDeleted`, `dateCreated`/`dateModified` → `dateCreated`/`dateModified` | kept |
 | sense, subsense | `id`, `guid`, `order` → `withOrder`, dates | kept |
 | etymology | `type`, `source` → constructor, dates | kept |
 | relation | `type` → constructor, `ref` → `withRefId`, `order` → `withOrder`, dates | kept |
@@ -408,20 +412,41 @@ and written back; "dropped" means ignored, as before this change.
 | example | `source` → `withSource`, dates | kept |
 | note | `type` → constructor, dates | kept |
 | pronunciation | dates | kept |
-| translation | `type` → constructor (default type when absent) | dropped |
-| field | `name` (0.15) or `type` (0.13) → constructor | dropped |
-| trait | `name`, `value` → constructor (`LiftTrait.parseValue`) | dropped |
-| annotation | `name` → constructor, `value`/`who`/`when` → `withValue`/`withWho`/`withWhen` | dropped |
-| grammatical-info | `value` → constructor | dropped |
-| reversal | `type` → `withType` | dropped |
-| main | — (`reversalMain`) | dropped |
-| media, illustration | `href` → constructor (required) | dropped |
-| range | `id` → constructor, `href` → `withHref`, `guid` → `withGuid` (new ranges only) | dropped |
-| range-element | `id` → constructor, `guid` → `withGuid`, `parent` → resolved at `</header>` | dropped |
-| field-definition, 0.13 `<field tag>` | `name`/`tag`/`guid` → constructor, `class` → `withTargets`, `type` → `withDataModel`, `writing-system` → `withWritingSystem`, `option-range` → resolved at `</header>` | dropped |
+| translation | `type` → constructor (default type when absent) | kept (was: dropped) |
+| field | `name` (0.15) or `type` (0.13) → constructor, `dateCreated`/`dateModified` → `dateCreated`/`dateModified` (since 2026-10-16) | kept (was: dropped) |
+| trait | `name`, `value` → constructor (`LiftTrait.parseValue`) | kept (was: dropped) |
+| annotation | `name` → constructor, `value`/`who`/`when` → `withValue`/`withWho`/`withWhen` | kept (was: dropped) |
+| grammatical-info | `value` → constructor | kept (was: dropped) |
+| reversal | `type` → `withType` | kept (was: dropped) |
+| main | — (`reversalMain`) | kept (was: dropped) |
+| media, illustration | `href` → constructor (required) | kept (was: dropped) |
+| range | `id` → constructor, `href` → `withHref`, `guid` → `withGuid` (new ranges only), dates → `dateCreated`/`dateModified` (since 2026-10-16; on a range the header already has, set on the component) | kept (was: dropped) |
+| range-element | `id` → constructor, `guid` → `withGuid`, `parent` → resolved at `</header>`, dates → `dateCreated`/`dateModified` (since 2026-10-16; merged into the first declaration of an element declared twice, like `guid`) | kept (was: dropped) |
+| field-definition, 0.13 `<field tag>` | `name`/`tag`/`guid` → constructor, `class` → `withTargets`, `type` → `withDataModel`, `writing-system` → `withWritingSystem`, `option-range` → resolved at `</header>` | kept (was: dropped) |
 
-The "dropped" column is unchanged behaviour: keeping those attributes would change what
-is written, which is out of the scope of this plan.
+Keeping the unknown attributes does not change what is written, since they are not
+written back.
+
+**Entry `order` (fixed 2026-10-16).** Neither the old factory nor the first version of the
+decoder mapped `<entry order>`: it went to the unknown attributes, which are not written,
+so a save dropped it (458 entries of the reference corpus have one). The round-trip test
+did not see it, since it compares two loads that both lacked it. The decoder now calls
+`EntryBuilder.withOrder`; `RegressionTest.theOrderOfAnEntrySurvivesASaveAndAReload` pins
+it. The same change logs every unknown attribute: the corpus produces none.
+
+**Every element reports its unknown attributes (2026-10-16).** `LiftXmlDecoder.rest(frame,
+attributes, known...)` hands the attributes an element read by name did not ask for to
+`other()`. Doing so showed that the dates of field, range and range-element, which the
+schema allows and the writer writes, were never read. They now go through
+`dateCreated`/`dateModified`, added to `FeatureSetBuilder` and `FeatureBuilder`, and
+overridden in `FieldBuilder` to return `FieldBuilder` (the inherited ones returned the base
+type, which broke chaining). A range or range element that already exists has no builder,
+so its dates are set on the component, as its `guid` already was. The corpus has none, so no file
+of ours lost any. `other()` now stores through `ModelInternals` (it also serves the
+components that already existed, which have no builder), and
+`BuilderInternals.putOtherXmlAttribute` was removed. Tests:
+`RegressionTest.anUnknownAttributeOnAnElementReadByNameIsKept`,
+`theDatesOfAFieldAndARangeElementSurviveASaveAndAReload`.
 
 ### What changed for applications
 

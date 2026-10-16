@@ -3,7 +3,6 @@ package fr.cnrs.lacito.liftapi.builder;
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.internal.BuilderInternals;
 import fr.cnrs.lacito.liftapi.internal.DictionaryMutator;
-import fr.cnrs.lacito.liftapi.internal.ModelInternals;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
 import fr.cnrs.lacito.liftapi.model.AbstractNotable;
 import fr.cnrs.lacito.liftapi.model.Feature;
@@ -44,11 +43,6 @@ public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot, U e
             @Override
             public <E extends AbstractLiftRoot> E element(AbstractLiftElementBuilder<E, ?> builder) {
                 return builder.element;
-            }
-
-            @Override
-            public void putOtherXmlAttribute(AbstractLiftElementBuilder<?, ?> builder, String name, String value) {
-                ModelInternals.get().putOtherXmlAttribute(builder.element, name, value);
             }
         });
     }

@@ -12,6 +12,7 @@ import fr.cnrs.lacito.liftapi.builder.EtymologyBuilder;
 import fr.cnrs.lacito.liftapi.builder.ExampleBuilder;
 import fr.cnrs.lacito.liftapi.builder.FeatureBuilder;
 import fr.cnrs.lacito.liftapi.builder.FeatureSetBuilder;
+import fr.cnrs.lacito.liftapi.builder.FieldBuilder;
 import fr.cnrs.lacito.liftapi.builder.FieldDefinitionBuilder;
 import fr.cnrs.lacito.liftapi.builder.NoteBuilder;
 import fr.cnrs.lacito.liftapi.builder.RelationBuilder;
@@ -20,6 +21,7 @@ import fr.cnrs.lacito.liftapi.builder.SenseBuilder;
 import fr.cnrs.lacito.liftapi.builder.AnnotationBuilder;
 import fr.cnrs.lacito.liftapi.builder.VariantBuilder;
 import fr.cnrs.lacito.liftapi.internal.BuilderInternals;
+import fr.cnrs.lacito.liftapi.internal.ModelInternals;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
 import fr.cnrs.lacito.liftapi.model.Feature;
 import fr.cnrs.lacito.liftapi.model.FeatureSet;
@@ -48,6 +50,7 @@ import java.util.Optional;
 import java.util.logging.Logger;
 
 import org.xml.sax.Attributes;
+import org.xml.sax.Locator;
 
 /**
  * Turns LIFT XML elements into builder calls.
@@ -59,8 +62,9 @@ import org.xml.sax.Attributes;
  *
  * <ul>
  * <li>which builder an element calls for, and what each of its attributes means - the
- * builder method it maps to, or nothing (an attribute LIFT does not define on that
- * element is kept as it is, for the round trip);</li>
+ * builder method it maps to. An attribute LIFT does not define on that element is
+ * logged as a warning, since it is most likely a mistake in the file, and stored in
+ * {@code AbstractLiftRoot.getOtherXmlAttributes()}; it is not written back on save;</li>
  * <li>the spellings that differ between LIFT 0.13 and 0.15 ({@code @type} or
  * {@code @name} on a field, {@code <field tag>} in a 0.13 header);</li>
  * <li>what a file may refer to before declaring it: the {@code option-range} of a
@@ -90,6 +94,8 @@ final class LiftXmlDecoder {
 
     private static final BuilderInternals.Access BUILDERS = BuilderInternals.get();
 
+    private static final ModelInternals.Access MODEL = ModelInternals.get();
+
     /**
      * An open component element: the component, and the builder that builds it at the
      * end tag, or {@code null} if the component already existed.
@@ -115,10 +121,17 @@ final class LiftXmlDecoder {
     /** Range id -&gt; the definitions taking their values from it. */
     private final Map<String, List<LiftFieldAndTraitDefinition>> definitionsByOptionRange = new HashMap<>();
 
+    /** Where the parser is, for the warnings; {@code null} if the parser gives none. */
+    private Locator locator;
+
     LiftXmlDecoder(LiftDictionary dictionary) {
         this.dictionary = dictionary;
         this.header = dictionary.getHeader();
         this.factory = dictionary.getComponentBuilder();
+    }
+
+    void setLocator(Locator locator) {
+        this.locator = locator;
     }
 
     // ------------------------------------------------------------------
@@ -226,7 +239,8 @@ final class LiftXmlDecoder {
         }
         String type = attribute(attributes, LiftVocabulary.TYPE_ATTRIBUTE);
         if (type == null) type = LiftExample.DEFAULT_TRANSLATION_TYPE;
-        return Frame.of(factory.translation(example, type));
+        return rest(Frame.of(factory.translation(example, type)), attributes,
+            LiftVocabulary.TYPE_ATTRIBUTE);
     }
 
     Frame pronunciation(AbstractLiftRoot parent, Attributes attributes) {
@@ -239,17 +253,17 @@ final class LiftXmlDecoder {
     }
 
     Frame media(AbstractLiftRoot parent, Attributes attributes) {
-        return Frame.of(factory.media(
+        return rest(Frame.of(factory.media(
             (LiftPronunciation) parent,
             attribute(attributes, LiftVocabulary.HREF_ATTRIBUTE)
-        ));
+        )), attributes, LiftVocabulary.HREF_ATTRIBUTE);
     }
 
     Frame illustration(AbstractLiftRoot parent, Attributes attributes) {
-        return Frame.of(factory.illustration(
+        return rest(Frame.of(factory.illustration(
             (LiftSense) parent,
             attribute(attributes, LiftVocabulary.HREF_ATTRIBUTE)
-        ));
+        )), attributes, LiftVocabulary.HREF_ATTRIBUTE);
     }
 
     Frame note(AbstractLiftRoot parent, Attributes attributes) {
@@ -273,24 +287,32 @@ final class LiftXmlDecoder {
         if (name == null) throw new IllegalArgumentException(
             "A field element requires a 'name' (LIFT 0.15) or 'type' (LIFT 0.13) attribute"
         );
-        return Frame.of(factory.field(hf, name));
+        FieldBuilder b = factory.field(hf, name);
+        String created = attribute(attributes, LiftVocabulary.DATE_CREATED_ATTRIBUTE);
+        if (created != null) b.dateCreated(created);
+        String modified = attribute(attributes, LiftVocabulary.DATE_MODIFIED_ATTRIBUTE);
+        if (modified != null) b.dateModified(modified);
+        return rest(Frame.of(b), attributes,
+            LiftVocabulary.NAME_ATTRIBUTE, LiftVocabulary.TYPE_ATTRIBUTE,
+            LiftVocabulary.DATE_CREATED_ATTRIBUTE, LiftVocabulary.DATE_MODIFIED_ATTRIBUTE);
     }
 
     Frame trait(AbstractLiftRoot parent, Attributes attributes) {
         if (!(parent instanceof HasTrait ht)) {
             throw new IllegalStateException("Expecting an objet implementing HasTrait, found: " + parent);
         }
-        return Frame.of(factory.trait(
+        return rest(Frame.of(factory.trait(
             ht,
             attribute(attributes, LiftVocabulary.NAME_ATTRIBUTE),
             attribute(attributes, LiftVocabulary.VALUE_ATTRIBUTE)
-        ));
+        )), attributes, LiftVocabulary.NAME_ATTRIBUTE, LiftVocabulary.VALUE_ATTRIBUTE);
     }
 
     Frame grammaticalInfo(AbstractLiftRoot parent, Attributes attributes) {
         String value = attribute(attributes, LiftVocabulary.VALUE_ATTRIBUTE);
         if (value == null) throw new IllegalArgumentException("Grammatical info code cannot be null");
-        return Frame.of(factory.grammaticalInfo((LiftSense) parent, value));
+        return rest(Frame.of(factory.grammaticalInfo((LiftSense) parent, value)), attributes,
+            LiftVocabulary.VALUE_ATTRIBUTE);
     }
 
     /**
@@ -305,7 +327,9 @@ final class LiftXmlDecoder {
             .withValue(attribute(attributes, LiftVocabulary.VALUE_ATTRIBUTE))
             .withWho(attribute(attributes, LiftVocabulary.WHO_ATTRIBUTE))
             .withWhen(attribute(attributes, LiftVocabulary.WHEN_ATTRIBUTE));
-        return Frame.of(b);
+        return rest(Frame.of(b), attributes,
+            LiftVocabulary.NAME_ATTRIBUTE, LiftVocabulary.VALUE_ATTRIBUTE,
+            LiftVocabulary.WHO_ATTRIBUTE, LiftVocabulary.WHEN_ATTRIBUTE);
     }
 
     Frame reversal(AbstractLiftRoot parent, Attributes attributes) {
@@ -316,14 +340,14 @@ final class LiftXmlDecoder {
         // reversal-content declares @type as optional.
         String type = attribute(attributes, LiftVocabulary.TYPE_ATTRIBUTE);
         if (type != null) b.withType(type);
-        return Frame.of(b);
+        return rest(Frame.of(b), attributes, LiftVocabulary.TYPE_ATTRIBUTE);
     }
 
-    Frame reversalMain(AbstractLiftRoot parent) {
+    Frame reversalMain(AbstractLiftRoot parent, Attributes attributes) {
         if (!(parent instanceof LiftReversal reversal)) {
             throw new IllegalStateException("Expecting a LiftReversal for main, found: " + parent);
         }
-        return Frame.of(factory.reversalMain(reversal));
+        return rest(Frame.of(factory.reversalMain(reversal)), attributes);
     }
 
     /**
@@ -363,7 +387,10 @@ final class LiftXmlDecoder {
     /**
      * The attributes of the components that carry the common ones (ids, dates,
      * references...), applied in document order. An attribute LIFT does not define on
-     * the element is kept on the component, to be written back.
+     * the element goes to {@link #other}.
+     *
+     * The elements whose builder does not take these common attributes read theirs by
+     * name, and hand the others to {@link #rest}.
      */
     private void populate(AbstractLiftElementWithoutFieldBuilder<?, ?> b, Attributes attributes) {
         for (int i = 0; i < attributes.getLength(); i++) {
@@ -403,6 +430,7 @@ final class LiftXmlDecoder {
                 }
                 case LiftVocabulary.ORDER_ATTRIBUTE -> {
                     switch (b) {
+                        case EntryBuilder eb -> eb.withOrder(value);
                         case SenseBuilder sb -> sb.withOrder(Integer.parseInt(value));
                         case RelationBuilder rb -> rb.withOrder(Integer.parseInt(value));
                         default -> other(b, name, value);
@@ -415,8 +443,42 @@ final class LiftXmlDecoder {
         }
     }
 
-    private static void other(AbstractLiftElementBuilder<?, ?> b, String name, String value) {
-        BUILDERS.putOtherXmlAttribute(b, name, value);
+    /**
+     * An attribute LIFT does not define on this element. A file written by a LIFT tool
+     * has none (the reference corpus has none), so it is reported: most likely a
+     * misspelling, or an attribute this reader should map and does not. It is kept in
+     * {@code getOtherXmlAttributes()} for the application to inspect, but the writer
+     * does not write it back.
+     */
+    private void other(AbstractLiftElementBuilder<?, ?> b, String name, String value) {
+        other(BUILDERS.element(b), name, value);
+    }
+
+    private void other(AbstractLiftRoot element, String name, String value) {
+        LOGGER.warning(() -> "Attribute " + name + "=\"" + value + "\" is not defined on "
+            + element.getClass().getSimpleName()
+            + (locator == null ? "" : " (line " + locator.getLineNumber() + ")")
+            + "; it will not be saved");
+        MODEL.putOtherXmlAttribute(element, name, value);
+    }
+
+    /**
+     * For an element that reads its attributes by name rather than through
+     * {@link #populate}: hand every attribute it did not read to {@link #other}, so that
+     * an unexpected one is reported rather than silently ignored.
+     *
+     * @param frame the element, built or merely filled
+     * @param known the attributes the element has read
+     * @return {@code frame}, for chaining
+     */
+    private Frame rest(Frame frame, Attributes attributes, String... known) {
+        for (int i = 0; i < attributes.getLength(); i++) {
+            String name = attributes.getLocalName(i);
+            if (!List.of(known).contains(name)) {
+                other(frame.element(), name, attributes.getValue(i));
+            }
+        }
+        return frame;
     }
 
     private static String attribute(Attributes attributes, String name) {
@@ -439,15 +501,28 @@ final class LiftXmlDecoder {
     Frame range(Attributes attributes) {
         String id = attribute(attributes, LiftVocabulary.ID_ATTRIBUTE);
         if (id == null) throw new IllegalArgumentException("Range ID cannot be null");
+        String created = attribute(attributes, LiftVocabulary.DATE_CREATED_ATTRIBUTE);
+        String modified = attribute(attributes, LiftVocabulary.DATE_MODIFIED_ATTRIBUTE);
+        Frame frame;
         if (header.hasFeatureSet(id)) {
-            return Frame.existing(header.getFeatureSet(id));
+            // Filled in place: it has no builder. Its href and guid are ignored, as before.
+            FeatureSet existing = header.getFeatureSet(id);
+            if (created != null) existing.setDateCreated(created);
+            if (modified != null) existing.setDateModified(modified);
+            frame = Frame.existing(existing);
+        } else {
+            FeatureSetBuilder b = factory.range(id);
+            String href = attribute(attributes, LiftVocabulary.HREF_ATTRIBUTE);
+            if (href != null) b.withHref(href);
+            String guid = attribute(attributes, LiftVocabulary.GUID_ATTRIBUTE);
+            if (guid != null) b.withGuid(guid);
+            if (created != null) b.dateCreated(created);
+            if (modified != null) b.dateModified(modified);
+            frame = Frame.of(b);
         }
-        FeatureSetBuilder b = factory.range(id);
-        String href = attribute(attributes, LiftVocabulary.HREF_ATTRIBUTE);
-        if (href != null) b.withHref(href);
-        String guid = attribute(attributes, LiftVocabulary.GUID_ATTRIBUTE);
-        if (guid != null) b.withGuid(guid);
-        return Frame.of(b);
+        return rest(frame, attributes,
+            LiftVocabulary.ID_ATTRIBUTE, LiftVocabulary.HREF_ATTRIBUTE, LiftVocabulary.GUID_ATTRIBUTE,
+            LiftVocabulary.DATE_CREATED_ATTRIBUTE, LiftVocabulary.DATE_MODIFIED_ATTRIBUTE);
     }
 
     /**
@@ -459,6 +534,8 @@ final class LiftXmlDecoder {
         String id = attribute(attributes, LiftVocabulary.ID_ATTRIBUTE);
         if (id == null) throw new IllegalArgumentException("range-element requires an 'id' attribute");
         String guid = attribute(attributes, LiftVocabulary.GUID_ATTRIBUTE);
+        String created = attribute(attributes, LiftVocabulary.DATE_CREATED_ATTRIBUTE);
+        String modified = attribute(attributes, LiftVocabulary.DATE_MODIFIED_ATTRIBUTE);
 
         Frame frame;
         if (set.hasFeature(id)) {
@@ -466,10 +543,14 @@ final class LiftXmlDecoder {
             // TODO duplicate range-element ids should be detected and reported as an error
             Feature existing = set.getFeature(id);
             if (guid != null) existing.setGuid(guid);
+            if (created != null) existing.setDateCreated(created);
+            if (modified != null) existing.setDateModified(modified);
             frame = Frame.existing(existing);
         } else {
             FeatureBuilder b = factory.feature(set, id);
             if (guid != null) b.withGuid(guid);
+            if (created != null) b.dateCreated(created);
+            if (modified != null) b.dateModified(modified);
             frame = Frame.of(b);
         }
 
@@ -480,7 +561,9 @@ final class LiftXmlDecoder {
                 .computeIfAbsent(parentId, k -> new ArrayList<>())
                 .add((Feature) frame.element());
         }
-        return frame;
+        return rest(frame, attributes,
+            LiftVocabulary.ID_ATTRIBUTE, LiftVocabulary.GUID_ATTRIBUTE, LiftVocabulary.PARENT_ATTRIBUTE,
+            LiftVocabulary.DATE_CREATED_ATTRIBUTE, LiftVocabulary.DATE_MODIFIED_ATTRIBUTE);
     }
 
     /**
@@ -517,7 +600,10 @@ final class LiftXmlDecoder {
                 .computeIfAbsent(optionRange, k -> new ArrayList<>())
                 .add((LiftFieldAndTraitDefinition) frame.element());
         }
-        return frame;
+        return rest(frame, attributes,
+            LiftVocabulary.NAME_ATTRIBUTE, LiftVocabulary.TAG_ATTRIBUTE, LiftVocabulary.GUID_ATTRIBUTE,
+            LiftVocabulary.CLASS_ATTRIBUTE, LiftVocabulary.TYPE_ATTRIBUTE,
+            LiftVocabulary.WRITING_SYSTEM_ATTRIBUTE, LiftVocabulary.OPTION_RANGE_ATTRIBUTE);
     }
 
     /**

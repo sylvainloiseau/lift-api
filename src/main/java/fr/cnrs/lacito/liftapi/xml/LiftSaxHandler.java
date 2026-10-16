@@ -103,6 +103,7 @@ public final class LiftSaxHandler extends DefaultHandler {
     @Override
     public void setDocumentLocator(Locator locator) {
         this.locator = locator;
+        decoder.setLocator(locator);
     }
 
     @Override
@@ -355,7 +356,7 @@ public final class LiftSaxHandler extends DefaultHandler {
                 frames.push(decoder.reversal(top(), attributes));
                 break;
             case LiftVocabulary.MAIN_LOCAL_NAME:
-                frames.push(decoder.reversalMain(top()));
+                frames.push(decoder.reversalMain(top(), attributes));
                 break;
             case LiftVocabulary.HEADER_FIELDS_DEFINITION_LOCAL_NAME:
             case LiftVocabulary.LEXICAL_UNIT_LOCAL_NAME:
