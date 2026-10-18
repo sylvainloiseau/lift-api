@@ -1,20 +1,27 @@
 package fr.cnrs.lacito.liftapi;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.IntSupplier;
+import java.util.stream.Collectors;
 
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 
 import fr.cnrs.lacito.liftapi.internal.DictionaryMutator;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
+import fr.cnrs.lacito.liftapi.model.Feature;
+import fr.cnrs.lacito.liftapi.model.GrammaticalInfo;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
+import fr.cnrs.lacito.liftapi.model.LiftHeader;
 
 import org.junit.jupiter.api.Test;
 import org.xml.sax.Attributes;
@@ -57,6 +64,29 @@ public class DictionaryCensusTest {
     @Test
     public void tinyCorpusIsFullyRegistered() {
         assertCensus("lift/tiny.xml");
+    }
+
+    /**
+     * {@code LiftHeader.isUsed(Feature)} over a real dictionary: every part of speech a
+     * sense has is in use, at least as many times as senses have it (it may also be a
+     * superordinate, or a trait value), and a new one is not.
+     */
+    @Test
+    public void thePartsOfSpeechOfTheCorpusAreReportedUsed() {
+        LiftDictionary d = Utils.loadDictionaryForTest("lift/20240828Lift.lift");
+        LiftHeader header = d.getHeader();
+        Map<Feature, Long> bySense = d.getLiftDictionaryRegistry().getGrammaticalInfos().stream()
+            .map(GrammaticalInfo::getGramInfoValue)
+            .filter(Objects::nonNull)
+            .collect(Collectors.groupingBy(f -> f, Collectors.counting()));
+        assertFalse(bySense.isEmpty());
+        for (Map.Entry<Feature, Long> e : bySense.entrySet()) {
+            assertTrue(header.isUsed(e.getKey()), e.getKey().getId());
+            assertTrue(header.countUses(e.getKey()) >= e.getValue(), e.getKey().getId());
+        }
+        Feature fresh = header.getGrammaticalInfoManager().addFeature("not-a-part-of-speech");
+        assertFalse(header.isUsed(fresh));
+        assertEquals(0, header.countUses(fresh));
     }
 
     // ------------------------------------------------------------------

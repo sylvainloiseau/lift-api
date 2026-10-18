@@ -582,7 +582,11 @@ final class LiftXmlDecoder {
             // Files exported by FieldWorks may declare a definition twice: the last
             // declaration wins, as it always did.
             LOGGER.warning("Field or trait definition declared twice, the last one is kept: " + name);
-            header.removeFieldOrTraitDefinition(header.getFieldsAndTraitsDefinitions(name));
+            LiftFieldAndTraitDefinition existing = header.getFieldsAndTraitsDefinitions(name);
+            if (header.isUsed(existing)) {
+                return redeclared(existing, attributes);
+            }
+            header.removeFieldOrTraitDefinition(existing);
         }
         FieldDefinitionBuilder b = factory.fieldDefinition(name);
 
@@ -601,6 +605,38 @@ final class LiftXmlDecoder {
                 .add((LiftFieldAndTraitDefinition) frame.element());
         }
         return rest(frame, attributes,
+            LiftVocabulary.NAME_ATTRIBUTE, LiftVocabulary.TAG_ATTRIBUTE, LiftVocabulary.GUID_ATTRIBUTE,
+            LiftVocabulary.CLASS_ATTRIBUTE, LiftVocabulary.TYPE_ATTRIBUTE,
+            LiftVocabulary.WRITING_SYSTEM_ATTRIBUTE, LiftVocabulary.OPTION_RANGE_ATTRIBUTE);
+    }
+
+    /**
+     * A definition declared again while fields or traits read earlier already hold it:
+     * the traits of a range element, read before the {@code <fields>} of the header,
+     * create their definition on the fly. It cannot be replaced under them, so the
+     * declaration is applied to it in place - the attributes it gives, and its label and
+     * description instead of the earlier ones - which is what "the last declaration wins"
+     * means for a definition in use.
+     */
+    private Frame redeclared(LiftFieldAndTraitDefinition existing, Attributes attributes) {
+        String targets = attribute(attributes, LiftVocabulary.CLASS_ATTRIBUTE);
+        if (targets != null) existing.setTargets(targets);
+        String type = attribute(attributes, LiftVocabulary.TYPE_ATTRIBUTE);
+        if (type != null) existing.setDataModel(Optional.of(type));
+        String writingSystem = attribute(attributes, LiftVocabulary.WRITING_SYSTEM_ATTRIBUTE);
+        if (writingSystem != null) existing.setWritingSystem(Optional.of(writingSystem));
+        for (MultiText text : List.of(existing.getLabel(), existing.getDescription())) {
+            for (Form form : List.copyOf(text.getForms())) {
+                text.removeForm(form.getLang());
+            }
+        }
+        String optionRange = attribute(attributes, LiftVocabulary.OPTION_RANGE_ATTRIBUTE);
+        if (optionRange != null) {
+            definitionsByOptionRange
+                .computeIfAbsent(optionRange, k -> new ArrayList<>())
+                .add(existing);
+        }
+        return rest(Frame.existing(existing), attributes,
             LiftVocabulary.NAME_ATTRIBUTE, LiftVocabulary.TAG_ATTRIBUTE, LiftVocabulary.GUID_ATTRIBUTE,
             LiftVocabulary.CLASS_ATTRIBUTE, LiftVocabulary.TYPE_ATTRIBUTE,
             LiftVocabulary.WRITING_SYSTEM_ATTRIBUTE, LiftVocabulary.OPTION_RANGE_ATTRIBUTE);

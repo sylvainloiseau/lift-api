@@ -80,8 +80,12 @@
  * <li>{@link AbstractLiftRoot#detach()} to move a component: it unlinks and keeps the
  * registration.</li>
  * <li>{@code removeX} for what is not a component: forms
- * ({@link MultiText#removeForm}), features, feature sets, definitions, languages.</li>
- * <li>{@code setX} for a value; {@code retypeX} on a parent, which {@code setType} calls.</li>
+ * ({@link MultiText#removeForm}), features, feature sets, definitions, languages. Like
+ * the deletion of a referenced entry, the removal of a feature, a feature set or a
+ * definition in use is refused ({@link LiftHeader#isUsed(Feature)}).</li>
+ * <li>{@code setX} for a value; {@code retypeX} on a parent, which {@code setType} calls;
+ * {@link FeatureSet#changeFeatureId} and {@link LiftHeader#renameFeatureSet} for the ids
+ * of the header, which re-key what holds them.</li>
  * </ul>
  *
  * <h2>One way to change each thing</h2>

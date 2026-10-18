@@ -521,15 +521,31 @@ class ChangeRoundTripTest {
             FeatureSet set = c.d.getHeader().getNoteTypeManager();
             switch (c.r.nextInt(4)) {
                 case 0 -> set.addFeature(c.fresh()).getLabel().formTextProperty(c.metaLang()).set(c.fresh());
-                case 1 -> set.removeFeature(c.pick(new ArrayList<>(set.getFeatures().keySet())));
+                case 1 -> {
+                    // A feature in use is refused; mostly pick unused ones, so that a
+                    // removal is still exercised, and now and then any one.
+                    List<String> unused = set.getFeatures().values().stream()
+                        .filter(f -> !c.d.getHeader().isUsed(f)).map(Feature::getId).toList();
+                    set.removeFeature(c.pick(unused.isEmpty() || c.r.nextInt(4) == 0
+                        ? new ArrayList<>(set.getFeatures().keySet()) : unused));
+                }
                 case 2 -> set.changeFeatureId(c.pick(new ArrayList<>(set.getFeatures().values())), c.fresh());
                 default -> c.pick(new ArrayList<>(set.getFeatures().values()))
                     .setSuperordinateFeature(c.pick(new ArrayList<>(set.getFeatures().values())));
             }
         }),
         new Op("feature set", c -> {
-            if (c.r.nextBoolean()) c.d.getHeader().addFeatureSet("range-" + c.fresh()).setHref(c.fresh());
-            else c.d.getHeader().removeFeatureSet(c.pick(c.d.getHeader().getFeatureSets()));
+            var h = c.d.getHeader();
+            switch (c.r.nextInt(3)) {
+                case 0 -> {
+                    FeatureSet added = h.addFeatureSet("range-" + c.fresh());
+                    // An href whose file was never loaded makes the set unrenamable.
+                    if (c.r.nextBoolean()) added.setHref(c.fresh());
+                }
+                case 1 -> h.removeFeatureSet(c.pick(h.getFeatureSets()));
+                // Refused for a built-in set or an unloaded external one, as allowed.
+                default -> h.renameFeatureSet(c.pick(h.getFeatureSets()), "range-" + c.fresh());
+            }
         }),
         new Op("definition", c -> {
             var h = c.d.getHeader();

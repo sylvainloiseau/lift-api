@@ -22,6 +22,7 @@ import fr.cnrs.lacito.liftapi.LiftVersion;
 import fr.cnrs.lacito.liftapi.internal.ChangeSupport;
 import fr.cnrs.lacito.liftapi.model.DuplicateTypeException;
 import fr.cnrs.lacito.liftapi.model.Feature;
+import fr.cnrs.lacito.liftapi.model.FeatureSet;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftNote;
@@ -211,6 +212,27 @@ class ChangeEventsTest {
         assertSame(ModelProperty.FEATURE_ID, renamed.property());
         renamed.revert();
         assertSame(f, d.getHeader().getNoteTypeManager().getFeature("comment"));
+    }
+
+    @Test
+    void aFeatureSetRenameIsReportedOnceAndReverted() {
+        FeatureSet usage = d.getHeader().addFeatureSet("usage");
+        events.clear();
+        d.getHeader().renameFeatureSet(usage, "register");
+        assertEquals(1, events.size());
+        ValueChanged<?> renamed = assertInstanceOf(ValueChanged.class, events.getFirst());
+        assertSame(ModelProperty.FEATURE_SET_ID, renamed.property());
+        assertEquals("usage", renamed.oldValue());
+        assertEquals("register", renamed.newValue());
+
+        renamed.revert();
+        assertSame(usage, d.getHeader().getFeatureSet("usage"));
+        assertFalse(d.getHeader().hasFeatureSet("register"));
+
+        events.clear();
+        FeatureSet pos = d.getHeader().getGrammaticalInfoManager();
+        assertThrows(IllegalArgumentException.class, () -> d.getHeader().renameFeatureSet(pos, "pos"));
+        assertTrue(events.isEmpty(), "a refused rename reports nothing");
     }
 
     @Test

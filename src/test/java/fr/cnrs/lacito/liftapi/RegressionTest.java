@@ -374,6 +374,223 @@ public class RegressionTest {
         return def;
     }
 
+    // ------------------------------------------------------------------
+    // What uses a feature
+    // ------------------------------------------------------------------
+    //
+    // FeatureSet.removeFeature removed a feature that components still held, which were
+    // then left with a type, a category or a trait value that no range declares; and
+    // nothing in the API said whether a feature was used.
+
+    private DictionaryComponentBuilderFactory builder() {
+        return dictionary.getComponentBuilder();
+    }
+
+    private LiftEntry anEntry() {
+        return builder().entry().withForm("tww", "nala").build();
+    }
+
+    /** {@code id} is used {@code uses} times, and cannot be removed from {@code set}. */
+    private void assertInUse(FeatureSet set, String id, long uses) {
+        Feature feature = set.getFeature(id);
+        assertTrue(dictionary.getHeader().isUsed(feature), id);
+        assertEquals(uses, dictionary.getHeader().countUses(feature), id);
+        assertThrows(IllegalStateException.class, () -> set.removeFeature(id));
+        assertSame(feature, set.getFeature(id), "a refused removal leaves the feature in place");
+    }
+
+    @Test
+    public void theTypeOfATypedComponentIsAUseOfItsFeature() {
+        LiftEntry entry = anEntry();
+        LiftSense sense = builder().sense(entry).withGloss("en", "sun").build();
+        var example = builder().example(sense).withExample("tww", "nala ka").build();
+        builder().note(entry, "general").addText("en", "a note").build();
+        builder().relation("synonym", entry).withRef(entry).build();
+        builder().annotation(entry, "review").withValue("ok").build();
+        builder().etymology(entry, "borrowing", "Tok Pisin").addForm("tpi", "nalaa").build();
+        builder().reversal(sense).withType("en-rev").withForm("en", "sun").build();
+        builder().translation(example, "free").addText("en", "the sun").build();
+
+        var header = dictionary.getHeader();
+        assertInUse(header.getNoteTypeManager(), "general", 1);
+        assertInUse(header.getRelationTypeManager(), "synonym", 1);
+        assertInUse(header.getAnnotationTypeManager(), "review", 1);
+        assertInUse(header.getEtymologyTypeManager(), "borrowing", 1);
+        assertInUse(header.getInverseTypeManager(), "en-rev", 1);
+        assertInUse(header.getTranslationTypeManager(), "free", 1);
+    }
+
+    @Test
+    public void anAnnotationOnAFormIsAUseOfItsType() {
+        LiftEntry entry = anEntry();
+        Form form = entry.getForms().getForm("tww").orElseThrow();
+        builder().annotation(form, "spelling").withValue("checked").build();
+        assertInUse(dictionary.getHeader().getAnnotationTypeManager(), "spelling", 1);
+    }
+
+    @Test
+    public void aCategoryIsAUseOfItsPartOfSpeech() {
+        LiftSense sense = builder().sense(anEntry()).withGloss("en", "sun").build();
+        builder().grammaticalInfo(sense, "Noun").build();
+        assertInUse(dictionary.getHeader().getGrammaticalInfoManager(), "Noun", 1);
+    }
+
+    @Test
+    public void theValueOfAnOptionTraitIsAUseOfItsFeatures() {
+        FeatureSet domains = dictionary.getHeader().addFeatureSet("semantic-domain");
+        domains.addFeature("1.1 Sky");
+        domains.addFeature("1.5 Plant");
+        domains.addFeature("2 Person");
+        definition("domain", "option", domains);
+        definition("domains", "option-collection", domains);
+        definition("ordered-domains", "option-sequence", domains);
+        LiftEntry entry = anEntry();
+        builder().trait(entry, "domain", "1.1 Sky").build();
+        builder().trait(entry, "domains", "1.1 Sky, 1.5 Plant").build();
+        builder().trait(entry, "ordered-domains", "1.5 Plant").build();
+
+        // Ids with a space are compared as features, never split as words.
+        assertInUse(domains, "1.1 Sky", 2);
+        assertInUse(domains, "1.5 Plant", 2);
+        assertFalse(dictionary.getHeader().isUsed(domains.getFeature("2 Person")));
+        domains.removeFeature("2 Person");
+        assertFalse(domains.hasFeature("2 Person"));
+    }
+
+    @Test
+    public void beingTheSuperordinateOfAFeatureIsAUse() {
+        FeatureSet pos = dictionary.getHeader().getGrammaticalInfoManager();
+        Feature verb = pos.addFeature("Verb");
+        pos.addFeature("Transitive verb").setSuperordinateFeature(verb);
+        assertInUse(pos, "Verb", 1);
+    }
+
+    @Test
+    public void aTraitOnARangeElementUsesItsFeatureAndItsDefinition() {
+        var header = dictionary.getHeader();
+        FeatureSet usage = header.addFeatureSet("usage");
+        usage.addFeature("archaic");
+        LiftFieldAndTraitDefinition register = definition("register", "option", usage);
+        Feature noun = header.getGrammaticalInfoManager().addFeature("Noun");
+        noun.addTrait(new LiftTrait(register, usage.getFeature("archaic")));
+
+        // The header's components are not in the registry: they are looked at too.
+        assertInUse(usage, "archaic", 1);
+        assertTrue(header.isUsed(register));
+        assertEquals(1, header.countUses(register));
+        assertThrows(IllegalStateException.class,
+            () -> header.removeFieldOrTraitDefinition(register));
+    }
+
+    @Test
+    public void aFeatureSetWithAFeatureInUseCannotBeRemoved() {
+        var header = dictionary.getHeader();
+        FeatureSet status = header.addFeatureSet("status");
+        status.addFeature("draft");
+        header.getGrammaticalInfoManager().addFeature("Noun")
+            .setSuperordinateFeature(status.getFeature("draft"));
+
+        assertThrows(IllegalStateException.class, () -> header.removeFeatureSet(status));
+        assertSame(status, header.getFeatureSet("status"));
+    }
+
+    // ------------------------------------------------------------------
+    // Renaming a feature set
+    // ------------------------------------------------------------------
+    //
+    // A feature could be renamed (FeatureSet.changeFeatureId) and a feature set could
+    // not: its id was final.
+
+    @Test
+    public void aFeatureSetIsRenamedInPlace() {
+        var header = dictionary.getHeader();
+        FeatureSet usage = header.addFeatureSet("usage");
+        usage.addFeature("archaic");
+        LiftFieldAndTraitDefinition register = definition("register", "option", usage);
+        int position = header.getFeatureSets().indexOf(usage);
+
+        header.renameFeatureSet(usage, "register-values");
+
+        assertEquals("register-values", usage.getId());
+        assertSame(usage, header.getFeatureSet("register-values"));
+        assertFalse(header.hasFeatureSet("usage"));
+        assertEquals(position, header.getFeatureSets().indexOf(usage));
+        assertSame(usage, register.getResolvedFeatureSet().orElseThrow());
+        // The set is still the header's: it can be removed, its features found.
+        assertSame(usage.getFeature("archaic"), header.getFeatureSet("register-values").getFeature("archaic"));
+    }
+
+    @Test
+    public void aRefusedRenameLeavesTheHeaderAsItWas() {
+        var header = dictionary.getHeader();
+        FeatureSet usage = header.addFeatureSet("usage");
+        header.addFeatureSet("status");
+        FeatureSet pos = header.getGrammaticalInfoManager();
+        FeatureSet external = header.addFeatureSet("dialects");
+        external.setHref("dialects.lift-ranges");
+        FeatureSet elsewhere = new FeatureSet("elsewhere", header);
+
+        assertThrows(IllegalArgumentException.class, () -> header.renameFeatureSet(pos, "pos"));
+        assertThrows(IllegalArgumentException.class, () -> header.renameFeatureSet(usage, "status"));
+        assertThrows(IllegalArgumentException.class, () -> header.renameFeatureSet(usage, " "));
+        assertThrows(IllegalArgumentException.class, () -> header.renameFeatureSet(elsewhere, "x"));
+        assertThrows(IllegalStateException.class, () -> header.renameFeatureSet(external, "regions"));
+
+        assertSame(usage, header.getFeatureSet("usage"));
+        assertSame(pos, header.getFeatureSet("grammatical-info"));
+        assertSame(external, header.getFeatureSet("dialects"));
+    }
+
+    @Test
+    public void aRenamedRangeIsWrittenUnderItsNewIdAndItsValuesStillResolve(
+        @org.junit.jupiter.api.io.TempDir java.nio.file.Path dir
+    ) throws Exception {
+        LiftDictionary d = load(dir, MULTI_VALUED_HEADER + """
+            <entry id="e1"><trait name="colour" value="red, light blue"/></entry>
+            </lift>
+            """);
+        d.getHeader().renameFeatureSet(d.getHeader().getFeatureSet("colours"), "colors");
+        File saved = dir.resolve("saved.lift").toFile();
+        d.save(saved);
+        LiftDictionary reloaded = LiftDictionary.loadDictionaryFromFile(saved);
+
+        FeatureSet colors = reloaded.getHeader().getFeatureSet("colors");
+        assertFalse(reloaded.getHeader().hasFeatureSet("colours"));
+        assertSame(colors,
+            reloaded.getHeader().getFieldsAndTraitsDefinitions("colour").getResolvedFeatureSet().orElseThrow());
+        LiftTrait trait = reloaded.getLiftDictionaryRegistry().getTraits().iterator().next();
+        assertEquals(Set.of(colors.getFeature("red"), colors.getFeature("light blue")),
+            trait.getTypedValue());
+    }
+
+    @Test
+    public void aLoadedExternalRangesFileIsRewrittenWithTheNewId(
+        @org.junit.jupiter.api.io.TempDir java.nio.file.Path dir
+    ) throws Exception {
+        FeatureSet dialects = dictionary.getHeader().addFeatureSet("dialects");
+        dialects.addFeature("north");
+        dialects.setHref("test.lift-ranges");
+        dialects.setExternalContentLoaded(true);
+
+        dictionary.getHeader().renameFeatureSet(dialects, "regions");
+        dictionary.save(dir.resolve("test.lift").toFile());
+
+        String ranges = java.nio.file.Files.readString(dir.resolve("test.lift-ranges"));
+        assertTrue(ranges.contains("\"regions\""), ranges);
+        assertFalse(ranges.contains("\"dialects\""), ranges);
+    }
+
+    @Test
+    public void theHierarchyInsideAFeatureSetGoesWithIt() {
+        var header = dictionary.getHeader();
+        FeatureSet usage = header.addFeatureSet("usage");
+        Feature old = usage.addFeature("old");
+        usage.addFeature("archaic").setSuperordinateFeature(old);
+
+        header.removeFeatureSet(usage);
+        assertFalse(header.hasFeatureSet("usage"));
+    }
+
     /** {@code featuresProperty()} was built on an unmodifiable empty set. */
     @Test
     public void featuresPropertyTracksTheFeatureMap() {
@@ -688,6 +905,47 @@ public class RegressionTest {
         assertEquals("sense", d.getHeader().getFieldsAndTraitsDefinitions("note-a").getTargetAsString());
         assertEquals(1, d.getHeader().getFieldsAndTraitsDefinitions().stream()
             .filter(x -> x.getName().equals("note-a")).count());
+    }
+
+    /**
+     * The traits of a range element, read before the {@code <fields>} of the header,
+     * create their definition on the fly; its declaration, read afterwards, replaced it
+     * and left those traits holding a definition the header no longer had. Since a
+     * definition in use cannot be removed, the declaration is applied to it in place.
+     * A file saved from such a dictionary (FieldWorks' {@code absten-feature-value})
+     * could no longer be read back.
+     */
+    @Test
+    public void aDefinitionDeclaredAfterTheTraitsOfARangeElementIsAppliedToThem(
+        @org.junit.jupiter.api.io.TempDir java.nio.file.Path dir
+    ) throws Exception {
+        LiftDictionary d = load(dir, """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <lift version="0.15" producer="test">
+            <header>
+            <ranges>
+            <range id="tense"><range-element id="pst"><trait name="abbrev-kind" value="short"/></range-element></range>
+            </ranges>
+            <fields>
+            <field-definition name="abbrev-kind" class="sense" type="string">
+            <label><form lang="en"><text>Kind of abbreviation</text></form></label>
+            </field-definition>
+            </fields>
+            </header>
+            </lift>
+            """);
+        var header = d.getHeader();
+        LiftFieldAndTraitDefinition declared = header.getFieldsAndTraitsDefinitions("abbrev-kind");
+        LiftTrait trait = header.getFeatureSet("tense").getFeature("pst").getTraits().get(0);
+        assertSame(declared, trait.getSpecification());
+        assertEquals("sense", declared.getTargetAsString());
+        assertEquals("Kind of abbreviation",
+            declared.getLabel().getForm("en").orElseThrow().toPlainText());
+
+        File saved = dir.resolve("saved.lift").toFile();
+        d.save(saved);
+        LiftDictionary reloaded = LiftDictionary.loadDictionaryFromFile(saved);
+        assertTrue(reloaded.getHeader().containsFieldsAndTraitsDefinitions("abbrev-kind"));
     }
 
     // ------------------------------------------------------------------

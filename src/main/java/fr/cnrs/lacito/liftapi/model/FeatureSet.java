@@ -8,6 +8,7 @@ import fr.cnrs.lacito.liftapi.change.FeatureAdded;
 import fr.cnrs.lacito.liftapi.change.FeatureRemoved;
 import fr.cnrs.lacito.liftapi.change.ModelProperty;
 import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.property.ReadOnlySetProperty;
 import javafx.beans.property.ReadOnlySetWrapper;
 import javafx.collections.FXCollections;
@@ -22,10 +23,15 @@ import javafx.collections.ObservableSet;
   * FeatureSet correspond to the {@code range} XML element in the LIFT serialization format.
   *
   * In a {@code FeatureSet}, the {@code Feature} may be organized hierarchically (see {@link Feature#setSuperordinateFeature(Feature)}).
+  *
+  * Its id can change, through {@link LiftHeader#renameFeatureSet(FeatureSet, String)}:
+  * what refers to the set - the definitions taking it as their range, the components
+  * typed by its features - holds the object, and follows.
   */
 public final class FeatureSet extends AbstractExtensibleWithField {
 
-    final String id;
+    /** Changed only through {@link LiftHeader#renameFeatureSet}, which re-keys the header. */
+    private final TrackedProperty<String> id;
 
     final LiftHeader parent;
 
@@ -55,7 +61,7 @@ public final class FeatureSet extends AbstractExtensibleWithField {
         String id,
         LiftHeader parent
     ) {
-        this.id = id;
+        this.id = new TrackedProperty<>(this, ModelProperty.FEATURE_SET_ID, id);
         this.parent = parent;
         this.href = new TrackedProperty<>(this, ModelProperty.HREF, null);
         this.guid = new TrackedProperty<>(this, ModelProperty.GUID, null);
@@ -67,7 +73,25 @@ public final class FeatureSet extends AbstractExtensibleWithField {
      * @return the id
      */
     public String getId() {
-        return id;
+        return id.get();
+    }
+
+    /**
+     * The id, read-only: it changes through
+     * {@link LiftHeader#renameFeatureSet(FeatureSet, String)}, which keeps the header's
+     * index in step.
+     */
+    public ReadOnlyObjectProperty<String> idProperty() {
+        return id.getReadOnlyProperty();
+    }
+
+    /**
+     * Changes the id of this feature set. Called only by
+     * {@link LiftHeader#renameFeatureSet(FeatureSet, String)}, once the header holds the
+     * set under its new id.
+     */
+    void setId(String newId) {
+        this.id.set(newId);
     }
 
     /**
@@ -201,7 +225,7 @@ public final class FeatureSet extends AbstractExtensibleWithField {
     public Feature getFeature(String id) {
         if (!hasFeature(id)) {
             throw new IllegalArgumentException(
-                "No feature with id '" + id + "' in feature set '" + this.id + "'"
+                "No feature with id '" + id + "' in feature set '" + getId() + "'"
             );
         }
         return featureMap.get(id);
@@ -271,14 +295,23 @@ public final class FeatureSet extends AbstractExtensibleWithField {
     /**
      * Removes the feature with the given id from this {@code FeatureSet}.
      *
+     * Once this set is in the header of a dictionary, a feature in use cannot be removed
+     * (see {@link LiftHeader#isUsed(Feature)}): what uses it would be left with a feature
+     * that no range declares.
+     *
      * @param id the feature id
      * @return the removed feature
      * @throws IllegalArgumentException if no feature with the given id exists
+     * @throws IllegalStateException if the feature is in use
      */
     public Feature removeFeature(String id) {
         if (!hasFeature(id))
             throw new IllegalArgumentException("Cannot remove non-existing feature: " + id);
         LiftDictionary dictionary = headerDictionary();
+        if (dictionary != null && parent.isUsed(featureMap.get(id))) {
+            throw new IllegalStateException(
+                "The feature " + id + " of the feature set " + getId() + " is in use.");
+        }
         if (dictionary != null) {
             dictionary.getMutator().releaseHeaderTexts(featureMap.get(id));
         }

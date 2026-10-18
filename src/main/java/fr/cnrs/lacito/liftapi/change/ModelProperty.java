@@ -20,6 +20,7 @@ import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinitionDataModel;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinitionKind;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinitionTarget;
+import fr.cnrs.lacito.liftapi.model.LiftHeader;
 import fr.cnrs.lacito.liftapi.model.LiftIllustration;
 import fr.cnrs.lacito.liftapi.model.LiftMedia;
 import fr.cnrs.lacito.liftapi.model.LiftRelation;
@@ -167,6 +168,14 @@ public final class ModelProperty<T> {
             f.getParentFeatureSet().changeFeatureId(f, v);
         });
 
+    /// The id of a feature set (a LIFT {@code range}); set through
+    /// {@link LiftHeader#renameFeatureSet(FeatureSet, String)}.
+    public static final ModelProperty<String> FEATURE_SET_ID = new ModelProperty<>(
+        "featureSetId", (o, v) -> {
+            FeatureSet s = (FeatureSet) o;
+            ((LiftHeader) s.getParentNode()).renameFeatureSet(s, v);
+        });
+
     /// The parent of a feature in its feature set's hierarchy.
     public static final ModelProperty<Feature> SUPERORDINATE_FEATURE = new ModelProperty<>(
         "superordinateFeature", (o, v) -> ((Feature) o).setSuperordinateFeature(v));
@@ -201,7 +210,7 @@ public final class ModelProperty<T> {
         DATE_CREATED, DATE_MODIFIED, TYPE, LIFT_ID, GUID, ENTRY_ORDER, ORDER, DATE_DELETED,
         GRAMMATICAL_INFO_VALUE, REF_ID, REF_OBJECT, HREF, SOURCE, FORM_TEXT,
         ANNOTATION_VALUE, ANNOTATION_WHO, ANNOTATION_WHEN, TRAIT_VALUE, FEATURE_ID,
-        SUPERORDINATE_FEATURE, DEFINITION_KIND, DEFINITION_TARGETS, DEFINITION_DATA_MODEL,
+        FEATURE_SET_ID, SUPERORDINATE_FEATURE, DEFINITION_KIND, DEFINITION_TARGETS, DEFINITION_DATA_MODEL,
         DEFINITION_WRITING_SYSTEM, DEFINITION_RANGE
     );
 

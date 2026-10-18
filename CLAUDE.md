@@ -78,6 +78,11 @@ Summary:
   UUID from another dictionary is rejected.
 - Deletion is refused (`IllegalStateException`) while another component references the
   target's LIFT id (ref counting on `HasRefId`: relations, variants).
+- The header's declarations are guarded the same way: a definition, a feature or a feature
+  set in use cannot be removed (`LiftHeader.isUsed(...)` / `countUses(...)`, which scan the
+  registry and the traits and annotations the header's own components hold — those are
+  not indexed). What a feature set holds itself (its hierarchy, the traits of its
+  elements) goes with it and does not count.
 - `MultiText` has an optional language manager: once registered, adding a `Form` in a
   language the dictionary doesn't declare throws. Registration of a pre-filled MultiText
   (parse, moved subtree) declares its languages instead. Each MultiText is either
@@ -87,7 +92,10 @@ Summary:
   parent. `typeProperty()` is read-only. Parents that key children by type (notes,
   translations) refuse duplicates there and re-key. Anything keyed by a type uses the
   `Feature` object, never its id: `Feature` compares by identity, so
-  `FeatureSet.changeFeatureId` renames without invalidating keys.
+  `FeatureSet.changeFeatureId` renames without invalidating keys. A feature set is renamed
+  only through `LiftHeader.renameFeatureSet`, which re-keys the header; definitions hold
+  their range as the object and follow. Built-in sets, and sets whose external ranges
+  file was not loaded, cannot be renamed.
 - **Change events** (`change` package): `AbstractLiftRoot.adopted`/`removeChild`/`detach`
   report components added and removed; values report through `TrackedProperty` (and its
   String/Integer variants), which override `invalidated()`, or through the setter when the

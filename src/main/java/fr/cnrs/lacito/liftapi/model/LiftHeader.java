@@ -1,14 +1,21 @@
 package fr.cnrs.lacito.liftapi.model;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Deque;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.change.DefinitionAdded;
 import fr.cnrs.lacito.liftapi.change.DefinitionRemoved;
 import fr.cnrs.lacito.liftapi.change.FeatureSetAdded;
 import fr.cnrs.lacito.liftapi.change.FeatureSetRemoved;
+import fr.cnrs.lacito.liftapi.internal.DictionaryMutator;
 import javafx.beans.Observable;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -190,11 +197,14 @@ public final class LiftHeader extends AbstractLiftRoot {
      *
      * The built-in feature sets (the types of notes, relations... and the parts of
      * speech) cannot be removed, nor a feature set a field or trait definition uses as
-     * its range.
+     * its range, nor one with a feature in use ({@link #isUsed(Feature)}). What the set
+     * itself holds - the hierarchy of its features, the traits of its range elements -
+     * goes with it and does not count as a use.
      *
      * @param fs a feature set of this header
      * @throws IllegalArgumentException if {@code fs} is not in this header, or is built in
-     * @throws IllegalStateException if a definition uses it
+     * @throws IllegalStateException if a definition uses it, or one of its features is
+     *         in use
      */
     public void removeFeatureSet(FeatureSet fs) {
         if (fs == null || featureSetsMap.get(fs.getId()) != fs)
@@ -207,6 +217,12 @@ public final class LiftHeader extends AbstractLiftRoot {
                     "The feature set " + fs.getId() + " is the range of the definition " + d.getName());
             }
         }
+        for (Feature f : fs.getFeatures().values()) {
+            if (uses(f, fs).findAny().isPresent()) {
+                throw new IllegalStateException(
+                    "The feature " + f.getId() + " of the feature set " + fs.getId() + " is in use.");
+            }
+        }
         if (dictionary != null) {
             dictionary.getMutator().releaseHeaderTexts(fs);
         }
@@ -216,6 +232,51 @@ public final class LiftHeader extends AbstractLiftRoot {
         if (observer != null) {
             Changes.fire(observer, new FeatureSetRemoved(observer, this, fs));
         }
+    }
+
+    /**
+     * Renames a feature set of this header.
+     *
+     * What refers to the set holds the object, not the id, and follows: the definitions
+     * taking it as their range (the writer emits their {@code option-range} from it),
+     * and the components typed by its features. The set keeps its place among the
+     * others.
+     *
+     * Refused for a built-in feature set: its id is the LIFT range name that a reader
+     * maps to the types of notes, relations... or to the parts of speech, and under
+     * another name it would no longer be one. Refused too for a set whose content lives
+     * in an external ranges file ({@code href}) that was not loaded: that file is not
+     * rewritten on save, and would go on naming the set by its old id. A ranges file
+     * that was loaded is rewritten with the new id; if other projects share it, they see
+     * the rename too.
+     *
+     * Reported as a change of {@code ModelProperty.FEATURE_SET_ID}.
+     *
+     * @param fs a feature set of this header
+     * @param newId its new id
+     * @throws IllegalArgumentException if {@code fs} is not in this header, is built in,
+     *         or if {@code newId} is blank or already the id of a feature set
+     * @throws IllegalStateException if {@code fs} has an external ranges file that was
+     *         not loaded
+     */
+    public void renameFeatureSet(FeatureSet fs, String newId) {
+        if (fs == null || featureSetsMap.get(fs.getId()) != fs)
+            throw new IllegalArgumentException("This feature set is not in this header.");
+        if (builtIn.contains(fs))
+            throw new IllegalArgumentException("A built-in feature set cannot be renamed: " + fs.getId());
+        if (newId == null || newId.isBlank())
+            throw new IllegalArgumentException("The id of a feature set cannot be blank.");
+        if (featureSetsMap.containsKey(newId))
+            throw new IllegalArgumentException("Duplicate feature set: " + newId);
+        if (fs.getHref().isPresent() && !fs.isExternalContentLoaded()) {
+            throw new IllegalStateException(
+                "The feature set " + fs.getId() + " is defined in an external ranges file that was "
+                    + "not loaded, and cannot be renamed.");
+        }
+        featureSetsMap.remove(fs.getId());
+        featureSetsMap.put(newId, fs);
+        // Last, so that the change is reported once the set is under its new key.
+        fs.setId(newId);
     }
 
     /**
@@ -322,16 +383,173 @@ public final class LiftHeader extends AbstractLiftRoot {
         }
     }
 
+    // --------------------------------------------------------
+    // Uses of the header's declarations
+    // --------------------------------------------------------
+
     /**
-     * Whether a field or a trait of the dictionary uses {@code fd}.
+     * Whether a field or a trait of the dictionary uses {@code fd}: one held by a
+     * component of an entry, or by a component of the header (a trait on a range
+     * element, say).
+     *
+     * {@link #removeFieldOrTraitDefinition} refuses a definition in use.
+     *
+     * @param fd a definition
+     * @return {@code false} while this header belongs to no dictionary
      */
-    boolean isUsed(LiftFieldAndTraitDefinition fd) {
+    public boolean isUsed(LiftFieldAndTraitDefinition fd) {
+        return uses(fd).findAny().isPresent();
+    }
+
+    /**
+     * The number of fields and traits of the dictionary that use {@code fd}, counted as
+     * {@link #isUsed(LiftFieldAndTraitDefinition)} looks for them.
+     *
+     * @param fd a definition
+     * @return the number of uses; 0 while this header belongs to no dictionary
+     */
+    public long countUses(LiftFieldAndTraitDefinition fd) {
+        return uses(fd).count();
+    }
+
+    /**
+     * Whether something in the dictionary uses {@code f}:
+     * <ul>
+     * <li>the type of a note, a relation, an annotation, an etymology, a reversal or a
+     *     translation;</li>
+     * <li>the value of a category (grammatical info);</li>
+     * <li>the value of an option trait, alone or in a collection or a sequence;</li>
+     * <li>another feature, of any set, whose superordinate it is.</li>
+     * </ul>
+     * Those held by the components of the header (the traits and annotations of a range
+     * or of a range element) count as well as those of the entries.
+     *
+     * {@link FeatureSet#removeFeature(String)} and {@link #removeFeatureSet} refuse a
+     * feature in use: whatever uses it would be left with a feature that no range
+     * declares. The answer is found by going through the dictionary, which is fine for a
+     * deletion or a dialog.
+     *
+     * @param f a feature
+     * @return {@code false} while this header belongs to no dictionary
+     */
+    public boolean isUsed(Feature f) {
+        return uses(f, null).findAny().isPresent();
+    }
+
+    /**
+     * The number of uses of {@code f}, counted as {@link #isUsed(Feature)} looks for
+     * them: each component using it counts once.
+     *
+     * @param f a feature
+     * @return the number of uses; 0 while this header belongs to no dictionary
+     */
+    public long countUses(Feature f) {
+        return uses(f, null).count();
+    }
+
+    /** The fields and traits that use {@code fd}. */
+    private Stream<AbstractLiftRoot> uses(LiftFieldAndTraitDefinition fd) {
         if (dictionary == null) {
-            return false;
+            return Stream.empty();
         }
         var registry = dictionary.getLiftDictionaryRegistry();
-        return registry.getTraits().stream().anyMatch(t -> t.getSpecification() == fd)
-            || registry.getFields().stream().anyMatch(f -> f.getSpecification() == fd);
+        Stream<AbstractLiftRoot> held = Stream.concat(
+            registry.getTraits().stream(), registry.getFields().stream());
+        return Stream.concat(held, heldByTheHeader(null).stream())
+            .filter(n -> n instanceof LiftTrait t && t.getSpecification() == fd
+                || n instanceof LiftField f && f.getSpecification() == fd);
+    }
+
+    /**
+     * What uses {@code f}, leaving out what the set {@code ignoring} and its features
+     * hold, and the hierarchy inside that set: when a whole set is removed, those go
+     * with it.
+     */
+    private Stream<Object> uses(Feature f, FeatureSet ignoring) {
+        if (dictionary == null) {
+            return Stream.empty();
+        }
+        var registry = dictionary.getLiftDictionaryRegistry();
+        Stream<Object> typed = Stream.<List<? extends HasType>>of(
+                registry.getNotes(), registry.getRelations(), registry.getAnnotations(),
+                registry.getEtymologies(), registry.getReversals(), registry.getTranslations())
+            .flatMap(List::stream)
+            .filter(n -> n.getType() == f)
+            .map(Object.class::cast);
+        Stream<Object> categories = registry.getGrammaticalInfos().stream()
+            .filter(g -> g.getGramInfoValue() == f)
+            .map(Object.class::cast);
+        Stream<Object> traits = registry.getTraits().stream()
+            .filter(t -> holdsFeature(t, f))
+            .map(Object.class::cast);
+        Stream<Object> header = heldByTheHeader(ignoring).stream()
+            .filter(n -> n instanceof LiftAnnotation a && a.getType() == f
+                || n instanceof LiftTrait t && holdsFeature(t, f))
+            .map(Object.class::cast);
+        Stream<Object> subordinates = featureSets.stream()
+            .filter(fs -> fs != ignoring)
+            .flatMap(fs -> fs.getFeatures().values().stream())
+            .filter(g -> g.getSuperOrdinateFeature().orElse(null) == f)
+            .map(Object.class::cast);
+        return Stream.of(typed, categories, traits, header, subordinates).flatMap(s -> s);
+    }
+
+    /** Whether the value of {@code t} is {@code f}, or a collection holding it. */
+    private static boolean holdsFeature(LiftTrait t, Feature f) {
+        return switch (t.getSpecification().getDataModel().get()) {
+            case FEATURE -> t.getTypedValue() == f;
+            // Feature compares by identity, so contains() asks for this very feature.
+            case FEATURE_SET, FEATURE_LIST -> ((Collection<?>) t.getTypedValue()).contains(f);
+            default -> false;
+        };
+    }
+
+    /**
+     * The traits, annotations and fields held by the components of this header, at any
+     * depth: the header does not register its components in the dictionary's indexes,
+     * so the registry does not list them.
+     *
+     * @param ignoring a feature set whose own holdings, and those of its features, are
+     *        left out; {@code null} for none
+     */
+    private List<AbstractLiftRoot> heldByTheHeader(FeatureSet ignoring) {
+        List<AbstractLiftRoot> holders = new ArrayList<>();
+        holders.add(this);
+        for (FeatureSet fs : featureSets) {
+            if (fs != ignoring) {
+                holders.add(fs);
+                holders.addAll(fs.getFeatures().values());
+            }
+        }
+        holders.addAll(definitions);
+        Deque<AbstractLiftRoot> pending = new ArrayDeque<>();
+        for (AbstractLiftRoot holder : holders) {
+            for (MultiText text : DictionaryMutator.headerTextsOf(holder)) {
+                if (text.hasAnnotations()) {
+                    pending.addAll(text.getAnnotations());
+                }
+                for (Form form : text.getForms()) {
+                    if (form.hasAnnotations()) {
+                        pending.addAll(form.getAnnotations());
+                    }
+                }
+            }
+            if (holder instanceof AbstractExtensibleWithoutField a) {
+                pending.addAll(a.getAnnotations());
+                pending.addAll(a.getTraits());
+                if (holder instanceof HasField withFields) {
+                    pending.addAll(withFields.getFields().values());
+                }
+            }
+        }
+        // Below a trait, an annotation or a field, the components are ordinary ones.
+        List<AbstractLiftRoot> held = new ArrayList<>();
+        while (!pending.isEmpty()) {
+            AbstractLiftRoot node = pending.pop();
+            held.add(node);
+            pending.addAll(DictionaryMutator.childrenOf(node));
+        }
+        return held;
     }
 
     /**
