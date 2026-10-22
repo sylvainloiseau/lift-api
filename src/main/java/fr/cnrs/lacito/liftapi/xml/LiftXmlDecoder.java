@@ -44,9 +44,11 @@ import fr.cnrs.lacito.liftapi.model.MultiText;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.logging.Logger;
 
 import org.xml.sax.Attributes;
@@ -123,6 +125,13 @@ final class LiftXmlDecoder {
 
     /** Where the parser is, for the warnings; {@code null} if the parser gives none. */
     private Locator locator;
+
+    /**
+     * The names of traits and fields already warned about: their definition is for the
+     * other kind of component, so they do not take it (one warning per name, not per
+     * trait).
+     */
+    private final Set<String> namesWarnedAboutTheirDefinitionKind = new HashSet<>();
 
     LiftXmlDecoder(LiftDictionary dictionary) {
         this.dictionary = dictionary;
@@ -287,6 +296,7 @@ final class LiftXmlDecoder {
         if (name == null) throw new IllegalArgumentException(
             "A field element requires a 'name' (LIFT 0.15) or 'type' (LIFT 0.13) attribute"
         );
+        warnIfTheDefinitionIsForTheOtherKind(name, false);
         FieldBuilder b = factory.field(hf, name);
         String created = attribute(attributes, LiftVocabulary.DATE_CREATED_ATTRIBUTE);
         if (created != null) b.dateCreated(created);
@@ -301,11 +311,31 @@ final class LiftXmlDecoder {
         if (!(parent instanceof HasTrait ht)) {
             throw new IllegalStateException("Expecting an objet implementing HasTrait, found: " + parent);
         }
+        String name = attribute(attributes, LiftVocabulary.NAME_ATTRIBUTE);
+        warnIfTheDefinitionIsForTheOtherKind(name, true);
         return rest(Frame.of(factory.trait(
             ht,
-            attribute(attributes, LiftVocabulary.NAME_ATTRIBUTE),
+            name,
             attribute(attributes, LiftVocabulary.VALUE_ATTRIBUTE)
         )), attributes, LiftVocabulary.NAME_ATTRIBUTE, LiftVocabulary.VALUE_ATTRIBUTE);
+    }
+
+    /**
+     * A trait name whose definition is for fields (a {@code multitext}...), or a field
+     * name whose definition is for traits, does not take that definition (see
+     * {@link LiftHeader#resolveTraitSpecification(String)}): say so, once per name.
+     */
+    private void warnIfTheDefinitionIsForTheOtherKind(String name, boolean forATrait) {
+        if (name == null || !header.containsFieldsAndTraitsDefinitions(name)) {
+            return;
+        }
+        LiftFieldAndTraitDefinition definition = header.getFieldsAndTraitsDefinitions(name);
+        boolean fits = forATrait ? definition.fitsTraits() : definition.fitsFields();
+        if (!fits && namesWarnedAboutTheirDefinitionKind.add((forATrait ? "trait " : "field ") + name)) {
+            LOGGER.warning(() -> "The definition " + name + " is for " + (forATrait ? "fields" : "traits")
+                + ": the " + (forATrait ? "traits" : "fields") + " of that name do not take it"
+                + (locator == null ? "" : " (line " + locator.getLineNumber() + ")") + ".");
+        }
     }
 
     Frame grammaticalInfo(AbstractLiftRoot parent, Attributes attributes) {
@@ -490,6 +520,9 @@ final class LiftXmlDecoder {
     // ------------------------------------------------------------------
 
     Frame header() {
+        // The traits of the ranges and range elements are read before the definitions,
+        // whose option-range is set only by endHeader(): they are rebound then.
+        ModelInternals.get().suspendRebinding(header);
         return Frame.existing(header);
     }
 
@@ -583,6 +616,10 @@ final class LiftXmlDecoder {
             // declaration wins, as it always did.
             LOGGER.warning("Field or trait definition declared twice, the last one is kept: " + name);
             LiftFieldAndTraitDefinition existing = header.getFieldsAndTraitsDefinitions(name);
+            // The definitions met here are all declarations: a trait or a field of an
+            // undeclared name creates none. The only components that could use one by
+            // now are those held by the header, and they are bound to the definitions
+            // only at endHeader(): this branch is kept for a header built otherwise.
             if (header.isUsed(existing)) {
                 return redeclared(existing, attributes);
             }
@@ -666,5 +703,7 @@ final class LiftXmlDecoder {
             }
         }
         childFeaturesByParent.clear();
+
+        ModelInternals.get().resumeRebinding(header);
     }
 }

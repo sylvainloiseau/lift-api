@@ -1,6 +1,7 @@
 package fr.cnrs.lacito.liftapi.change;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
+import fr.cnrs.lacito.liftapi.internal.ModelInternals;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
 import fr.cnrs.lacito.liftapi.model.LiftHeader;
 
@@ -18,7 +19,8 @@ public record DefinitionRemoved(LiftDictionary dictionary, LiftHeader header, Li
 
     @Override
     public void revert() {
-        header.addFieldOrTraitDefinition(definition);
+        // The traits and fields the addition rebound are put back by their own changes.
+        ModelInternals.get().withoutRebinding(header, () -> header.addFieldOrTraitDefinition(definition));
     }
 
     @Override

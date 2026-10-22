@@ -161,7 +161,7 @@ public class BuilderTest {
     public void testBuildExampleWithTrait() {
         DictionaryComponentBuilderFactory builder = dictionary.getComponentBuilder();
 
-        dictionary.getHeader().getOrCreateTraitsDefinitions("foo");
+        dictionary.getHeader().declareTraitDefinition("foo");
         builder
             .entry()
             .withForm("tww", "nofua")

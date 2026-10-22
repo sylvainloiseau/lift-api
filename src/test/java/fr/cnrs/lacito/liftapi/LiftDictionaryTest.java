@@ -1,5 +1,6 @@
 package fr.cnrs.lacito.liftapi;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.Arrays;
@@ -12,6 +13,7 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 import fr.cnrs.lacito.liftapi.model.Feature;
+import fr.cnrs.lacito.liftapi.model.LiftTrait;
 
 public class LiftDictionaryTest {
 
@@ -74,9 +76,13 @@ public class LiftDictionaryTest {
     @Test
     public void testGetTraitName() {
         LiftDictionary lf = Utils.loadDictionaryForTest("lift/20240828Lift.lift");
-        Set<String> traitNames = lf.getHeader().getTraitsDefinitions().stream().map(x -> x.getName()).collect(Collectors.toSet());
+        Set<String> traitNames = lf.getLiftDictionaryRegistry().getTraits().stream()
+            .map(LiftTrait::getName)
+            .collect(Collectors.toSet());
         LOGGER.info(traitNames.toString());
         assertTrue(traitNames.contains("semantic-domain-ddp4"));
+        // Its name is a range id, not a declaration: it adds no definition to the header.
+        assertFalse(lf.getHeader().containsFieldsAndTraitsDefinitions("semantic-domain-ddp4"));
     }
 
     @Test

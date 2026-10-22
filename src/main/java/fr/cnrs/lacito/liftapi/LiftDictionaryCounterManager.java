@@ -2,17 +2,13 @@ package fr.cnrs.lacito.liftapi;
 
 import fr.cnrs.lacito.liftapi.model.Feature;
 import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
-import fr.cnrs.lacito.liftapi.model.LiftField;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinitionTarget;
-import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
-import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinitionDataModel;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -49,28 +45,17 @@ public class LiftDictionaryCounterManager {
         }
 
         Map<String, Long> featureCounter = dictionary.getLiftDictionaryRegistry().getTraits().stream()
-            .filter(
-                trait -> trait.getSpecification().getDataModel().isPresent() &&
-                (
-                trait.getSpecification().getDataModel().get() == LiftFieldAndTraitDefinitionDataModel.FEATURE
-                ||
-                trait.getSpecification().getDataModel().get() == LiftFieldAndTraitDefinitionDataModel.FEATURE_SET
-                ||
-                trait.getSpecification().getDataModel().get() == LiftFieldAndTraitDefinitionDataModel.FEATURE_LIST
-                )
-            )
-            .filter(trait -> trait.getSpecification().getResolvedFeatureSet().isPresent())
-            .filter(trait -> trait.getSpecification().getResolvedFeatureSet().get().getId().equals(featureSetName))
-            .flatMap(trait -> {
-                return switch(trait.getSpecification().getDataModel().get()) {
-                    case FEATURE -> Stream.<Feature>of(trait.featureValueProperty().get());
-                    case FEATURE_SET -> trait.featureSetValueProperty().get().stream();
-                    case FEATURE_LIST -> trait.featureListValueProperty().get().stream();
-                    default ->
-                        throw new IllegalStateException("Unexpected data model: " + trait.getSpecification().getDataModel().get());
-                };
+            // A definition with an option-range, or a trait named after the range.
+            .filter(trait -> trait.getSpecification().getResolvedFeatureSet()
+                .map(range -> range.getId().equals(featureSetName))
+                .orElse(false))
+            .flatMap(trait -> switch (trait.getSpecification().getDataModel()) {
+                case FEATURE -> Stream.ofNullable(trait.featureValueProperty().get());
+                case FEATURE_SET -> trait.featureSetValueProperty().get().stream();
+                case FEATURE_LIST -> trait.featureListValueProperty().get().stream();
+                default -> Stream.<Feature>empty();
             })
-            .map(x -> x.getId())
+            .map(Feature::getId)
             .collect(Collectors.groupingBy(x -> x, Collectors.counting()));;
 
         featureSetCounter.put(featureSetName, featureCounter);
@@ -102,9 +87,6 @@ public class LiftDictionaryCounterManager {
     };
     private final Map<String, Set<String>> traitValue = new HashMap<>();
 
-    private final Map<LiftFieldAndTraitDefinitionTarget, Set<LiftFieldAndTraitDefinition>> fields =
-        new HashMap<>();
-
     private final Map<
         LiftFieldAndTraitDefinitionTarget,
         Map<String, Set<String>>
@@ -127,49 +109,12 @@ public class LiftDictionaryCounterManager {
         initAnnotationNameCount();
     }
 
-    public void attachTargetOnField(
-        LiftFieldAndTraitDefinition fieldName,
-        LiftFieldAndTraitDefinitionTarget target
-    ) {
-        fields.compute(target, (k, v) -> {
-            if (v == null) {
-                v = new TreeSet<>();
-            }
-            v.add(fieldName);
-            return v;
-        });
-    }
-
-    public void discover() {
-        discoverFields();
-    }
-
-    private void discoverFields() {
-        for (LiftField f : liftDictionaryRegistry.getFields()) {
-            LiftFieldAndTraitDefinitionTarget key =
-                LiftFieldAndTraitDefinitionTarget.fromType(f.getParent());
-            fields.compute(key, (k, v) -> {
-                if (v == null) {
-                    v = new TreeSet<LiftFieldAndTraitDefinition>();
-                }
-                v.add(f.getSpecification());
-                return v;
-            });
-        }
-    }
-
-    public Set<LiftFieldAndTraitDefinition> getFieldNameForTarget(
-        LiftFieldAndTraitDefinitionTarget k
-    ) {
-        return fields.get(k);
-    }
-
     // getKnownTraitValues
     // TODO bug: when removing a trait, it remove its value
     private void initTraitValue() {
         for (LiftTrait trait : this.liftDictionaryRegistry.getTraits()) {
             traitValue.compute(
-                trait.getSpecification().getName(),
+                trait.getName(),
                 key2SetUpdater(trait.getValue())
             );
         }
@@ -183,20 +128,20 @@ public class LiftDictionaryCounterManager {
                         if (change.wasAdded()) {
                             for (LiftTrait trait : change.getAddedSubList()) {
                                 traitValue.compute(
-                                    trait.getSpecification().getName(),
+                                    trait.getName(),
                                     key2SetUpdater(trait.getValue())
                                 );
                             }
                         }
                         if (change.wasRemoved()) {
                             for (LiftTrait trait : change.getRemoved()) {
-                                if (traitValue.containsKey(trait.getSpecification().getName())) {
+                                if (traitValue.containsKey(trait.getName())) {
                                     Set<String> values = traitValue.get(
-                                        trait.getSpecification().getName()
+                                        trait.getName()
                                     );
                                     values.remove(trait.getValue());
                                     if (values.isEmpty()) {
-                                        traitValue.remove(trait.getSpecification().getName());
+                                        traitValue.remove(trait.getName());
                                     }
                                 }
                             }

@@ -108,7 +108,7 @@ public class AttachmentTest {
 
         LiftExample example = new LiftExample();
         LiftTrait trait = new LiftTrait(
-            d.getHeader().getOrCreateTraitsDefinitions("style"),
+            d.getHeader().declareTraitDefinition("style"),
             "formal"
         );
         example.addTrait(trait);

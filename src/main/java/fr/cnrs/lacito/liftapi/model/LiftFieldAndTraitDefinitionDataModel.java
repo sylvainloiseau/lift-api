@@ -52,6 +52,11 @@ public enum LiftFieldAndTraitDefinitionDataModel {
         return this == MULTISTRING || this == MULTITEXT;
     }
 
+    /** Whether the values are features of a range: {@code option} and its collections. */
+    public boolean takesFeatures() {
+        return this == FEATURE || this == FEATURE_SET || this == FEATURE_LIST;
+    }
+
     public boolean isApplicableToATrait() {
         return !isApplicableToAField();
     }

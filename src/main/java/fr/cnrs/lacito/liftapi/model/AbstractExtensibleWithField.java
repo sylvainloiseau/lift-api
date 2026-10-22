@@ -25,7 +25,7 @@ public abstract sealed class AbstractExtensibleWithField
         // The map is keyed by the definition *name*; looking the definition object up
         // instead never matched (LiftFieldAndTraitDefinition has no equals), so a
         // duplicate field silently overwrote the previous one.
-        String name = f.getSpecification().getName();
+        String name = f.getName();
         if (fields.containsKey(name)) throw new DuplicateTypeException(
             "Duplicate key (" + name + ") for field"
         );
@@ -75,7 +75,7 @@ public abstract sealed class AbstractExtensibleWithField
     public void deleteField(LiftField f) {
         requireChild(
             f,
-            f != null && fields.get(f.getSpecification().getName()) == f
+            f != null && fields.get(f.getName()) == f
         );
         removeChild(f);
     }

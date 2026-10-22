@@ -5,7 +5,9 @@ import java.util.UUID;
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDictionaryLanguagesManager;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
+import fr.cnrs.lacito.liftapi.model.FieldSpecification;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
+import fr.cnrs.lacito.liftapi.model.LiftField;
 import fr.cnrs.lacito.liftapi.model.LiftHeader;
 import fr.cnrs.lacito.liftapi.model.MultiText;
 
@@ -41,6 +43,32 @@ public final class ModelInternals {
         void putOtherXmlAttribute(AbstractLiftRoot node, String name, String value);
 
         void setDictionary(LiftHeader header, LiftDictionary dictionary);
+
+        /**
+         * Sets the specification of a field without the header's checks: how a
+         * {@code FIELD_SPECIFICATION} change is reverted and reapplied.
+         */
+        void setFieldSpecification(LiftField field, FieldSpecification specification);
+
+        /**
+         * Runs {@code operation} on the header without rebinding the traits and fields
+         * it affects: how the header's changes are reverted and reapplied, since the
+         * rebinding they caused was reported after them, and is reverted and reapplied
+         * by its own changes.
+         */
+        void withoutRebinding(LiftHeader header, Runnable operation);
+
+        /**
+         * Suspends rebinding while the reader reads the header: the {@code option-range}
+         * of the definitions is set only once all the ranges are read.
+         */
+        void suspendRebinding(LiftHeader header);
+
+        /**
+         * Resumes rebinding at the end of the header, and rebinds every trait and field
+         * the header's components hold to what its name resolves to.
+         */
+        void resumeRebinding(LiftHeader header);
     }
 
     private static volatile Access access;

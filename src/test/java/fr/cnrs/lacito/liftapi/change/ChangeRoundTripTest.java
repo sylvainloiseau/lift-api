@@ -246,11 +246,11 @@ class ChangeRoundTripTest {
         }
 
         LiftFieldAndTraitDefinition traitDefinition() {
-            return d.getHeader().getOrCreateTraitsDefinitions("test-trait");
+            return d.getHeader().declareTraitDefinition("test-trait");
         }
 
         LiftFieldAndTraitDefinition fieldDefinition() {
-            return d.getHeader().getOrCreateFieldDefinitions("test-field-" + r.nextInt(3));
+            return d.getHeader().declareFieldDefinition("test-field-" + r.nextInt(3));
         }
 
         MultiText someMultiText() {
@@ -386,7 +386,7 @@ class ChangeRoundTripTest {
                 case 1 -> s.deleteTrait(c.pick(s.getTraits()));
                 default -> {
                     LiftTrait t = c.pick(c.reg().getTraits());
-                    if (t.getSpecification().getDataModel().orElseThrow() != LiftFieldAndTraitDefinitionDataModel.STRING) throw new Skip();
+                    if (t.getSpecification().getDataModel() != LiftFieldAndTraitDefinitionDataModel.STRING) throw new Skip();
                     t.stringValueProperty().set(c.fresh());
                 }
             }
@@ -545,6 +545,24 @@ class ChangeRoundTripTest {
                 case 1 -> h.removeFeatureSet(c.pick(h.getFeatureSets()));
                 // Refused for a built-in set or an unloaded external one, as allowed.
                 default -> h.renameFeatureSet(c.pick(h.getFeatureSets()), "range-" + c.fresh());
+            }
+        }),
+        new Op("trait and field specifications", c -> {
+            var h = c.d.getHeader();
+            switch (c.r.nextInt(6)) {
+                // A trait named after a range, or undeclared: the builder resolves the name.
+                case 0 -> c.d.getComponentBuilder()
+                    .trait(c.sense(), c.pick(h.getFeatureSets()).getId(), "v" + c.r.nextInt(3)).build();
+                case 1 -> c.d.getComponentBuilder()
+                    .trait(c.sense(), "informal-" + c.r.nextInt(3), c.fresh()).build();
+                // Declaring the name of traits named after a range, or undeclared, rebinds them.
+                case 2 -> h.declareTraitDefinition(c.pick(c.reg().getTraits()).getName());
+                // A range named like undeclared traits: they become traits of the range.
+                case 3 -> h.addFeatureSet("informal-" + c.r.nextInt(3));
+                // A renamed range takes the undeclared traits of its new name.
+                case 4 -> h.renameFeatureSet(c.pick(h.getFeatureSets()), "informal-" + c.r.nextInt(3));
+                // Declaring the name of undeclared fields (the corpus has "note", "summary").
+                default -> h.declareFieldDefinition(c.pick(c.reg().getFields()).getName());
             }
         }),
         new Op("definition", c -> {

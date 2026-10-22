@@ -2,8 +2,8 @@ package fr.cnrs.lacito.liftapi.builder;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.model.HasTrait;
-import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
+import fr.cnrs.lacito.liftapi.model.TraitSpecification;
 import java.util.function.Consumer;
 
 /**
@@ -25,24 +25,29 @@ public class TraitBuilder extends AbstractLiftElementBuilder<LiftTrait, HasTrait
      * @param value the trait value
      */
     protected TraitBuilder(LiftDictionary dictionary, HasTrait parent, String type, String value) {
-        super(new LiftTrait(definition(dictionary, type)), dictionary, parent);
+        super(new LiftTrait(specification(dictionary, type)), dictionary, parent);
         if (value == null) {
             throw new IllegalArgumentException("Trait value cannot be null");
         }
         withValue(value);
     }
 
-    private static LiftFieldAndTraitDefinition definition(LiftDictionary dictionary, String type) {
+    /**
+     * What the name refers to in the header: a definition, a range, or nothing (see
+     * {@link fr.cnrs.lacito.liftapi.model.LiftHeader#resolveTraitSpecification(String)}).
+     * Nothing is declared: an undeclared name is not written in the header.
+     */
+    private static TraitSpecification specification(LiftDictionary dictionary, String type) {
         if (type == null) {
             throw new IllegalArgumentException("Trait name cannot be null");
         }
-        return dictionary.getHeader().getOrCreateTraitsDefinitions(type);
+        return dictionary.getHeader().resolveTraitSpecification(type);
     }
 
     /**
-     * Update the trait value, parsed after the data model of the trait's definition by
-     * {@link LiftTrait#parseValue(LiftFieldAndTraitDefinition, String)}: a feature id the
-     * definition's feature set does not contain yet is added to it.
+     * Update the trait value, parsed after the data model of the trait's specification by
+     * {@link LiftTrait#parseValue(TraitSpecification, String)}: a feature id the
+     * feature set does not contain yet is added to it.
      */
     public TraitBuilder withValue(String value) {
         if (value != null) {

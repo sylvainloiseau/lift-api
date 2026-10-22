@@ -200,7 +200,7 @@ public class RegressionTest {
 
     @Test
     public void traitAnnotationsAreAttachedExactlyOnce() {
-        dictionary.getHeader().getOrCreateTraitsDefinitions("morph-type");
+        dictionary.getHeader().declareTraitDefinition("morph-type");
         LiftEntry entry = dictionary
             .getComponentBuilder()
             .entry()
@@ -858,7 +858,7 @@ public class RegressionTest {
     @Test
     public void listHeldComponentsCanBeInsertedAtAPosition() {
         LiftEntry entry = dictionary.getComponentBuilder().entry().withForm("tww", "a").build();
-        var def = dictionary.getHeader().getOrCreateTraitsDefinitions("status");
+        var def = dictionary.getHeader().declareTraitDefinition("status");
         LiftTrait first = new LiftTrait(def, "1");
         LiftTrait second = new LiftTrait(def, "2");
         entry.addTrait(first);
@@ -909,11 +909,11 @@ public class RegressionTest {
 
     /**
      * The traits of a range element, read before the {@code <fields>} of the header,
-     * create their definition on the fly; its declaration, read afterwards, replaced it
-     * and left those traits holding a definition the header no longer had. Since a
-     * definition in use cannot be removed, the declaration is applied to it in place.
+     * used to create their definition on the fly; its declaration, read afterwards,
+     * replaced it and left those traits holding a definition the header no longer had.
      * A file saved from such a dictionary (FieldWorks' {@code absten-feature-value})
-     * could no longer be read back.
+     * could no longer be read back. Those traits are now undeclared names while the
+     * header is read, and are bound to the declaration at its end.
      */
     @Test
     public void aDefinitionDeclaredAfterTheTraitsOfARangeElementIsAppliedToThem(
@@ -946,6 +946,61 @@ public class RegressionTest {
         d.save(saved);
         LiftDictionary reloaded = LiftDictionary.loadDictionaryFromFile(saved);
         assertTrue(reloaded.getHeader().containsFieldsAndTraitsDefinitions("abbrev-kind"));
+    }
+
+    /**
+     * A trait named after a range, with no definition of that name (the corpus'
+     * {@code morph-type}), got a STRING definition created on the fly: its values were
+     * strings, so the feature they name could be removed while in use, was not renamed
+     * with them, and the invented definition was written in the header on save. The
+     * trait now refers to the range itself, and its value is the feature.
+     */
+    @Test
+    public void aTraitNamedAfterARangeHoldsAFeatureThatCountsAsUsed(
+        @org.junit.jupiter.api.io.TempDir java.nio.file.Path dir
+    ) throws Exception {
+        FeatureSet morphTypes = dictionary.getHeader().addFeatureSet("morph-type");
+        LiftEntry entry = dictionary.getComponentBuilder().entry()
+            .withForm("tww", "nala")
+            .addTrait("morph-type", "stem")
+            .build();
+        Feature stem = morphTypes.getFeature("stem");
+        assertSame(stem, entry.getTraits().get(0).getTypedValue());
+        assertEquals(1, dictionary.getHeader().countUses(stem));
+        assertThrows(IllegalStateException.class, () -> morphTypes.removeFeature("stem"));
+
+        morphTypes.changeFeatureId(stem, "root");
+        assertEquals("root", entry.getTraits().get(0).getValue());
+
+        File saved = dir.resolve("saved.lift").toFile();
+        dictionary.save(saved);
+        assertFalse(java.nio.file.Files.readString(saved.toPath()).contains("<field tag=\"morph-type\""));
+    }
+
+    /**
+     * The range of an option definition could change while its traits held features of
+     * the old range: the file then named the new range with the old features' ids, and
+     * was read back into the new range - not the dictionary that was saved. The change is
+     * refused while traits use the definition, as a change of its data model is.
+     */
+    @Test
+    public void theRangeOfAnOptionDefinitionDoesNotChangeWhileTraitsUseIt() {
+        FeatureSet registers = dictionary.getHeader().addFeatureSet("registers");
+        FeatureSet styles = dictionary.getHeader().addFeatureSet("styles");
+        LiftFieldAndTraitDefinition register = definition("register", "option", registers);
+        LiftEntry entry = dictionary.getComponentBuilder().entry()
+            .withForm("tww", "nala")
+            .addTrait("register", "formal")
+            .build();
+
+        assertThrows(IllegalStateException.class, () -> register.setResolvedRange(Optional.of(styles)));
+        assertSame(registers, register.getResolvedFeatureSet().orElseThrow());
+
+        // Setting the same range, or a range once no trait uses the definition, is fine.
+        register.setResolvedRange(Optional.of(registers));
+        entry.deleteTrait(entry.getTraits().get(0));
+        register.setResolvedRange(Optional.of(styles));
+        assertSame(styles, register.getResolvedFeatureSet().orElseThrow());
     }
 
     // ------------------------------------------------------------------

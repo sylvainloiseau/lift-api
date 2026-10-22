@@ -77,11 +77,22 @@ repeated.
  For trait :
  Where no range is linked the name is informal or resolved by its use in a field-definition. (12)
  *
+ * <h2>Only declarations</h2>
+ *
+ * A definition is a declaration of the header: it is written back on save. A trait or a
+ * field whose name is declared nowhere does not get one (it is an {@link UndeclaredName}),
+ * nor a trait named after a range (a {@link RangeReference}): see
+ * {@link TraitSpecification}. A trait name never takes a definition whose kind is
+ * {@code FIELD}, nor a field name one whose kind is {@code TRAIT}.
+ *
+ * @see TraitSpecification
+ * @see FieldSpecification
  * @see LiftFieldAndTraitDefinitionKind
  * @see LiftFieldAndTraitDefinitionDataModel
  * @see LiftFieldAndTraitDefinitionTarget
  */
-public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
+public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot
+    implements TraitSpecification, FieldSpecification {
 
     final String name;
     final LiftHeader parent;
@@ -113,17 +124,39 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
         this.parent = parent;
     }
 
+    @Override
     public Optional<FeatureSet> getResolvedFeatureSet() {
         return Optional.ofNullable(resolvedRange.get());
     }
 
+    /**
+     * Set the range ({@code option-range}) the values of an option definition come from.
+     *
+     * Refused while traits use this definition and its data model takes features: they
+     * hold features of the current range, which the new one would not declare. The file
+     * would then name the new range and the old features' ids, and be read back into the
+     * new range. Remove or change those traits first, as for {@link #setDataModel}.
+     *
+     * @param resolvedRange the range; empty, or {@code null}, for none
+     * @throws IllegalStateException if the range would change while traits use this
+     *         definition for features
+     */
     public void setResolvedRange(Optional<FeatureSet> resolvedRange) {
-        this.resolvedRange.set(resolvedRange == null ? null : resolvedRange.orElse(null));
+        FeatureSet newRange = resolvedRange == null ? null : resolvedRange.orElse(null);
+        if (newRange != this.resolvedRange.get() && definitionType.takesFeatures()
+            && parent != null && parent.isUsedByTraits(this)) {
+            throw new IllegalStateException(
+                "The range of the definition " + name + " cannot change: traits hold features of the current one.");
+        }
+        this.resolvedRange.set(newRange);
     }
 
-    /** The range of an option definition; {@code null} when there is none. */
-    public ObjectProperty<FeatureSet> resolvedRangeProperty() {
-        return resolvedRange;
+    /**
+     * The range of an option definition, read-only: see {@link #setResolvedRange(Optional)};
+     * {@code null} when there is none.
+     */
+    public ReadOnlyObjectProperty<FeatureSet> resolvedRangeProperty() {
+        return resolvedRange.getReadOnlyProperty();
     }
 
     public Optional<String> getWritingSystem() {
@@ -143,36 +176,71 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
         return label;
     }
 
+    /**
+     * Set whether this definition is for fields, traits, or both ({@code UNKNOWN}).
+     *
+     * A trait name never resolves to a definition for fields, nor a field name to a
+     * definition for traits (see {@link LiftHeader#resolveTraitSpecification(String)}):
+     * the kind cannot exclude the traits or the fields that use this definition.
+     *
+     * A kind that fits more components rebinds the traits or the fields of that name
+     * that it now fits, as adding the definition does (see
+     * {@link LiftHeader#addFieldOrTraitDefinition}).
+     *
+     * @throws IllegalStateException if traits use this definition and the kind becomes
+     *         {@code FIELD}, or fields use it and the kind becomes {@code TRAIT}
+     * @throws IllegalArgumentException if the value of a trait to rebind does not parse
+     *         for this definition's data model
+     */
     public void setKind(LiftFieldAndTraitDefinitionKind kind) {
+        if (parent == null || kind == getKind()) {
+            this.kind.set(kind);
+            return;
+        }
+        if (kind == LiftFieldAndTraitDefinitionKind.FIELD && parent.isUsedByTraits(this)) {
+            throw new IllegalStateException(
+                "The definition " + name + " cannot become a field definition: traits use it.");
+        }
+        if (kind == LiftFieldAndTraitDefinitionKind.TRAIT && parent.isUsedByFields(this)) {
+            throw new IllegalStateException(
+                "The definition " + name + " cannot become a trait definition: fields use it.");
+        }
+        LiftHeader.Rebinding rebinding = parent.holdsDefinition(this)
+            ? parent.prepareRebindingForKind(this, kind)
+            : LiftHeader.Rebinding.NONE;
         this.kind.set(kind);
+        rebinding.apply();
+    }
+
+    /** Whether a trait may take this definition: its kind is not {@code FIELD}. */
+    public boolean fitsTraits() {
+        return getKind() != LiftFieldAndTraitDefinitionKind.FIELD;
+    }
+
+    /** Whether a field may take this definition: its kind is not {@code TRAIT}. */
+    public boolean fitsFields() {
+        return getKind() != LiftFieldAndTraitDefinitionKind.TRAIT;
     }
 
     public LiftFieldAndTraitDefinitionKind getKind() {
         return kind.get();
     }
 
-    /** Whether this definition is for fields, traits, or not known yet. */
-    public ObjectProperty<LiftFieldAndTraitDefinitionKind> kindProperty() {
-        return kind;
+    /** Whether this definition is for fields, traits, or not known yet; read-only: see {@link #setKind}. */
+    public ReadOnlyObjectProperty<LiftFieldAndTraitDefinitionKind> kindProperty() {
+        return kind.getReadOnlyProperty();
     }
 
     /**
      * The data model used to read and write the values: the declared one, or
      * {@link LiftFieldAndTraitDefinitionDataModel#STRING} when none is declared.
      */
-    public Optional<LiftFieldAndTraitDefinitionDataModel> getDataModel() {
-        return Optional.of(definitionType);
+    @Override
+    public LiftFieldAndTraitDefinitionDataModel getDataModel() {
+        return definitionType;
     }
 
-    /**
-     * @deprecated use {@link #setDataModel(Optional)}, which also records that the data
-     *             model is declared
-     */
-    @Deprecated(forRemoval = true)
-    public void setDefinitionType(Optional<LiftFieldAndTraitDefinitionDataModel> definitionType) {
-        setDataModel(definitionType.map(LiftFieldAndTraitDefinitionDataModel::toStringValue));
-    }
-
+    @Override
     public String getName() {
         return name;
     }
@@ -213,17 +281,14 @@ public final class LiftFieldAndTraitDefinition extends AbstractLiftRoot {
         this.targets.set(copy);
     }
 
-    public Optional<LiftFieldAndTraitDefinitionDataModel> getType() {
-        return getDataModel();
-    }
-
-    public Optional<String> getTypeStr() {
-        return getDataModel().map(LiftFieldAndTraitDefinitionDataModel::toStringValue);
+    /** The data model used to read and write the values, as its LIFT {@code @type} string. */
+    public String getTypeStr() {
+        return definitionType.toStringValue();
     }
 
     /** The declared {@code @type}, empty when none was declared. */
     public Optional<String> getDeclaredTypeStr() {
-        return isDataModelDeclared() ? getTypeStr() : Optional.empty();
+        return isDataModelDeclared() ? Optional.of(getTypeStr()) : Optional.empty();
     }
 
     /** Whether a {@code @type} was explicitly declared for this definition. */

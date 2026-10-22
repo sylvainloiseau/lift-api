@@ -479,7 +479,7 @@ public abstract sealed class AbstractLiftRoot implements LiftObject
                 o.setParent(null);
             }
             case LiftField o -> {
-                String name = o.getSpecification().getName();
+                String name = o.getName();
                 if (o.getParent() != null && o.getParent().fields.get(name) == o) {
                     o.getParent().fields.remove(name);
                 }

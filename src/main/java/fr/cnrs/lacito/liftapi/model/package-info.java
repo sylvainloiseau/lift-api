@@ -72,6 +72,18 @@
  * Attaching a component that is still registered in <em>another</em> dictionary is
  * refused, rather than silently accepted: delete it from its current parent first.
  *
+ * <h2>What the name of a trait or a field refers to</h2>
+ *
+ * A trait's name refers to a definition of the header, to a range (its id), or to
+ * nothing - LIFT's "informal" name: {@link TraitSpecification}, whose cases are
+ * {@link LiftFieldAndTraitDefinition}, {@link RangeReference} and {@link UndeclaredName}.
+ * A field's name refers to a definition or to nothing ({@link FieldSpecification}). Only
+ * definitions are written in the header. A trait's or field's specification is always
+ * what its name resolves to in the header as it is
+ * ({@link LiftHeader#resolveTraitSpecification(String)}): adding a definition or a range,
+ * or renaming a range, rebinds the traits and fields of that name, so that the model is
+ * what a save and a reload give. See {@link LiftHeader}.
+ *
  * <h2>Naming</h2>
  *
  * <ul>
@@ -82,7 +94,8 @@
  * <li>{@code removeX} for what is not a component: forms
  * ({@link MultiText#removeForm}), features, feature sets, definitions, languages. Like
  * the deletion of a referenced entry, the removal of a feature, a feature set or a
- * definition in use is refused ({@link LiftHeader#isUsed(Feature)}).</li>
+ * definition in use is refused ({@link LiftHeader#isUsed(Feature)},
+ * {@link LiftHeader#isUsed(FeatureSet)}).</li>
  * <li>{@code setX} for a value; {@code retypeX} on a parent, which {@code setType} calls;
  * {@link FeatureSet#changeFeatureId} and {@link LiftHeader#renameFeatureSet} for the ids
  * of the header, which re-key what holds them.</li>

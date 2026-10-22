@@ -304,7 +304,7 @@ class ChangeEventsTest {
 
     @Test
     void aTraitValueIsReportedTyped() {
-        var def = d.getHeader().getOrCreateTraitsDefinitions("status");
+        var def = d.getHeader().declareTraitDefinition("status");
         LiftTrait t = new LiftTrait(def, "draft");
         entry.addTrait(t);
         events.clear();

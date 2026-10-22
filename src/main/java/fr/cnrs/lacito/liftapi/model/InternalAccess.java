@@ -47,4 +47,24 @@ final class InternalAccess implements ModelInternals.Access {
     public void setDictionary(LiftHeader header, LiftDictionary dictionary) {
         header.setDictionary(dictionary);
     }
+
+    @Override
+    public void setFieldSpecification(LiftField field, FieldSpecification specification) {
+        field.respecify(specification);
+    }
+
+    @Override
+    public void withoutRebinding(LiftHeader header, Runnable operation) {
+        header.withoutRebinding(operation);
+    }
+
+    @Override
+    public void suspendRebinding(LiftHeader header) {
+        header.suspendRebinding();
+    }
+
+    @Override
+    public void resumeRebinding(LiftHeader header) {
+        header.resumeRebinding();
+    }
 }

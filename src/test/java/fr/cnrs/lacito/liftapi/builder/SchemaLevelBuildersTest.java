@@ -121,7 +121,7 @@ public class SchemaLevelBuildersTest {
 
         assertSame(def, dictionary.getHeader().getFieldsAndTraitsDefinitions("colour"));
         assertEquals(LiftFieldAndTraitDefinitionKind.TRAIT, def.getKind(), "an option implies a trait");
-        assertEquals(Optional.of(LiftFieldAndTraitDefinitionDataModel.FEATURE), def.getDataModel());
+        assertEquals(LiftFieldAndTraitDefinitionDataModel.FEATURE, def.getDataModel());
         assertEquals(
             Set.of(LiftFieldAndTraitDefinitionTarget.ENTRY, LiftFieldAndTraitDefinitionTarget.SENSE),
             def.getTargets()

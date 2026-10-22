@@ -3,6 +3,7 @@ package fr.cnrs.lacito.liftapi.builder;
 import java.util.function.Consumer;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
+import fr.cnrs.lacito.liftapi.model.FieldSpecification;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.HasField;
 import fr.cnrs.lacito.liftapi.model.LiftField;
@@ -21,13 +22,19 @@ public class FieldBuilder extends AbstractLiftElementWithoutFieldBuilder<LiftFie
 
     /**
      * Create a field builder with the given field name.
-      * @param name
+     *
+     * @param name the name of the field; its specification is what it refers to in the
+     *        header, a definition or nothing (nothing is declared)
      */
     protected FieldBuilder(LiftDictionary dictionary, HasField field, String name) {
-        super(LiftField.create(dictionary.getHeader().getOrCreateFieldDefinitions(name)), dictionary, field);
+        super(LiftField.create(specification(dictionary, name)), dictionary, field);
+    }
+
+    private static FieldSpecification specification(LiftDictionary dictionary, String name) {
         if (name == null) {
             throw new IllegalArgumentException("Field name cannot be null");
         }
+        return dictionary.getHeader().resolveFieldSpecification(name);
     }
 
     /**
@@ -97,9 +104,6 @@ public class FieldBuilder extends AbstractLiftElementWithoutFieldBuilder<LiftFie
      */
     @Override
     public LiftField build() {
-        if (element.getSpecification() == null) {
-            throw new IllegalArgumentException("Field name cannot be null");
-        }
         super.attach();
         return element;
     }

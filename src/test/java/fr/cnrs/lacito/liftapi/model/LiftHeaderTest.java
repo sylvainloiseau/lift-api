@@ -27,7 +27,12 @@ public class LiftHeaderTest {
     @Test
     public void testDiscoveredTrait() {
         LiftDictionary lf = Utils.loadDictionaryForTest("lift/header_fieldDefinitionWithDiscoveredField.xml");
-        assertEquals(4, lf.getHeader().getFieldsAndTraitsDefinitions().size());
+        // The undeclared "morph-type" trait adds no definition to the header: it would be
+        // written there on save, declaring what the file never declared.
+        assertEquals(3, lf.getHeader().getFieldsAndTraitsDefinitions().size());
+        LiftTrait morphType = lf.getLiftDictionaryRegistry().getTraits().get(0);
+        assertEquals(new UndeclaredName("morph-type"), morphType.getSpecification());
+        assertEquals("stem", morphType.getValue());
     }
 
 }

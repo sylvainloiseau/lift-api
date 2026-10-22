@@ -5,12 +5,14 @@ import fr.cnrs.lacito.liftapi.model.AbstractExtensibleWithField;
 import fr.cnrs.lacito.liftapi.model.AbstractExtensibleWithoutField;
 import fr.cnrs.lacito.liftapi.model.AbstractNotable;
 import fr.cnrs.lacito.liftapi.model.Feature;
+import fr.cnrs.lacito.liftapi.model.FeatureSet;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftEtymology;
 import fr.cnrs.lacito.liftapi.model.LiftExample;
 import fr.cnrs.lacito.liftapi.model.LiftField;
+import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
 import fr.cnrs.lacito.liftapi.model.LiftIllustration;
 import fr.cnrs.lacito.liftapi.model.LiftMedia;
 import fr.cnrs.lacito.liftapi.model.LiftNote;
@@ -21,8 +23,11 @@ import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
 import fr.cnrs.lacito.liftapi.model.MultiText;
+import fr.cnrs.lacito.liftapi.model.RangeReference;
+import fr.cnrs.lacito.liftapi.model.UndeclaredName;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -34,7 +39,8 @@ import java.util.TreeMap;
  *
  * Everything the LIFT serialization is supposed to preserve is included: LIFT ids, every
  * {@link MultiText} form (lang + markup-bearing text), traits, fields, notes, annotations,
- * media/illustration labels and reversal nesting depth.
+ * media/illustration labels and reversal nesting depth; the header's definitions, and what
+ * the name of each trait and field refers to (a definition, a range, or nothing).
  */
 public final class DictionarySnapshot {
 
@@ -53,10 +59,39 @@ public final class DictionarySnapshot {
             "lift.senseCount",
             String.valueOf(d.getLiftDictionaryRegistry().getSenses().size())
         );
+        // Sorted by name: the header holds its definitions in a map. A definition that
+        // a load-save invented (an undeclared name written as a declaration) shows here.
+        d.getHeader().getFieldsAndTraitsDefinitions().stream()
+            .sorted(Comparator.comparing(LiftFieldAndTraitDefinition::getName))
+            .forEach(definition -> s.definition("header.definition[" + definition.getName() + "]", definition));
         for (LiftEntry e : d.getLiftDictionaryRegistry().getEntries()) {
             s.entry("entry", e);
         }
         return s.lines;
+    }
+
+    /**
+     * What the name of a trait or a field refers to, as a short label: {@code def:x} for
+     * a definition, {@code range:x} for a trait named after a range, {@code name:x} for
+     * an undeclared name.
+     */
+    public static String specification(Object specification) {
+        return switch (specification) {
+            case LiftFieldAndTraitDefinition definition -> "def:" + definition.getName();
+            case RangeReference reference -> "range:" + reference.getName();
+            case UndeclaredName name -> "name:" + name.getName();
+            default -> throw new IllegalArgumentException("Not a specification: " + specification);
+        };
+    }
+
+    private void definition(String p, LiftFieldAndTraitDefinition definition) {
+        emit(p + ".kind", String.valueOf(definition.getKind()));
+        emit(p + ".type", definition.getDeclaredTypeStr().orElse(""));
+        emit(p + ".range", definition.getResolvedFeatureSet().map(FeatureSet::getId).orElse(""));
+        emit(p + ".targets", definition.getTargetAsString());
+        emit(p + ".writingSystem", definition.getWritingSystem().orElse(""));
+        multiText(p + ".label", definition.getLabel());
+        multiText(p + ".description", definition.getDescription());
     }
 
     // ------------------------------------------------------------------
@@ -223,7 +258,7 @@ public final class DictionarySnapshot {
     }
 
     private void trait(String p, LiftTrait t) {
-        emit(p + ".name", t.getSpecification().getName());
+        emit(p + ".name", specification(t.getSpecification()));
         emit(p + ".value", t.getValue());
         int i = 0;
         for (LiftAnnotation a : t.getAnnotations()) annotation(
@@ -241,7 +276,7 @@ public final class DictionarySnapshot {
     }
 
     private void field(String p, LiftField f) {
-        emit(p + ".name", f.getSpecification().getName());
+        emit(p + ".name", specification(f.getSpecification()));
         multiText(p + ".form", f.getText());
         extensible(p, f);
     }

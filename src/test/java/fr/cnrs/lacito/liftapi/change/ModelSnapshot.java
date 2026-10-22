@@ -16,6 +16,7 @@ import fr.cnrs.lacito.liftapi.model.FeatureSet;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
+import fr.cnrs.lacito.liftapi.model.LiftField;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
@@ -89,7 +90,7 @@ final class ModelSnapshot {
     private void definition(String p, LiftFieldAndTraitDefinition def) {
         emit(p + ".kind", String.valueOf(def.getKind()));
         emit(p + ".targets", def.getTargetAsString());
-        emit(p + ".dataModel", def.getTypeStr().orElse("") + (def.isDataModelDeclared() ? "" : " (undeclared)"));
+        emit(p + ".dataModel", def.getTypeStr() + (def.isDataModelDeclared() ? "" : " (undeclared)"));
         emit(p + ".writingSystem", def.getWritingSystem().orElse(""));
         emit(p + ".range", def.getResolvedFeatureSet().map(FeatureSet::getId).orElse(""));
         multiText(p + ".label", def.getLabel());
@@ -101,7 +102,7 @@ final class ModelSnapshot {
         emit(p + ".dateModified", o.getDateModified().orElse(""));
         int i = 0;
         for (LiftTrait t : o.getTraits()) {
-            emit(p + ".trait#" + i + ".name", t.getSpecification().getName());
+            emit(p + ".trait#" + i + ".name", DictionarySnapshot.specification(t.getSpecification()));
             emit(p + ".trait#" + (i++) + ".value", t.getValue());
         }
         i = 0;
@@ -109,8 +110,8 @@ final class ModelSnapshot {
             emit(p + ".annotation#" + (i++), a.getType() == null ? "" : a.getType().getId());
         }
         if (o instanceof AbstractExtensibleWithField wf) {
-            for (Map.Entry<String, ?> f : new TreeMap<>(wf.getFields()).entrySet()) {
-                emit(p + ".field", f.getKey());
+            for (Map.Entry<String, LiftField> f : new TreeMap<>(wf.getFields()).entrySet()) {
+                emit(p + ".field", DictionarySnapshot.specification(f.getValue().getSpecification()));
             }
         }
     }

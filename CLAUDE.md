@@ -10,7 +10,7 @@ is a JavaFX editor that binds directly to this model.
 - Java 25 (`maven.compiler.release=25`), JPMS module `fr.cnrs.lacito.liftapi`.
 - From this directory: `mvn test`; one test: `mvn test -Dtest=MultiTextTest#testTextAndSeveralSpan`.
   From the repo root: `mvn test -pl lift-api`; `mvn install` installs both modules.
-- ~190 JUnit 6 tests, all fast (~20 s, most of it `ChangeRoundTripTest`). They are headless —
+- ~225 JUnit 6 tests, all fast (~20 s, most of it `ChangeRoundTripTest`). They are headless —
   no JavaFX toolkit is started.
 - `LoadingCostTest` (tag `perf`) measures the time and heap of loading the corpus; it is
   excluded by default: `mvn test -Dgroups=perf -DexcludedTestGroups=none -Dtest=LoadingCostTest`.
@@ -82,7 +82,22 @@ Summary:
   set in use cannot be removed (`LiftHeader.isUsed(...)` / `countUses(...)`, which scan the
   registry and the traits and annotations the header's own components hold — those are
   not indexed). What a feature set holds itself (its hierarchy, the traits of its
-  elements) goes with it and does not count.
+  elements) goes with it and does not count. Likewise, a definition used by traits keeps its
+  data model and, for an option definition, its range (`setDataModel`, `setResolvedRange`
+  refuse the change; their properties are read-only).
+- **A trait's name refers to a definition, a range, or nothing** (`TraitSpecification`:
+  `LiftFieldAndTraitDefinition` / `RangeReference` / `UndeclaredName`; a field's to a
+  definition or nothing, `FieldSpecification`). Builders resolve names with
+  `LiftHeader.resolveTraitSpecification` / `resolveFieldSpecification` and declare
+  nothing: only real declarations are in the header, and written back. Invariant: every
+  trait's and field's specification is what its name resolves to *now*, so that memory
+  equals save-and-reload. Header operations that change a resolution (add a definition or
+  a range, rename a range, widen a definition's kind) **rebind** the traits/fields of that
+  name: a trait is *replaced* (its value property's kind depends on the data model),
+  reported as add/move annotations/remove; a field is respecified in place
+  (`FIELD_SPECIFICATION`). Rebinding is all-or-nothing, and is suspended while the reader
+  reads the header (rebound at `endHeader`) and while changes are reverted/reapplied
+  (`ModelInternals.withoutRebinding`): the cascade is put back by its own events.
 - `MultiText` has an optional language manager: once registered, adding a `Form` in a
   language the dictionary doesn't declare throws. Registration of a pre-filled MultiText
   (parse, moved subtree) declares its languages instead. Each MultiText is either

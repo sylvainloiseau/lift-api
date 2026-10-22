@@ -60,7 +60,7 @@ public class DeletionTest {
         LiftExample example = new LiftExample();
         example.getExample().add(new Form("qyz", "he runs fast"));
         LiftTrait trait = new LiftTrait(
-            d.getHeader().getOrCreateTraitsDefinitions("style"),
+            d.getHeader().declareTraitDefinition("style"),
             "formal"
         );
         example.addTrait(trait);

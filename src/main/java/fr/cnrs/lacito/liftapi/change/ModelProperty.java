@@ -5,10 +5,12 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
+import fr.cnrs.lacito.liftapi.internal.ModelInternals;
 import fr.cnrs.lacito.liftapi.model.AbstractExtensibleWithoutField;
 import fr.cnrs.lacito.liftapi.model.AbstractIdentifiable;
 import fr.cnrs.lacito.liftapi.model.Feature;
 import fr.cnrs.lacito.liftapi.model.FeatureSet;
+import fr.cnrs.lacito.liftapi.model.FieldSpecification;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.GrammaticalInfo;
 import fr.cnrs.lacito.liftapi.model.HasType;
@@ -16,6 +18,7 @@ import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftEtymology;
 import fr.cnrs.lacito.liftapi.model.LiftExample;
+import fr.cnrs.lacito.liftapi.model.LiftField;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinitionDataModel;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinitionKind;
@@ -158,6 +161,12 @@ public final class ModelProperty<T> {
     public static final ModelProperty<Object> TRAIT_VALUE = new ModelProperty<>(
         "traitValue", (o, v) -> ((LiftTrait) o).setTypedValue(v));
 
+    /// What the name of a field refers to (a definition, or an undeclared name). It
+    /// changes when the header declares or removes the definition of that name; set back
+    /// without the header's checks, as the header itself sets it.
+    public static final ModelProperty<FieldSpecification> FIELD_SPECIFICATION = new ModelProperty<>(
+        "fieldSpecification", (o, v) -> ModelInternals.get().setFieldSpecification((LiftField) o, v));
+
     // Header ---------------------------------------------------------------------------
 
     /// The id of a feature (a LIFT {@code range-element}); set through
@@ -173,7 +182,10 @@ public final class ModelProperty<T> {
     public static final ModelProperty<String> FEATURE_SET_ID = new ModelProperty<>(
         "featureSetId", (o, v) -> {
             FeatureSet s = (FeatureSet) o;
-            ((LiftHeader) s.getParentNode()).renameFeatureSet(s, v);
+            LiftHeader header = (LiftHeader) s.getParentNode();
+            // The traits the rename rebound are reported after it, and put back by their
+            // own changes.
+            ModelInternals.get().withoutRebinding(header, () -> header.renameFeatureSet(s, v));
         });
 
     /// The parent of a feature in its feature set's hierarchy.
@@ -183,7 +195,12 @@ public final class ModelProperty<T> {
     /// Whether a definition is for a field or a trait.
     public static final ModelProperty<LiftFieldAndTraitDefinitionKind> DEFINITION_KIND =
         new ModelProperty<>("definitionKind",
-            (o, v) -> ((LiftFieldAndTraitDefinition) o).setKind(v));
+            (o, v) -> {
+                LiftFieldAndTraitDefinition definition = (LiftFieldAndTraitDefinition) o;
+                // The traits and fields the new kind rebound are put back by their own changes.
+                ModelInternals.get().withoutRebinding(
+                    (LiftHeader) definition.getParentNode(), () -> definition.setKind(v));
+            });
 
     /// The components a definition applies to (an unmodifiable set).
     public static final ModelProperty<Set<LiftFieldAndTraitDefinitionTarget>> DEFINITION_TARGETS =
@@ -209,7 +226,7 @@ public final class ModelProperty<T> {
     private static final List<ModelProperty<?>> ALL = List.of(
         DATE_CREATED, DATE_MODIFIED, TYPE, LIFT_ID, GUID, ENTRY_ORDER, ORDER, DATE_DELETED,
         GRAMMATICAL_INFO_VALUE, REF_ID, REF_OBJECT, HREF, SOURCE, FORM_TEXT,
-        ANNOTATION_VALUE, ANNOTATION_WHO, ANNOTATION_WHEN, TRAIT_VALUE, FEATURE_ID,
+        ANNOTATION_VALUE, ANNOTATION_WHO, ANNOTATION_WHEN, TRAIT_VALUE, FIELD_SPECIFICATION, FEATURE_ID,
         FEATURE_SET_ID, SUPERORDINATE_FEATURE, DEFINITION_KIND, DEFINITION_TARGETS, DEFINITION_DATA_MODEL,
         DEFINITION_WRITING_SYSTEM, DEFINITION_RANGE
     );

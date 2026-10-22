@@ -1,6 +1,7 @@
 package fr.cnrs.lacito.liftapi.change;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
+import fr.cnrs.lacito.liftapi.internal.ModelInternals;
 import fr.cnrs.lacito.liftapi.model.FeatureSet;
 import fr.cnrs.lacito.liftapi.model.LiftHeader;
 
@@ -18,7 +19,8 @@ public record FeatureSetRemoved(LiftDictionary dictionary, LiftHeader header, Fe
 
     @Override
     public void revert() {
-        header.addFeatureSet(featureSet);
+        // The traits the addition rebound are put back by their own changes.
+        ModelInternals.get().withoutRebinding(header, () -> header.addFeatureSet(featureSet));
     }
 
     @Override

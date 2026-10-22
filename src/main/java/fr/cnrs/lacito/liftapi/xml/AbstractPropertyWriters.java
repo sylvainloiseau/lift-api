@@ -41,7 +41,7 @@ public class AbstractPropertyWriters {
             AbstractExtensibleWithField obj,
             LiftVersion version) throws Exception {
         // Fields are held in a map: sort them by name so that the output is stable.
-        for (LiftField f : sortedBy(obj.getFields().values(), x -> x.getSpecification().getName())) {
+        for (LiftField f : sortedBy(obj.getFields().values(), x -> x.getName())) {
             writeField(w, f, version);
         }
     }
@@ -94,7 +94,7 @@ public class AbstractPropertyWriters {
      */
     public static void writeTrait(XMLStreamWriter w, LiftTrait t) throws Exception {
         w.writeStartElement(LiftVocabulary.TRAIT_LOCAL_NAME);
-        w.writeAttribute(LiftVocabulary.NAME_ATTRIBUTE, t.getSpecification().getName());
+        w.writeAttribute(LiftVocabulary.NAME_ATTRIBUTE, t.getName());
         w.writeAttribute(LiftVocabulary.VALUE_ATTRIBUTE, t.getValue());
         for (LiftAnnotation a : t.getAnnotations()) {
             writeAnnotation(w, a);
@@ -113,7 +113,7 @@ public class AbstractPropertyWriters {
         w.writeStartElement(LiftVocabulary.FIELD_LOCAL_NAME);
         w.writeAttribute(
             LiftVocabulary.fieldNameAttribute(version),
-            f.getSpecification().getName()
+            f.getName()
         );
         writeAbstractExtensibleWithoutField(w, f);
         MultiTextWriters.writeMultiText(w, f.getText());

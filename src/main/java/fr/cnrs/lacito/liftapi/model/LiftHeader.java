@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -28,6 +29,32 @@ import javafx.collections.transformation.FilteredList;
  * a range, a definition edited - are reported like those of the entries (see the
  * {@code change} package). Its components are not registered in the dictionary's
  * indexes, which only hold the entries' subtrees.
+ *
+ * <h2>What the names of traits and fields refer to</h2>
+ *
+ * The name of a trait refers to a definition, a range, or nothing
+ * ({@link TraitSpecification}); the name of a field to a definition or nothing
+ * ({@link FieldSpecification}). {@link #resolveTraitSpecification(String)} and
+ * {@link #resolveFieldSpecification(String)} say which, given the header as it is.
+ *
+ * <b>Every trait's and field's specification is what its name resolves to now.</b> That
+ * is what makes the dictionary in memory what a save and a reload give: the writer writes
+ * names, the reader resolves them. The operations of the header that change a resolution
+ * keep it true:
+ * <ul>
+ * <li>adding a definition ({@link #addFieldOrTraitDefinition}), adding a feature set
+ *     ({@link #addFeatureSet(FeatureSet)}), renaming one ({@link #renameFeatureSet}), or
+ *     changing the kind of a definition so that it fits more components
+ *     ({@link LiftFieldAndTraitDefinition#setKind}) <i>rebinds</i> the traits and fields
+ *     of that name. A trait is replaced by a new one, whose value is the old one parsed
+ *     for the new specification (a feature a range lacks is created, as the reader does),
+ *     and which takes the old one's annotations and place; a field is rebound in place.
+ *     All or nothing: if a value does not parse for the new specification, the operation
+ *     throws and changes nothing. The rebinding is reported after the operation, as
+ *     changes of its own;</li>
+ * <li>removing a definition or a feature set that a name resolves to is refused while
+ *     traits or fields of that name exist; so is a kind that would exclude them.</li>
+ * </ul>
  */
 public final class LiftHeader extends AbstractLiftRoot {
 
@@ -63,6 +90,14 @@ public final class LiftHeader extends AbstractLiftRoot {
     private final FeatureSet grammaticalInfoManager;
     private final FeatureSet annotationTypesManager;
     private final Set<FeatureSet> builtIn;
+
+    /**
+     * How many callers asked not to rebind: the reader, until the end of the header (the
+     * {@code option-range} of the definitions is set only then), and the reverting and
+     * reapplying of changes (the rebinding is reported, and put back, by changes of its
+     * own).
+     */
+    private int rebindingSuspensions;
 
     /**
      * Creates a new header, with its built-in feature sets: the types of notes,
@@ -181,6 +216,9 @@ public final class LiftHeader extends AbstractLiftRoot {
             throw new IllegalArgumentException("duplicate feature set: " + fs.getId());
         if (fs.getParentNode() != this)
             throw new IllegalArgumentException("This feature set belongs to another header: " + fs.getId());
+        // The undeclared traits of that name now name a range: their values become features.
+        Rebinding rebinding = prepareRebinding(fs.getId(),
+            traitSpecificationFor(fs.getId(), fieldsAndTraitsDefinition.get(fs.getId()), fs), null);
         featureSetsMap.put(fs.getId(), fs);
         featureSets.add(fs);
         if (dictionary != null) {
@@ -190,21 +228,23 @@ public final class LiftHeader extends AbstractLiftRoot {
         if (observer != null) {
             Changes.fire(observer, new FeatureSetAdded(observer, this, fs));
         }
+        rebinding.apply();
     }
 
     /**
      * Removes a feature set, with its features, from this header.
      *
      * The built-in feature sets (the types of notes, relations... and the parts of
-     * speech) cannot be removed, nor a feature set a field or trait definition uses as
-     * its range, nor one with a feature in use ({@link #isUsed(Feature)}). What the set
+     * speech) cannot be removed, nor a feature set in use ({@link #isUsed(FeatureSet)}:
+     * the range of a definition, or the name of traits), nor one with a feature in use
+     * ({@link #isUsed(Feature)}). What the set
      * itself holds - the hierarchy of its features, the traits of its range elements -
      * goes with it and does not count as a use.
      *
      * @param fs a feature set of this header
      * @throws IllegalArgumentException if {@code fs} is not in this header, or is built in
-     * @throws IllegalStateException if a definition uses it, or one of its features is
-     *         in use
+     * @throws IllegalStateException if a definition or a trait uses it, or one of its
+     *         features is in use
      */
     public void removeFeatureSet(FeatureSet fs) {
         if (fs == null || featureSetsMap.get(fs.getId()) != fs)
@@ -216,6 +256,10 @@ public final class LiftHeader extends AbstractLiftRoot {
                 throw new IllegalStateException(
                     "The feature set " + fs.getId() + " is the range of the definition " + d.getName());
             }
+        }
+        if (traitsNamingTheRange(fs, fs).findAny().isPresent()) {
+            throw new IllegalStateException(
+                "The feature set " + fs.getId() + " is the range of traits named after it.");
         }
         for (Feature f : fs.getFeatures().values()) {
             if (uses(f, fs).findAny().isPresent()) {
@@ -239,8 +283,13 @@ public final class LiftHeader extends AbstractLiftRoot {
      *
      * What refers to the set holds the object, not the id, and follows: the definitions
      * taking it as their range (the writer emits their {@code option-range} from it),
-     * and the components typed by its features. The set keeps its place among the
-     * others.
+     * the components typed by its features, and the traits named after it (a
+     * {@link RangeReference}: they are written under the new id). The set keeps its place
+     * among the others.
+     *
+     * The undeclared traits named {@code newId} now name a range, and are rebound to it.
+     * Refused if traits are named after the set and a definition named {@code newId}
+     * fits traits: on reload, they would take that definition instead.
      *
      * Refused for a built-in feature set: its id is the LIFT range name that a reader
      * maps to the types of notes, relations... or to the parts of speech, and under
@@ -257,7 +306,8 @@ public final class LiftHeader extends AbstractLiftRoot {
      * @throws IllegalArgumentException if {@code fs} is not in this header, is built in,
      *         or if {@code newId} is blank or already the id of a feature set
      * @throws IllegalStateException if {@code fs} has an external ranges file that was
-     *         not loaded
+     *         not loaded, or if traits are named after it and a definition named
+     *         {@code newId} fits traits
      */
     public void renameFeatureSet(FeatureSet fs, String newId) {
         if (fs == null || featureSetsMap.get(fs.getId()) != fs)
@@ -273,10 +323,19 @@ public final class LiftHeader extends AbstractLiftRoot {
                 "The feature set " + fs.getId() + " is defined in an external ranges file that was "
                     + "not loaded, and cannot be renamed.");
         }
+        LiftFieldAndTraitDefinition definitionOfTheNewId = fieldsAndTraitsDefinition.get(newId);
+        if (definitionOfTheNewId != null && definitionOfTheNewId.fitsTraits()
+            && traitsNamingTheRange(fs, null).findAny().isPresent()) {
+            throw new IllegalStateException(
+                "The feature set " + fs.getId() + " cannot be renamed " + newId + ": the traits named after it "
+                    + "would be read back as traits of the definition " + newId + ".");
+        }
+        Rebinding rebinding = prepareRebinding(newId, traitSpecificationFor(newId, definitionOfTheNewId, fs), null);
         featureSetsMap.remove(fs.getId());
         featureSetsMap.put(newId, fs);
         // Last, so that the change is reported once the set is under its new key.
         fs.setId(newId);
+        rebinding.apply();
     }
 
     /**
@@ -302,7 +361,13 @@ public final class LiftHeader extends AbstractLiftRoot {
      * @throws IllegalArgumentException if a definition with that name exists
      */
     public LiftFieldAndTraitDefinition createUnknownDefinition(String name) {
+        return createDefinition(name, LiftFieldAndTraitDefinitionKind.UNKNOWN);
+    }
+
+    /** The kind is set before the definition is added, so that it rebinds only what it fits. */
+    private LiftFieldAndTraitDefinition createDefinition(String name, LiftFieldAndTraitDefinitionKind kind) {
         LiftFieldAndTraitDefinition fd = new LiftFieldAndTraitDefinition(name, this);
+        fd.setKind(kind);
         addFieldOrTraitDefinition(fd);
         return fd;
     }
@@ -314,9 +379,7 @@ public final class LiftHeader extends AbstractLiftRoot {
      * @return the created definition
      */
     public LiftFieldAndTraitDefinition createTraitDefinition(String name) {
-        LiftFieldAndTraitDefinition fd = createUnknownDefinition(name);
-        fd.setKind(LiftFieldAndTraitDefinitionKind.TRAIT);
-        return fd;
+        return createDefinition(name, LiftFieldAndTraitDefinitionKind.TRAIT);
     }
 
     /**
@@ -326,24 +389,30 @@ public final class LiftHeader extends AbstractLiftRoot {
      * @return the created definition
      */
     public LiftFieldAndTraitDefinition createFieldDefinition(String name) {
-        LiftFieldAndTraitDefinition fd = createUnknownDefinition(name);
-        fd.setKind(LiftFieldAndTraitDefinitionKind.FIELD);
-        return fd;
+        return createDefinition(name, LiftFieldAndTraitDefinitionKind.FIELD);
     }
 
     /**
      * Adds a definition, created for this header, to it: the way back after
      * {@link #removeFieldOrTraitDefinition}.
      *
+     * The traits (if {@code fd} fits traits) and the fields (if it fits fields) of that
+     * name are rebound to it: the traits named after a range, or undeclared, are replaced
+     * by traits of {@code fd} whose values are the old ones parsed for its data model.
+     *
      * @param fd the definition
-     * @throws IllegalArgumentException if a definition with that name exists, or if
-     *         {@code fd} was created for another header
+     * @throws IllegalArgumentException if a definition with that name exists, if
+     *         {@code fd} was created for another header, or if the value of a trait of
+     *         that name does not parse for {@code fd}'s data model
      */
     public void addFieldOrTraitDefinition(LiftFieldAndTraitDefinition fd) {
         if (fd.getParentNode() != this)
             throw new IllegalArgumentException("This definition belongs to another header: " + fd.getName());
         if (fieldsAndTraitsDefinition.containsKey(fd.getName()))
             throw new IllegalArgumentException("Duplicate field or trait definition: " + fd.getName());
+        Rebinding rebinding = prepareRebinding(fd.getName(),
+            traitSpecificationFor(fd.getName(), fd, featureSetsMap.get(fd.getName())),
+            fieldSpecificationFor(fd.getName(), fd));
         fieldsAndTraitsDefinition.put(fd.getName(), fd);
         definitions.add(fd);
         if (dictionary != null) {
@@ -353,13 +422,16 @@ public final class LiftHeader extends AbstractLiftRoot {
         if (observer != null) {
             Changes.fire(observer, new DefinitionAdded(observer, this, fd));
         }
+        rebinding.apply();
     }
 
     /**
      * Removes a definition from this header.
      *
      * Refused while a field or a trait of the dictionary uses it, as the deletion of a
-     * referenced entry is: they would be left without a definition.
+     * referenced entry is: they would be left without a definition. (So no trait or
+     * field needs rebinding: those of that name that it does not fit resolve to the same
+     * thing without it.)
      *
      * @param fd a definition of this header
      * @throws IllegalArgumentException if {@code fd} is not in this header
@@ -447,17 +519,78 @@ public final class LiftHeader extends AbstractLiftRoot {
         return uses(f, null).count();
     }
 
+    /**
+     * Whether {@code fs} is in use: the range of a definition, or the range of traits
+     * named after it ({@link RangeReference}), even traits with no value.
+     *
+     * {@link #removeFeatureSet} refuses a feature set in use. That its features are used
+     * is another question: see {@link #isUsed(Feature)}.
+     *
+     * @param fs a feature set
+     * @return whether a definition or a trait uses it
+     */
+    public boolean isUsed(FeatureSet fs) {
+        return countUses(fs) > 0;
+    }
+
+    /**
+     * The number of definitions taking {@code fs} as their range, plus the number of
+     * traits named after it.
+     *
+     * @param fs a feature set
+     * @return the number of uses
+     */
+    public long countUses(FeatureSet fs) {
+        long definitionsUsingIt = definitions.stream()
+            .filter(d -> d.getResolvedFeatureSet().orElse(null) == fs)
+            .count();
+        return definitionsUsingIt + traitsNamingTheRange(fs, null).count();
+    }
+
+    /** Whether a trait uses {@code fd}: then it cannot become a field definition. */
+    boolean isUsedByTraits(LiftFieldAndTraitDefinition fd) {
+        return allTraits(null).anyMatch(t -> t.getSpecification() == fd);
+    }
+
+    /** Whether a field uses {@code fd}: then it cannot become a trait definition. */
+    boolean isUsedByFields(LiftFieldAndTraitDefinition fd) {
+        return allFields().anyMatch(f -> f.getSpecification() == fd);
+    }
+
     /** The fields and traits that use {@code fd}. */
     private Stream<AbstractLiftRoot> uses(LiftFieldAndTraitDefinition fd) {
-        if (dictionary == null) {
-            return Stream.empty();
-        }
-        var registry = dictionary.getLiftDictionaryRegistry();
-        Stream<AbstractLiftRoot> held = Stream.concat(
-            registry.getTraits().stream(), registry.getFields().stream());
-        return Stream.concat(held, heldByTheHeader(null).stream())
-            .filter(n -> n instanceof LiftTrait t && t.getSpecification() == fd
-                || n instanceof LiftField f && f.getSpecification() == fd);
+        return Stream.concat(
+            allTraits(null).filter(t -> t.getSpecification() == fd),
+            allFields().filter(f -> f.getSpecification() == fd));
+    }
+
+    /** The traits named after {@code fs}, leaving out those {@code ignoring} holds. */
+    private Stream<LiftTrait> traitsNamingTheRange(FeatureSet fs, FeatureSet ignoring) {
+        RangeReference reference = new RangeReference(fs);
+        return allTraits(ignoring).filter(t -> reference.equals(t.getSpecification()));
+    }
+
+    /**
+     * Every trait of the dictionary: those of the entries, and those the components of
+     * this header hold (leaving out those of {@code ignoring} and its features).
+     */
+    private Stream<LiftTrait> allTraits(FeatureSet ignoring) {
+        Stream<AbstractLiftRoot> ofTheEntries = dictionary == null
+            ? Stream.empty()
+            : dictionary.getLiftDictionaryRegistry().getTraits().stream().map(AbstractLiftRoot.class::cast);
+        return Stream.concat(ofTheEntries, heldByTheHeader(ignoring).stream())
+            .filter(LiftTrait.class::isInstance)
+            .map(LiftTrait.class::cast);
+    }
+
+    /** Every field of the dictionary, those of the entries and those of the header. */
+    private Stream<LiftField> allFields() {
+        Stream<AbstractLiftRoot> ofTheEntries = dictionary == null
+            ? Stream.empty()
+            : dictionary.getLiftDictionaryRegistry().getFields().stream().map(AbstractLiftRoot.class::cast);
+        return Stream.concat(ofTheEntries, heldByTheHeader(null).stream())
+            .filter(LiftField.class::isInstance)
+            .map(LiftField.class::cast);
     }
 
     /**
@@ -496,7 +629,7 @@ public final class LiftHeader extends AbstractLiftRoot {
 
     /** Whether the value of {@code t} is {@code f}, or a collection holding it. */
     private static boolean holdsFeature(LiftTrait t, Feature f) {
-        return switch (t.getSpecification().getDataModel().get()) {
+        return switch (t.getSpecification().getDataModel()) {
             case FEATURE -> t.getTypedValue() == f;
             // Feature compares by identity, so contains() asks for this very feature.
             case FEATURE_SET, FEATURE_LIST -> ((Collection<?>) t.getTypedValue()).contains(f);
@@ -633,11 +766,17 @@ public final class LiftHeader extends AbstractLiftRoot {
     }
 
     /**
-     * Returns the trait definition with the given name, creating it if there is none.
+     * Declares a trait definition of the given name, or returns the definition of that
+     * name if there is one.
+     *
+     * This declares the name: a definition created here is written in the header, and
+     * the traits of that name are rebound to it (see
+     * {@link #addFieldOrTraitDefinition}). To find what a trait name refers to without
+     * declaring it, use {@link #resolveTraitSpecification(String)}.
      *
      * @throws IllegalArgumentException if a field definition has that name
      */
-    public LiftFieldAndTraitDefinition getOrCreateTraitsDefinitions(String id) {
+    public LiftFieldAndTraitDefinition declareTraitDefinition(String id) {
         LiftFieldAndTraitDefinition existing = fieldsAndTraitsDefinition.get(id);
         if (existing != null && existing.getKind() == LiftFieldAndTraitDefinitionKind.FIELD) {
             throw new IllegalArgumentException("Cannot create a trait definition with this name: a field definition already exists: " + id);
@@ -646,16 +785,218 @@ public final class LiftHeader extends AbstractLiftRoot {
     }
 
     /**
-     * Returns the field definition with the given name, creating it if there is none.
+     * Declares a field definition of the given name, or returns the definition of that
+     * name if there is one.
+     *
+     * This declares the name: a definition created here is written in the header, and
+     * the fields of that name are rebound to it. To find what a field name refers to
+     * without declaring it, use {@link #resolveFieldSpecification(String)}.
      *
      * @throws IllegalArgumentException if a trait definition has that name
      */
-    public LiftFieldAndTraitDefinition getOrCreateFieldDefinitions(String id) {
+    public LiftFieldAndTraitDefinition declareFieldDefinition(String id) {
         LiftFieldAndTraitDefinition existing = fieldsAndTraitsDefinition.get(id);
         if (existing != null && existing.getKind() == LiftFieldAndTraitDefinitionKind.TRAIT) {
             throw new IllegalArgumentException("Cannot create a field definition with this name: a trait definition already exists: " + id);
         }
         return existing != null ? existing : createFieldDefinition(id);
+    }
+
+    // --------------------------------------------------------
+    // What the names of traits and fields refer to
+    // --------------------------------------------------------
+
+    /**
+     * What a trait name refers to, given this header as it is:
+     * <ol>
+     * <li>the definition of that name, if its kind is not {@code FIELD}: a declaration
+     *     says what the values are (possibly the features of another range, or a
+     *     collection of them), so it wins over a range of the same name;</li>
+     * <li>else the feature set of that id, as a {@link RangeReference}: the values are its
+     *     features;</li>
+     * <li>else an {@link UndeclaredName}: the values are strings.</li>
+     * </ol>
+     *
+     * Nothing is created: an undeclared name stays undeclared, and is not written in the
+     * header. The trait builders take their specification from here.
+     *
+     * @param name the name of a trait
+     * @return what it refers to
+     */
+    public TraitSpecification resolveTraitSpecification(String name) {
+        return traitSpecificationFor(name, fieldsAndTraitsDefinition.get(name), featureSetsMap.get(name));
+    }
+
+    /**
+     * What a field name refers to: the definition of that name if its kind is not
+     * {@code TRAIT}, else an {@link UndeclaredName}. A field's value is a text, so a field
+     * name never refers to a range.
+     *
+     * @param name the name of a field
+     * @return what it refers to
+     */
+    public FieldSpecification resolveFieldSpecification(String name) {
+        return fieldSpecificationFor(name, fieldsAndTraitsDefinition.get(name));
+    }
+
+    /** The resolution of a trait name, given the definition and the range of that name. */
+    private static TraitSpecification traitSpecificationFor(
+        String name,
+        LiftFieldAndTraitDefinition definitionOfTheName,
+        FeatureSet rangeOfTheName
+    ) {
+        if (definitionOfTheName != null && definitionOfTheName.fitsTraits()) {
+            return definitionOfTheName;
+        }
+        if (rangeOfTheName != null) {
+            return new RangeReference(rangeOfTheName);
+        }
+        return new UndeclaredName(name);
+    }
+
+    /** The resolution of a field name, given the definition of that name. */
+    private static FieldSpecification fieldSpecificationFor(
+        String name,
+        LiftFieldAndTraitDefinition definitionOfTheName
+    ) {
+        if (definitionOfTheName != null && definitionOfTheName.fitsFields()) {
+            return definitionOfTheName;
+        }
+        return new UndeclaredName(name);
+    }
+
+    /** Whether {@code fd} is the definition of its name in this header. */
+    boolean holdsDefinition(LiftFieldAndTraitDefinition fd) {
+        return fieldsAndTraitsDefinition.get(fd.getName()) == fd;
+    }
+
+    /**
+     * Prepares the rebinding that {@code fd} taking the kind {@code newKind} implies: its
+     * traits and fields are those it fits once it has that kind. Called by
+     * {@link LiftFieldAndTraitDefinition#setKind} before it changes the kind; the kinds
+     * that would exclude the traits or fields using it are refused before.
+     */
+    Rebinding prepareRebindingForKind(LiftFieldAndTraitDefinition fd, LiftFieldAndTraitDefinitionKind newKind) {
+        String name = fd.getName();
+        TraitSpecification traitTarget = newKind != LiftFieldAndTraitDefinitionKind.FIELD
+            ? fd
+            : traitSpecificationFor(name, null, featureSetsMap.get(name));
+        FieldSpecification fieldTarget = newKind != LiftFieldAndTraitDefinitionKind.TRAIT
+            ? fd
+            : new UndeclaredName(name);
+        return prepareRebinding(name, traitTarget, fieldTarget);
+    }
+
+    /**
+     * Runs {@code operation} without rebinding: how the changes of the header are
+     * reverted and reapplied (the rebinding they caused is reported after them, and put
+     * back by its own changes). Reached through ModelInternals.
+     */
+    void withoutRebinding(Runnable operation) {
+        rebindingSuspensions++;
+        try {
+            operation.run();
+        } finally {
+            rebindingSuspensions--;
+        }
+    }
+
+    /** Called by the reader at the start of the header, through ModelInternals. */
+    void suspendRebinding() {
+        rebindingSuspensions++;
+    }
+
+    /**
+     * Called by the reader at the end of the header, through ModelInternals: the traits
+     * and fields held by the header's components were built while the definitions were
+     * not all read, nor their ranges set. Each is rebound to what its name resolves to
+     * now. (The entries come after the header: they resolve against the whole of it.)
+     */
+    void resumeRebinding() {
+        rebindingSuspensions--;
+        if (rebindingSuspensions > 0) {
+            return;
+        }
+        Set<String> names = new LinkedHashSet<>();
+        allTraits(null).forEach(t -> names.add(t.getName()));
+        allFields().forEach(f -> names.add(f.getName()));
+        for (String name : names) {
+            prepareRebinding(name, resolveTraitSpecification(name), resolveFieldSpecification(name)).apply();
+        }
+    }
+
+    /**
+     * The traits and fields named {@code name} whose specification is not the target,
+     * checked to be rebindable: nothing changes until {@link Rebinding#apply()}.
+     *
+     * @param traitTarget the specification the traits of that name are to have
+     * @param fieldTarget the specification the fields of that name are to have;
+     *        {@code null} to leave the fields alone
+     * @throws IllegalArgumentException if the value of a trait does not parse for
+     *         {@code traitTarget}
+     */
+    private Rebinding prepareRebinding(String name, TraitSpecification traitTarget, FieldSpecification fieldTarget) {
+        if (rebindingSuspensions > 0) {
+            return Rebinding.NONE;
+        }
+        List<LiftTrait> traitsToReplace = allTraits(null)
+            .filter(t -> t.getName().equals(name) && !t.getSpecification().equals(traitTarget))
+            .toList();
+        for (LiftTrait trait : traitsToReplace) {
+            LiftTrait.checkParsable(traitTarget, trait.getValueOrNull());
+        }
+        List<LiftField> fieldsToRebind = fieldTarget == null
+            ? List.of()
+            : allFields()
+                .filter(f -> f.getName().equals(name) && !f.getSpecification().equals(fieldTarget))
+                .toList();
+        if (traitsToReplace.isEmpty() && fieldsToRebind.isEmpty()) {
+            return Rebinding.NONE;
+        }
+        return () -> {
+            for (LiftTrait trait : traitsToReplace) {
+                replaceTrait(trait, traitTarget);
+            }
+            for (LiftField field : fieldsToRebind) {
+                field.respecify(fieldTarget);
+            }
+        };
+    }
+
+    /**
+     * Replaces {@code old} by a trait of {@code target} at the same place in the same
+     * parent, with the old value parsed for {@code target} and the old annotations: a
+     * trait's value is held in a property of its data model's kind, so a trait does not
+     * change its specification. Reported as the addition of the new trait, the move of
+     * the annotations and the removal of the old trait.
+     */
+    private static void replaceTrait(LiftTrait old, TraitSpecification target) {
+        HasTrait parent = old.getParent();
+        LiftTrait replacement = new LiftTrait(target);
+        String value = old.getValueOrNull();
+        if (value != null) {
+            replacement.setTypedValue(LiftTrait.parseValue(target, value));
+        }
+        old.getOtherXmlAttributes().forEach(replacement::putOtherXmlAttribute);
+        int index = 0;
+        while (parent.getTraits().get(index) != old) {
+            index++;
+        }
+        parent.addTrait(index, replacement);
+        for (LiftAnnotation annotation : List.copyOf(old.getAnnotations())) {
+            old.deleteAnnotation(annotation);
+            replacement.addAnnotation(annotation);
+        }
+        parent.deleteTrait(old);
+    }
+
+    /** A rebinding checked by {@link #prepareRebinding}, applied once its cause is done. */
+    @FunctionalInterface
+    interface Rebinding {
+
+        Rebinding NONE = () -> {};
+
+        void apply();
     }
 
     public FeatureSet getGrammaticalInfoManager() {

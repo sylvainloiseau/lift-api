@@ -425,7 +425,7 @@ public final class LiftDictionary {
     public Map<String, Long> getValueCounterForTraitName(String traitName) {
         return this.registry.getTraits()
             .stream()
-            .filter(t -> t.getSpecification().getName().equals(traitName))
+            .filter(t -> t.getName().equals(traitName))
             .collect(
                 Collectors.groupingBy(x -> x.getValue(), Collectors.counting())
             );
