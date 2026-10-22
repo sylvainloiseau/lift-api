@@ -26,14 +26,16 @@ final class TrackedProperty<T> extends ReadOnlyObjectWrapper<T> {
     }
 
     /**
-     * Refused for a value of a feature set defined in an external file (see
-     * {@link ExternalDefinitionGuard}); the {@code href} itself is how such a set is made
-     * internal, and is not guarded.
+     * Refused for a value of a read-only definition (see {@link DefinitionGuard}): an
+     * external or undeclared feature set, an undeclared feature. The {@code href} and
+     * whether a feature or a set is declared are how a definition is made writable, and are
+     * not guarded.
      */
     @Override
     public void set(T newValue) {
-        if (key != ModelProperty.HREF) {
-            ExternalDefinitionGuard.requireWritable(getBean());
+        if (key != ModelProperty.HREF && key != ModelProperty.FEATURE_DECLARED
+            && key != ModelProperty.FEATURE_SET_DECLARED) {
+            DefinitionGuard.requireWritable(getBean());
         }
         super.set(newValue);
     }

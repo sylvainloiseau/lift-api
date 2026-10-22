@@ -19,14 +19,14 @@ public record FeatureAdded(LiftDictionary dictionary, FeatureSet featureSet, Fea
 
     @Override
     public void revert() {
-        ModelInternals.get().withoutExternalDefinitionGuard(() -> {
+        ModelInternals.get().withoutDefinitionGuard(() -> {
             featureSet.removeFeature(feature.getId());
         });
     }
 
     @Override
     public void reapply() {
-        ModelInternals.get().withoutExternalDefinitionGuard(() -> {
+        ModelInternals.get().withoutDefinitionGuard(() -> {
             featureSet.addFeature(feature);
         });
     }

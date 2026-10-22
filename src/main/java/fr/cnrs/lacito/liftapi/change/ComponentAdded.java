@@ -38,7 +38,7 @@ public record ComponentAdded(
 
     @Override
     public void revert() {
-        ModelInternals.get().withoutExternalDefinitionGuard(() -> {
+        ModelInternals.get().withoutDefinitionGuard(() -> {
             if (registered) {
                 Slots.delete(parent, component);
             } else {
@@ -49,7 +49,7 @@ public record ComponentAdded(
 
     @Override
     public void reapply() {
-        ModelInternals.get().withoutExternalDefinitionGuard(() -> {
+        ModelInternals.get().withoutDefinitionGuard(() -> {
             Slots.add(parent, component, position);
         });
     }

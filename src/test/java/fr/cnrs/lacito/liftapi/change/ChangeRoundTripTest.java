@@ -547,6 +547,16 @@ class ChangeRoundTripTest {
                 default -> h.renameFeatureSet(c.pick(h.getFeatureSets()), "range-" + c.fresh());
             }
         }),
+        new Op("declare", c -> {
+            var h = c.d.getHeader();
+            if (c.r.nextBoolean()) {
+                h.declareFeatureSet(c.pick(h.getFeatureSets().stream().filter(s -> !s.isDeclared()).toList()));
+            } else {
+                // Refused in an external set, as allowed.
+                h.declareFeature(c.pick(h.getFeatureSets().stream()
+                    .flatMap(s -> s.getFeatures().values().stream()).filter(f -> !f.isDeclared()).toList()));
+            }
+        }),
         new Op("external range", c -> {
             var h = c.d.getHeader();
             FeatureSet set = c.pick(h.getFeatureSets().stream().filter(FeatureSet::isExternallyDefined).toList());

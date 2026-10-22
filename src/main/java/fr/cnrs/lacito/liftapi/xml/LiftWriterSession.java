@@ -233,9 +233,12 @@ public class LiftWriterSession implements AutoCloseable {
             header.getDescription()
         );
 
-        // Sorted by id, so that the output is stable.
-        List<FeatureSet> ranges = AbstractPropertyWriters.sortedBy(header.getFeatureSets(), FeatureSet::getId);
-        if (ranges != null && !ranges.isEmpty()) {
+        // Sorted by id, so that the output is stable. A built-in set the file did not
+        // declare is not written: its values come back on reload, from the components that
+        // use them.
+        List<FeatureSet> ranges = AbstractPropertyWriters.sortedBy(header.getFeatureSets(), FeatureSet::getId)
+            .stream().filter(FeatureSet::isDeclared).toList();
+        if (!ranges.isEmpty()) {
             out.writeStartElement(LiftVocabulary.HEADER_RANGES_LOCAL_NAME);
             for (FeatureSet r : ranges) {
                 writeHeaderRange(out, r);
@@ -311,8 +314,12 @@ public class LiftWriterSession implements AutoCloseable {
             LiftVocabulary.HEADER_RANGE_ABBREV_LOCAL_NAME,
             range.getAbbrev()
         );
+        // The values the range does not declare are not written: the reload creates them
+        // from the components that use them.
         for (Feature e : AbstractPropertyWriters.sortedBy(range.getFeatures().values(), Feature::getId)) {
-            writeHeaderRangeElement(w, e);
+            if (e.isDeclared()) {
+                writeHeaderRangeElement(w, e);
+            }
         }
         w.writeEndElement();
     }

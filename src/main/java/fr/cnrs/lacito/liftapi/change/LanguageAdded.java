@@ -21,14 +21,14 @@ public record LanguageAdded(LiftDictionary dictionary, LiftDictionaryLanguagesMa
 
     @Override
     public void revert() {
-        ModelInternals.get().withoutExternalDefinitionGuard(() -> {
+        ModelInternals.get().withoutDefinitionGuard(() -> {
             languages.removeLanguage(language);
         });
     }
 
     @Override
     public void reapply() {
-        ModelInternals.get().withoutExternalDefinitionGuard(() -> {
+        ModelInternals.get().withoutDefinitionGuard(() -> {
             languages.addLanguage(language);
         });
     }

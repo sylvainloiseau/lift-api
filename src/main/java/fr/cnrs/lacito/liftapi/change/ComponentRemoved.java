@@ -34,14 +34,14 @@ public record ComponentRemoved(
 
     @Override
     public void revert() {
-        ModelInternals.get().withoutExternalDefinitionGuard(() -> {
+        ModelInternals.get().withoutDefinitionGuard(() -> {
             Slots.add(parent, component, position);
         });
     }
 
     @Override
     public void reapply() {
-        ModelInternals.get().withoutExternalDefinitionGuard(() -> {
+        ModelInternals.get().withoutDefinitionGuard(() -> {
             if (unregistered) {
                 Slots.delete(parent, component);
             } else {

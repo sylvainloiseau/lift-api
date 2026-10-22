@@ -1,6 +1,7 @@
 package fr.cnrs.lacito.liftapi.internal;
 
 import java.nio.file.Path;
+import java.util.function.Consumer;
 import java.util.UUID;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
@@ -78,7 +79,7 @@ public final class ModelInternals {
          * an external ranges file: for the reader, which fills them, and for the changes
          * that are reverted or reapplied, which put back a state that was valid.
          */
-        void withoutExternalDefinitionGuard(Runnable operation);
+        void withoutDefinitionGuard(Runnable operation);
 
         /**
          * Sets the {@code href} of a feature set: by the reader, once the set holds the
@@ -106,6 +107,27 @@ public final class ModelInternals {
          * builders.
          */
         Feature getOrCreateUndeclaredFeature(FeatureSet set, String id);
+
+        /**
+         * Sets whether the range of a feature declares it: by the reader, which declares a
+         * bare feature when its {@code <range-element>} comes, and by the revert of
+         * {@code LiftHeader.declareFeature}.
+         */
+        void setDeclared(Feature feature, boolean declared);
+
+        /**
+         * Sets whether the file declares a feature set: by the reader, which declares a
+         * built-in set when its {@code <range>} comes, and by the revert of
+         * {@code LiftHeader.declareFeatureSet}.
+         */
+        void setDeclared(FeatureSet set, boolean declared);
+
+        /**
+         * Called with each bare, undeclared feature created in the header's sets, or
+         * {@code null}: how the reader warns about the values and ranges a file does not
+         * declare.
+         */
+        void setUndeclaredFeatureListener(LiftHeader header, Consumer<Feature> listener);
     }
 
     private static volatile Access access;

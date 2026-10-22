@@ -19,7 +19,7 @@ public record DefinitionRemoved(LiftDictionary dictionary, LiftHeader header, Li
 
     @Override
     public void revert() {
-        ModelInternals.get().withoutExternalDefinitionGuard(() -> {
+        ModelInternals.get().withoutDefinitionGuard(() -> {
             // The traits and fields the addition rebound are put back by their own changes.
             ModelInternals.get().withoutRebinding(header, () -> header.addFieldOrTraitDefinition(definition));
         });
@@ -27,7 +27,7 @@ public record DefinitionRemoved(LiftDictionary dictionary, LiftHeader header, Li
 
     @Override
     public void reapply() {
-        ModelInternals.get().withoutExternalDefinitionGuard(() -> {
+        ModelInternals.get().withoutDefinitionGuard(() -> {
             header.removeFieldOrTraitDefinition(definition);
         });
     }

@@ -67,6 +67,7 @@ public class RegressionTest {
      */
     @Test
     public void aReversalCanBeBuiltThroughTheFluentApi() {
+        dictionary.getHeader().declareFeatureSet(dictionary.getHeader().getInverseTypeManager()); // built in: created undeclared
         dictionary.getHeader().getInverseTypeManager().addFeature("headword");
         LiftEntry entry = dictionary
             .getComponentBuilder()
@@ -460,6 +461,7 @@ public class RegressionTest {
     @Test
     public void beingTheSuperordinateOfAFeatureIsAUse() {
         FeatureSet pos = dictionary.getHeader().getGrammaticalInfoManager();
+        dictionary.getHeader().declareFeatureSet(pos); // built in: created undeclared
         Feature verb = pos.addFeature("Verb");
         pos.addFeature("Transitive verb").setSuperordinateFeature(verb);
         assertInUse(pos, "Verb", 1);
@@ -471,6 +473,7 @@ public class RegressionTest {
         FeatureSet usage = header.addFeatureSet("usage");
         usage.addFeature("archaic");
         LiftFieldAndTraitDefinition register = definition("register", "option", usage);
+        header.declareFeatureSet(header.getGrammaticalInfoManager()); // built in: created undeclared
         Feature noun = header.getGrammaticalInfoManager().addFeature("Noun");
         noun.addTrait(new LiftTrait(register, usage.getFeature("archaic")));
 
@@ -487,6 +490,7 @@ public class RegressionTest {
         var header = dictionary.getHeader();
         FeatureSet status = header.addFeatureSet("status");
         status.addFeature("draft");
+        header.declareFeatureSet(header.getGrammaticalInfoManager()); // built in: created undeclared
         header.getGrammaticalInfoManager().addFeature("Noun")
             .setSuperordinateFeature(status.getFeature("draft"));
 
@@ -880,6 +884,7 @@ public class RegressionTest {
      */
     @Test
     public void aReferencedEntryCannotBeRenamed() {
+        dictionary.getHeader().declareFeatureSet(dictionary.getHeader().getRelationTypeManager()); // built in: created undeclared
         dictionary.getHeader().getRelationTypeManager().addFeature("synonym");
         LiftEntry target = dictionary.getComponentBuilder().entry().withForm("tww", "a").build();
         dictionary.getComponentBuilder().entry().withForm("tww", "b")
@@ -1004,6 +1009,10 @@ public class RegressionTest {
         assertSame(stem, entry.getTraits().get(0).getTypedValue());
         assertEquals(1, dictionary.getHeader().countUses(stem));
         assertThrows(IllegalStateException.class, () -> morphTypes.removeFeature("stem"));
+        // The trait created it as a value the range does not declare: read-only until declared.
+        assertFalse(stem.isDeclared());
+        assertThrows(IllegalStateException.class, () -> morphTypes.changeFeatureId(stem, "root"));
+        dictionary.getHeader().declareFeature(stem);
 
         morphTypes.changeFeatureId(stem, "root");
         assertEquals("root", entry.getTraits().get(0).getValue());
@@ -1096,6 +1105,34 @@ public class RegressionTest {
     // ------------------------------------------------------------------
     // Builder-only construction (plan builder-only-construction-2026-10)
     // ------------------------------------------------------------------
+
+    /**
+     * Loading a file and saving it gave another header: a value a range defined in the
+     * header does not declare was written into it, so was a built-in range the file does
+     * not declare, with the values used, and the built-in ranges were written even empty.
+     */
+    @Test
+    public void loadingAndSavingAFileKeepsItsHeader(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir)
+        throws Exception {
+        String header = "<header><ranges><range id=\"colours\"><range-element id=\"red\"></range-element></range></ranges>"
+            + "<fields><field-definition name=\"colours\" type=\"option\" option-range=\"colours\"></field-definition></fields>"
+            + "</header>";
+        LiftDictionary d = load(dir, """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <lift version="0.15" producer="test">
+            """ + header + """
+            <entry id="e1"><lexical-unit><form lang="xx"><text>kato</text></form></lexical-unit>
+            <trait name="colours" value="blue"/>
+            <note type="reference"><form lang="en"><text>p. 3</text></form></note>
+            <sense id="s1"><grammatical-info value="Noun"/></sense>
+            </entry>
+            </lift>
+            """);
+        File saved = dir.resolve("saved.lift").toFile();
+        d.save(saved);
+        String written = java.nio.file.Files.readString(saved.toPath());
+        assertEquals(header, written.substring(written.indexOf("<header>"), written.indexOf("</header>") + 9));
+    }
 
     private static LiftDictionary load(java.nio.file.Path dir, String xml) throws Exception {
         File file = dir.resolve("test.lift").toFile();

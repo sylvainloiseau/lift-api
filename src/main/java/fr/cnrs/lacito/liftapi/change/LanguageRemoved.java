@@ -18,14 +18,14 @@ public record LanguageRemoved(LiftDictionary dictionary, LiftDictionaryLanguages
 
     @Override
     public void revert() {
-        ModelInternals.get().withoutExternalDefinitionGuard(() -> {
+        ModelInternals.get().withoutDefinitionGuard(() -> {
             languages.addLanguage(language);
         });
     }
 
     @Override
     public void reapply() {
-        ModelInternals.get().withoutExternalDefinitionGuard(() -> {
+        ModelInternals.get().withoutDefinitionGuard(() -> {
             languages.removeLanguage(language);
         });
     }

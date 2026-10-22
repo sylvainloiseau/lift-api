@@ -210,8 +210,8 @@ class ExternalRangesTest {
             <entry id="e1"><note type="reference"><form lang="en"><text>p. 3</text></form></note></entry>
             """));
         FeatureSet types = d.getHeader().getNoteTypeManager();
-        assertTrue(types.getFeature("reference").isUndeclaredInTheExternalFile());
-        assertFalse(types.getFeature("grammar").isUndeclaredInTheExternalFile());
+        assertFalse(types.getFeature("reference").isDeclared());
+        assertTrue(types.getFeature("grammar").isDeclared());
         // Through the public API, a new feature is refused; through a builder, it is a type.
         assertThrows(IllegalStateException.class, () -> types.getOrCreateFeature("other"));
         d.getComponentBuilder().note(d.getLiftDictionaryRegistry().getEntries().getFirst(), "comment").build();

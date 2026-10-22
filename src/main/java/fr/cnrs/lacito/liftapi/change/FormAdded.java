@@ -20,14 +20,14 @@ public record FormAdded(LiftDictionary dictionary, MultiText text, Form form) im
 
     @Override
     public void revert() {
-        ModelInternals.get().withoutExternalDefinitionGuard(() -> {
+        ModelInternals.get().withoutDefinitionGuard(() -> {
             text.removeForm(form.getLang());
         });
     }
 
     @Override
     public void reapply() {
-        ModelInternals.get().withoutExternalDefinitionGuard(() -> {
+        ModelInternals.get().withoutDefinitionGuard(() -> {
             text.add(form);
         });
     }

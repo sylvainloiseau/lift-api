@@ -63,7 +63,13 @@ public class RetypeTest {
     }
 
     private static Feature noteType(LiftDictionary d, String id) {
-        return d.getHeader().getNoteTypeManager().getOrCreateFeature(id);
+        return declared(d, d.getHeader().getNoteTypeManager()).getOrCreateFeature(id);
+    }
+
+    /** A built-in set, declared: the header creates them undeclared, and read-only. */
+    private static FeatureSet declared(LiftDictionary d, FeatureSet set) {
+        if (!set.isDeclared()) d.getHeader().declareFeatureSet(set);
+        return set;
     }
 
     // ------------------------------------------------------------------
@@ -134,7 +140,7 @@ public class RetypeTest {
     @Test
     public void retypingATranslationReKeysIt() {
         LiftDictionary d = dictionary();
-        FeatureSet types = d.getHeader().getTranslationTypeManager();
+        FeatureSet types = declared(d, d.getHeader().getTranslationTypeManager());
         Feature free = types.getOrCreateFeature("free");
         Feature literal = types.getOrCreateFeature("literal");
         Feature back = types.getOrCreateFeature("back");
@@ -262,7 +268,7 @@ public class RetypeTest {
     @Test
     public void annotationCounterFollowsRetypeRenameAndDeletion() {
         LiftDictionary d = dictionary();
-        FeatureSet types = d.getHeader().getAnnotationTypeManager();
+        FeatureSet types = declared(d, d.getHeader().getAnnotationTypeManager());
         Feature checked = types.getOrCreateFeature("checked");
         Feature reviewed = types.getOrCreateFeature("reviewed");
         LiftEntry entry = entry(d);

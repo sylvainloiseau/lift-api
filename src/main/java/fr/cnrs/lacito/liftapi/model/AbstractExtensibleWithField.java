@@ -22,7 +22,7 @@ public abstract sealed class AbstractExtensibleWithField
 
     @Override
     public void addField(LiftField f) {
-        ExternalDefinitionGuard.requireWritable(this);
+        DefinitionGuard.requireWritable(this);
         // The map is keyed by the definition *name*; looking the definition object up
         // instead never matched (LiftFieldAndTraitDefinition has no equals), so a
         // duplicate field silently overwrote the previous one.
@@ -74,7 +74,7 @@ public abstract sealed class AbstractExtensibleWithField
      */
     @Override
     public void deleteField(LiftField f) {
-        ExternalDefinitionGuard.requireWritable(this);
+        DefinitionGuard.requireWritable(this);
         requireChild(
             f,
             f != null && fields.get(f.getName()) == f

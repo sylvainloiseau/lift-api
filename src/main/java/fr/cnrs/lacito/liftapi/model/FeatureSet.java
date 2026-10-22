@@ -50,9 +50,15 @@ import javafx.collections.ObservableSet;
   * was declared inline is {@linkplain #isDeclaredInline(Feature) flagged}, and the writer
   * writes it back after the reference.
   *
-  * A component may use a value the external range does not declare (FLEx files do): the
-  * reader and the builders then add a bare feature (an id only) to the set, which is not
-  * written - the reload adds it the same way.
+  * <h2>Declared or not</h2>
+  *
+  * A component may use a value its range does not declare (FLEx files do): the reader and
+  * the builders then add a bare feature (an id only) to the set, which is
+  * {@linkplain Feature#isDeclared() not declared}. Likewise, a built-in set (the types of
+  * notes, relations..., the parts of speech) that the file does not declare is
+  * {@linkplain #isDeclared() not declared}. Neither is written - the reload creates them
+  * the same way - and both are read-only, until {@link LiftHeader#declareFeature(Feature)}
+  * or {@link LiftHeader#declareFeatureSet(FeatureSet)}.
   */
 public final class FeatureSet extends AbstractExtensibleWithField {
 
@@ -69,6 +75,12 @@ public final class FeatureSet extends AbstractExtensibleWithField {
 
     /** Whether the reader found neither the ranges file nor the range in it. */
     private boolean externalDefinitionMissing;
+
+    /**
+     * Whether the file declares this set: false for a built-in set (the types of notes,
+     * relations..., the parts of speech) the file has no {@code <range>} for.
+     */
+    private final TrackedProperty<Boolean> declared;
 
     /** Which of label, description and abbreviation the {@code .lift} file declared inline. */
     private boolean labelDeclaredInline;
@@ -105,6 +117,30 @@ public final class FeatureSet extends AbstractExtensibleWithField {
         this.parent = parent;
         this.href = new TrackedProperty<>(this, ModelProperty.HREF, null);
         this.guid = new TrackedProperty<>(this, ModelProperty.GUID, null);
+        this.declared = new TrackedProperty<>(this, ModelProperty.FEATURE_SET_DECLARED, Boolean.TRUE);
+    }
+
+    /**
+     * Whether this set is declared: by a {@code <range>} of the file (in the header, or a
+     * reference to an external file), or because it was created explicitly
+     * ({@link LiftHeader#addFeatureSet(FeatureSet)}, a {@code FeatureSetBuilder}).
+     *
+     * The header creates its built-in sets (the types of notes, relations..., the parts of
+     * speech) undeclared: one the file does not declare holds only the bare values the
+     * components use, is read-only, and is not written, until
+     * {@link LiftHeader#declareFeatureSet(FeatureSet)}.
+     */
+    public boolean isDeclared() {
+        return declared.get();
+    }
+
+    /** Whether this set is declared, read-only: see {@link #isDeclared()}. */
+    public ReadOnlyObjectProperty<Boolean> declaredProperty() {
+        return declared.getReadOnlyProperty();
+    }
+
+    void setDeclared(boolean declared) {
+        this.declared.set(declared);
     }
 
     /**
@@ -339,11 +375,11 @@ public final class FeatureSet extends AbstractExtensibleWithField {
     }
 
     /**
-     * Returns the feature with the given id, creating a bare one (an id only) if the set
-     * has none - even in an externally defined set. For the reader and the builders: a
-     * component uses a value its range does not declare. In an external set that is no
-     * change of the definition: the feature is not written, and the reload creates it the
-     * same way.
+     * Returns the feature with the given id, creating a bare, undeclared one (an id only,
+     * see {@link Feature#isDeclared()}) if the set has none - even in a set that is
+     * read-only (external or undeclared). For the reader and the builders: a component
+     * uses a value its range does not declare. That is no change of the definition: the
+     * feature is not written, and the reload creates it the same way.
      */
     Feature getOrCreateUndeclaredFeature(String id) {
         if (hasFeature(id)) {
@@ -351,8 +387,11 @@ public final class FeatureSet extends AbstractExtensibleWithField {
         }
         Feature created = new Feature(id, this);
         // Set before it is added, so that a listener of the addition sees it.
-        created.setUndeclaredInTheExternalFile(isExternallyDefined());
-        ExternalDefinitionGuard.withoutGuard(() -> addFeature(created));
+        created.setDeclared(false);
+        DefinitionGuard.withoutGuard(() -> addFeature(created));
+        if (parent != null) {
+            parent.undeclaredFeatureCreated(created);
+        }
         return created;
     }
 
@@ -376,7 +415,7 @@ public final class FeatureSet extends AbstractExtensibleWithField {
      * @throws IllegalArgumentException if a feature with the same id already exists
      */
     public void addFeature(Feature element) {
-        ExternalDefinitionGuard.requireWritable(this);
+        DefinitionGuard.requireWritable(this);
         if (hasFeature(element.getId()))
             throw new IllegalArgumentException("Duplicate feature in feature set: " + element.getId());
         featureMap.put(element.getId(), element);
@@ -418,7 +457,7 @@ public final class FeatureSet extends AbstractExtensibleWithField {
      * @throws IllegalStateException if the feature is in use
      */
     public Feature removeFeature(String id) {
-        ExternalDefinitionGuard.requireWritable(this);
+        DefinitionGuard.requireWritable(this);
         if (!hasFeature(id))
             throw new IllegalArgumentException("Cannot remove non-existing feature: " + id);
         LiftDictionary dictionary = headerDictionary();
@@ -445,7 +484,7 @@ public final class FeatureSet extends AbstractExtensibleWithField {
      * @throws IllegalArgumentException if the new id is already used, or if no feature with the old id exists
      */
     public void changeFeatureId(Feature element, String newId) {
-        ExternalDefinitionGuard.requireWritable(this);
+        DefinitionGuard.requireWritable(element);
         if (featureMap.containsKey(newId)) throw new IllegalArgumentException("The id " + newId + " is already used.");
         if (!featureMap.containsKey(element.getId())) throw new IllegalArgumentException("No feature with id " + element.getId() + " found.");
         featureMap.remove(element.getId());

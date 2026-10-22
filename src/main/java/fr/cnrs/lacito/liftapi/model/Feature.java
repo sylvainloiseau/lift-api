@@ -23,8 +23,11 @@ public final class Feature extends AbstractExtensibleWithField {
     /** Declared in the {@code <range>} of the {@code .lift} file, overriding an external ranges file. */
     private boolean declaredInline;
 
-    /** Created for a value its externally defined range does not declare. */
-    private boolean undeclaredInTheExternalFile;
+    /**
+     * Whether its range declares it: false for a bare feature the reader or a builder
+     * created for a value a component uses and the range does not declare.
+     */
+    private final TrackedProperty<Boolean> declared;
 
     /**
      * Creates a new {@code Feature} with the given id and parent {@code FeatureSet}.
@@ -36,6 +39,7 @@ public final class Feature extends AbstractExtensibleWithField {
         this.id = new TrackedProperty<>(this, ModelProperty.FEATURE_ID, id);
         this.guid = new TrackedProperty<>(this, ModelProperty.GUID, null);
         this.superOrdinateFeature = new TrackedProperty<>(this, ModelProperty.SUPERORDINATE_FEATURE, null);
+        this.declared = new TrackedProperty<>(this, ModelProperty.FEATURE_DECLARED, Boolean.TRUE);
         this.parentFeatureSet = parent;
     }
 
@@ -170,16 +174,26 @@ public final class Feature extends AbstractExtensibleWithField {
     }
 
     /**
-     * Whether this is a bare feature the reader or a builder created in a set defined in an
-     * external ranges file, for a value a component uses and the file does not declare (a
-     * note type, a part of speech...). It is not written: the reload creates it the same way.
+     * Whether the range of this feature declares it - in the header, in an external ranges
+     * file, or because it was added explicitly ({@link FeatureSet#addFeature(Feature)}, a
+     * {@code FeatureBuilder}).
+     *
+     * A feature that is not declared is a bare one the reader or a builder created for a
+     * value a component uses and its range does not declare (a note type, a part of
+     * speech, a trait value...). It is read-only and is not written - the reload creates it
+     * the same way - until {@link LiftHeader#declareFeature(Feature)}.
      */
-    public boolean isUndeclaredInTheExternalFile() {
-        return undeclaredInTheExternalFile;
+    public boolean isDeclared() {
+        return declared.get();
     }
 
-    void setUndeclaredInTheExternalFile(boolean undeclaredInTheExternalFile) {
-        this.undeclaredInTheExternalFile = undeclaredInTheExternalFile;
+    /** Whether the range declares this feature, read-only: see {@link #isDeclared()}. */
+    public ReadOnlyObjectProperty<Boolean> declaredProperty() {
+        return declared.getReadOnlyProperty();
+    }
+
+    void setDeclared(boolean declared) {
+        this.declared.set(declared);
     }
 
     @Override

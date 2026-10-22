@@ -162,6 +162,7 @@ public class DeletionTest {
     @Test
     public void aComponentStillReferredToCannotBeDeleted() {
         LiftDictionary d = dictionary();
+        d.getHeader().declareFeatureSet(d.getHeader().getRelationTypeManager()); // built in: created undeclared
         d.getHeader().getRelationTypeManager().addFeature("suppletion");
         LiftEntry target = entry(d, "go");
         d.getComponentBuilder()

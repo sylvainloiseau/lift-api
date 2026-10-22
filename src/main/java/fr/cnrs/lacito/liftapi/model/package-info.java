@@ -93,9 +93,16 @@
  * {@link LiftHeader#makeFeatureSetInternal(FeatureSet)}. Every mutator of what a feature
  * set holds checks it; so do the tracked properties, bindings included. The
  * {@code <range>} of the {@code .lift} file may override the external file; what it
- * declares is flagged ({@link FeatureSet#isDeclaredInline(Feature)}) and written back. A
- * value the external range does not declare is a bare feature, created by the reader and
- * the builders and never written.
+ * declares is flagged ({@link FeatureSet#isDeclaredInline(Feature)}) and written back.
+ *
+ * <h2>Declared or not</h2>
+ *
+ * A value its range does not declare - a trait value, a type of note or relation, a part
+ * of speech - is a bare feature the reader and the builders create
+ * ({@link Feature#isDeclared()} is false); a built-in feature set the file does not declare
+ * is not declared either ({@link FeatureSet#isDeclared()}). Neither is written, so that a
+ * file loaded and saved is the file read, and both are read-only until
+ * {@link LiftHeader#declareFeature(Feature)} or {@link LiftHeader#declareFeatureSet(FeatureSet)}.
  *
  * <h2>Naming</h2>
  *

@@ -10,7 +10,7 @@ is a JavaFX editor that binds directly to this model.
 - Java 25 (`maven.compiler.release=25`), JPMS module `fr.cnrs.lacito.liftapi`.
 - From this directory: `mvn test`; one test: `mvn test -Dtest=MultiTextTest#testTextAndSeveralSpan`.
   From the repo root: `mvn test -pl lift-api`; `mvn install` installs both modules.
-- ~240 JUnit 6 tests, all fast (~20 s, most of it `ChangeRoundTripTest`). They are headless —
+- ~250 JUnit 6 tests, all fast (~20 s, most of it `ChangeRoundTripTest`). They are headless —
   no JavaFX toolkit is started.
 - `LoadingCostTest` (tag `perf`) measures the time and heap of loading the corpus; it is
   excluded by default: `mvn test -Dgroups=perf -DexcludedTestGroups=none -Dtest=LoadingCostTest`.
@@ -106,7 +106,7 @@ Summary:
   records it) and *replays* the range into the header's `<range>`, so the one decoder reads
   both. The `<range>`'s own children override the file and are flagged as declared inline.
   The `href` is set when the `<range>` closes: from then on the set is **read-only**
-  (`model/ExternalDefinitionGuard`, called by every mutator of what a set holds and by the
+  (`model/DefinitionGuard`, called by every mutator of what a set holds and by the
   `Tracked*Property.set`), until `LiftHeader.makeFeatureSetInternal`. The guard is
   suspended (per thread) for the reader, rebinding, change revert/reapply, and the bare
   features the builders/reader create for values a range does not declare
@@ -115,6 +115,30 @@ Summary:
   elsewhere, the `href` is rewritten to name the same file. A missing range/file gives an
   empty external range with a warning (an error in strict mode); a range element declared
   twice keeps its first declaration.
+- **Declared or not: what the file does not declare is kept, read-only, and not written**
+  (so that load → save gives back the file read):
+  - A *value* its range does not declare (a trait value, a note/relation/... type, a part
+    of speech, a `parent` that names no element) is a bare feature created by the reader or
+    a builder through `getOrCreateUndeclaredFeature`: `Feature.isDeclared()` is false,
+    whatever the range (internal, external, undeclared). Explicit creation
+    (`FeatureSet.addFeature`, `FeatureBuilder`, a `<range-element>`, also one met after the
+    value) declares.
+  - A *built-in range* (the header creates note/relation/reversal/etymology/translation/
+    annotation types and parts of speech) is undeclared until the file has its `<range>`
+    (inline or `href`): `FeatureSet.isDeclared()`. This also holds for a dictionary created
+    from scratch; `LiftDictionaryBuilder` declares the built-in sets it fills. Sets created
+    explicitly (`addFeatureSet`, `FeatureSetBuilder`) are declared.
+  - Undeclared features and sets are refused any change by `DefinitionGuard` (an undeclared
+    feature itself; an undeclared set entirely, like an external one); the other features of
+    a declared set stay editable, and an unused undeclared feature can be removed. The writer
+    skips undeclared sets (no `<ranges>` at all if none is left) and undeclared features.
+  - `LiftHeader.declareFeature` (declares its undeclared set too; refused in an external set:
+    make it internal first) and `declareFeatureSet` make them writable and written; reported
+    as `FEATURE_DECLARED` / `FEATURE_SET_DECLARED` (not guarded, like `HREF`), undoable.
+  - The reader warns once per undeclared value (in a declared range) and once per
+    undeclared range (not per value), with the line; the warnings about definitions are
+    also kept in `LiftDictionary.getLoadWarnings()`. An `option-range` naming a range that is
+    neither declared nor built in fails the load, with the definition's name and line.
 - `MultiText` has an optional language manager: once registered, adding a `Form` in a
   language the dictionary doesn't declare throws. Registration of a pre-filled MultiText
   (parse, moved subtree) declares its languages instead. Each MultiText is either

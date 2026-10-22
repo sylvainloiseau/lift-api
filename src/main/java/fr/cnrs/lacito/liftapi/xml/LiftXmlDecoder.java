@@ -139,6 +139,13 @@ final class LiftXmlDecoder {
     /** Range id -&gt; the definitions taking their values from it. */
     private final Map<String, List<LiftFieldAndTraitDefinition>> definitionsByOptionRange = new HashMap<>();
 
+    /** The line of each definition with an {@code option-range}, for the error if the range is missing. */
+    private final Map<LiftFieldAndTraitDefinition, Integer> optionRangeLines = new HashMap<>();
+
+    /** The undeclared ranges and the undeclared values ("range\u0000value") already warned about. */
+    private final Set<String> undeclaredRangesWarned = new HashSet<>();
+    private final Set<String> undeclaredValuesWarned = new HashSet<>();
+
     /** Where the parser is, for the warnings; {@code null} if the parser gives none. */
     private Locator locator;
 
@@ -245,6 +252,44 @@ final class LiftXmlDecoder {
             );
         }
         dictionary.setLiftProducer(attributes.getValue(LiftVocabulary.PRODUCER_ATTRIBUTE));
+        MODEL.setUndeclaredFeatureListener(header, this::warnAboutAnUndeclaredValue);
+    }
+
+    /**
+     * A value a component uses and its range does not declare: a bare, undeclared feature
+     * was created. It is kept, but not written. Warned once per range and value; in a range
+     * the file does not declare at all, once for the range.
+     */
+    private void warnAboutAnUndeclaredValue(Feature value) {
+        FeatureSet range = value.getParentFeatureSet();
+        if (!range.isDeclared()) {
+            warnAboutAnUndeclaredRange(range);
+        } else if (undeclaredValuesWarned.add(range.getId() + "\u0000" + value.getId())) {
+            warn("The value \"" + value.getId() + "\" is not declared in the range " + range.getId()
+                + where() + "; it is kept, but not saved in the header.");
+        }
+    }
+
+    /** A built-in range the file does not declare, needed by a value or a definition: warned once. */
+    private void warnAboutAnUndeclaredRange(FeatureSet range) {
+        if (undeclaredRangesWarned.add(range.getId())) {
+            warn("The range " + range.getId() + " is not declared in the file" + where()
+                + "; its values are kept, but not saved.");
+        }
+    }
+
+    /**
+     * A warning about the definitions of the file: logged, and kept in the dictionary's
+     * load warnings ({@code LiftDictionary.getLoadWarnings()}).
+     */
+    private void warn(String message) {
+        LOGGER.warning(message);
+        dictionary.getMutator().recordLoadWarning(message);
+    }
+
+    /** " (line n)", or nothing if the parser gives no position. */
+    private String where() {
+        return locator == null ? "" : " (line " + locator.getLineNumber() + ")";
     }
 
     /**
@@ -252,6 +297,9 @@ final class LiftXmlDecoder {
      * of relations and variants to targets further down the file can be resolved.
      */
     void endDocument() {
+        MODEL.setUndeclaredFeatureListener(header, null);
+        undeclaredRangesWarned.clear();
+        undeclaredValuesWarned.clear();
         dictionary.resolveReferences();
     }
 
@@ -645,8 +693,12 @@ final class LiftXmlDecoder {
         }
         Frame frame;
         if (header.hasFeatureSet(id)) {
-            // Filled in place: it has no builder.
-            frame = Frame.existing(header.getFeatureSet(id));
+            // A built-in set, filled in place: it has no builder. The file declares it.
+            FeatureSet builtIn = header.getFeatureSet(id);
+            if (!builtIn.isDeclared()) {
+                MODEL.setDeclared(builtIn, true);
+            }
+            frame = Frame.existing(builtIn);
         } else {
             frame = Frame.of(factory.range(id));
         }
@@ -661,8 +713,7 @@ final class LiftXmlDecoder {
                 if (strict) {
                     throw new IllegalArgumentException("The range " + id + " cannot be read: " + lookup.problem() + ".");
                 }
-                LOGGER.warning(() -> "The range " + id + " is empty: " + lookup.problem()
-                    + (locator == null ? "" : " (line " + locator.getLineNumber() + ")") + ".");
+                warn("The range " + id + " is empty: " + lookup.problem() + where() + ".");
             } else {
                 rangeToReplay = lookup.range();
                 applyRangeAttributes(set, lookup.range().attributes());
@@ -741,9 +792,8 @@ final class LiftXmlDecoder {
 
         boolean declaredAlready = set.hasFeature(id) && rangeElementsDeclared.contains(set.getFeature(id));
         if (declaredAlready && !(readingInlineOverride() && !set.getFeature(id).isDeclaredInline())) {
-            LOGGER.warning(() -> "The range element " + id + " of the range " + set.getId()
-                + " is declared twice; the second declaration is ignored"
-                + (locator == null ? "" : " (line " + locator.getLineNumber() + ")") + ".");
+            warn("The range element " + id + " of the range " + set.getId()
+                + " is declared twice; the second declaration is ignored" + where() + ".");
             return null;
         }
         if (declaredAlready) {
@@ -758,8 +808,9 @@ final class LiftXmlDecoder {
         }
         Frame frame;
         if (set.hasFeature(id)) {
-            // A bare feature a value created before its declaration: filled in place.
+            // A bare feature a value created before its declaration: declared, and filled in place.
             Feature existing = set.getFeature(id);
+            MODEL.setDeclared(existing, true);
             if (guid != null) existing.setGuid(guid);
             if (created != null) existing.setDateCreated(created);
             if (modified != null) existing.setDateModified(modified);
@@ -829,6 +880,7 @@ final class LiftXmlDecoder {
             definitionsByOptionRange
                 .computeIfAbsent(optionRange, k -> new ArrayList<>())
                 .add((LiftFieldAndTraitDefinition) frame.element());
+            optionRangeLines.put((LiftFieldAndTraitDefinition) frame.element(), locator == null ? -1 : locator.getLineNumber());
         }
         return rest(frame, attributes,
             LiftVocabulary.NAME_ATTRIBUTE, LiftVocabulary.TAG_ATTRIBUTE, LiftVocabulary.GUID_ATTRIBUTE,
@@ -861,6 +913,7 @@ final class LiftXmlDecoder {
             definitionsByOptionRange
                 .computeIfAbsent(optionRange, k -> new ArrayList<>())
                 .add(existing);
+            optionRangeLines.put(existing, locator == null ? -1 : locator.getLineNumber());
         }
         return rest(Frame.existing(existing), attributes,
             LiftVocabulary.NAME_ATTRIBUTE, LiftVocabulary.TAG_ATTRIBUTE, LiftVocabulary.GUID_ATTRIBUTE,
@@ -877,7 +930,7 @@ final class LiftXmlDecoder {
         // The feature sets of external files are read-only by now; their hierarchy, the
         // bare features a parent names, and the rebinding of their traits are part of
         // reading them.
-        MODEL.withoutExternalDefinitionGuard(this::resolveTheHeader);
+        MODEL.withoutDefinitionGuard(this::resolveTheHeader);
         externalRanges.clear();
         rangeElementsDeclared.clear();
         rangesDeclared.clear();
@@ -886,12 +939,24 @@ final class LiftXmlDecoder {
 
     private void resolveTheHeader() {
         for (Map.Entry<String, List<LiftFieldAndTraitDefinition>> e : definitionsByOptionRange.entrySet()) {
+            if (!header.hasFeatureSet(e.getKey())) {
+                // Only a built-in range may be undeclared: any other is an error.
+                LiftFieldAndTraitDefinition first = e.getValue().getFirst();
+                int line = optionRangeLines.getOrDefault(first, -1);
+                throw new IllegalArgumentException("The definition " + first.getName()
+                    + (line < 0 ? "" : " (line " + line + ")") + " takes its values from the range "
+                    + e.getKey() + ", which the file does not declare.");
+            }
             FeatureSet range = header.getFeatureSet(e.getKey());
+            if (!range.isDeclared()) {
+                warnAboutAnUndeclaredRange(range);
+            }
             for (LiftFieldAndTraitDefinition definition : e.getValue()) {
                 definition.setResolvedRange(Optional.of(range));
             }
         }
         definitionsByOptionRange.clear();
+        optionRangeLines.clear();
 
         for (Map.Entry<String, Map<String, List<Feature>>> set : childFeaturesByParent.entrySet()) {
             FeatureSet range = header.getFeatureSet(set.getKey());

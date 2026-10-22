@@ -1,6 +1,7 @@
 package fr.cnrs.lacito.liftapi.model;
 
 import java.nio.file.Path;
+import java.util.function.Consumer;
 import java.util.UUID;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
@@ -70,8 +71,8 @@ final class InternalAccess implements ModelInternals.Access {
     }
 
     @Override
-    public void withoutExternalDefinitionGuard(Runnable operation) {
-        ExternalDefinitionGuard.withoutGuard(operation);
+    public void withoutDefinitionGuard(Runnable operation) {
+        DefinitionGuard.withoutGuard(operation);
     }
 
     @Override
@@ -93,5 +94,20 @@ final class InternalAccess implements ModelInternals.Access {
     @Override
     public Feature getOrCreateUndeclaredFeature(FeatureSet set, String id) {
         return set.getOrCreateUndeclaredFeature(id);
+    }
+
+    @Override
+    public void setDeclared(Feature feature, boolean declared) {
+        feature.setDeclared(declared);
+    }
+
+    @Override
+    public void setDeclared(FeatureSet set, boolean declared) {
+        set.setDeclared(declared);
+    }
+
+    @Override
+    public void setUndeclaredFeatureListener(LiftHeader header, Consumer<Feature> listener) {
+        header.setUndeclaredFeatureListener(listener);
     }
 }

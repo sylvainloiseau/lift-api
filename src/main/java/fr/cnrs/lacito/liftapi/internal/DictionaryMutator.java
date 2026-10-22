@@ -126,6 +126,19 @@ public final class DictionaryMutator {
      */
     private final LiftDictionary owner;
 
+    /** The warnings of the reader about the definitions of the file (see {@code LiftDictionary.getLoadWarnings()}). */
+    private final List<String> loadWarnings = new ArrayList<>();
+
+    /** Records a warning of the reader. */
+    public void recordLoadWarning(String message) {
+        loadWarnings.add(message);
+    }
+
+    /** The warnings of the reader, read-only. */
+    public List<String> loadWarnings() {
+        return Collections.unmodifiableList(loadWarnings);
+    }
+
     public DictionaryMutator(LiftDictionary owner, DictionaryRegisters registers) {
         if (owner == null) {
             throw new IllegalArgumentException("owner cannot be null");

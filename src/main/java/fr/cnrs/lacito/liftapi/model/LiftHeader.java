@@ -7,6 +7,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -62,6 +63,13 @@ import javafx.collections.transformation.FilteredList;
  * is read-only (see {@link FeatureSet}) until {@link #makeFeatureSetInternal(FeatureSet)}.
  * Rebinding is not refused in such a set: it changes what the names of traits refer to,
  * not what the file says.
+ *
+ * <h2>Declared or not</h2>
+ *
+ * The built-in feature sets are created undeclared: one the file has no {@code <range>}
+ * for holds only the bare values the components use, is read-only, and is not written,
+ * until {@link #declareFeatureSet(FeatureSet)}. Likewise a value a range does not declare
+ * ({@link Feature#isDeclared()}), until {@link #declareFeature(Feature)}.
  */
 public final class LiftHeader extends AbstractLiftRoot {
 
@@ -125,6 +133,8 @@ public final class LiftHeader extends AbstractLiftRoot {
         for (FeatureSet fs : new FeatureSet[] {noteTypesManager, relationTypesManager,
             inverseTypesManager, etymologyTypesManager, translationTypesManager,
             grammaticalInfoManager, annotationTypesManager}) {
+            // Undeclared until a file declares it, or it is declared: see FeatureSet.isDeclared.
+            fs.setDeclared(false);
             featureSetsMap.put(fs.getId(), fs);
             featureSets.add(fs);
         }
@@ -324,7 +334,7 @@ public final class LiftHeader extends AbstractLiftRoot {
             throw new IllegalArgumentException("The id of a feature set cannot be blank.");
         if (featureSetsMap.containsKey(newId))
             throw new IllegalArgumentException("Duplicate feature set: " + newId);
-        ExternalDefinitionGuard.requireWritable(fs);
+        DefinitionGuard.requireWritable(fs);
         LiftFieldAndTraitDefinition definitionOfTheNewId = fieldsAndTraitsDefinition.get(newId);
         if (definitionOfTheNewId != null && definitionOfTheNewId.fitsTraits()
             && traitsNamingTheRange(fs, null).findAny().isPresent()) {
@@ -338,6 +348,71 @@ public final class LiftHeader extends AbstractLiftRoot {
         // Last, so that the change is reported once the set is under its new key.
         fs.setId(newId);
         rebinding.apply();
+    }
+
+    /** Called with each bare, undeclared feature created in a set of this header, or {@code null}. */
+    private Consumer<Feature> undeclaredFeatureListener;
+
+    void setUndeclaredFeatureListener(Consumer<Feature> listener) {
+        this.undeclaredFeatureListener = listener;
+    }
+
+    /** A bare, undeclared feature was created in a set of this header. */
+    void undeclaredFeatureCreated(Feature feature) {
+        if (undeclaredFeatureListener != null) {
+            undeclaredFeatureListener.accept(feature);
+        }
+    }
+
+    /**
+     * Declares a feature set that is not declared: a built-in set (the types of notes,
+     * relations..., the parts of speech) the file has no {@code <range>} for. It becomes
+     * writable, and is written in the header - with the values declared in it; its
+     * undeclared values stay undeclared ({@link #declareFeature(Feature)}).
+     *
+     * Reported as a change of {@code ModelProperty.FEATURE_SET_DECLARED}; reverting it makes
+     * the set undeclared, and read-only, again.
+     *
+     * @param fs an undeclared feature set of this header
+     * @throws IllegalArgumentException if {@code fs} is not in this header, or is declared
+     */
+    public void declareFeatureSet(FeatureSet fs) {
+        if (fs == null || featureSetsMap.get(fs.getId()) != fs)
+            throw new IllegalArgumentException("This feature set is not in this header.");
+        if (fs.isDeclared())
+            throw new IllegalArgumentException("The feature set " + fs.getId() + " is already declared.");
+        fs.setDeclared(true);
+    }
+
+    /**
+     * Declares a feature its range does not declare: a bare one created for a value a
+     * component uses. It becomes writable, and is written in the header. If its set is not
+     * declared either, the set is declared first ({@link #declareFeatureSet(FeatureSet)}).
+     *
+     * Refused for a feature of a set defined in an external ranges file: what the
+     * {@code .lift} file adds to such a set is only what it declares inline. Make the set
+     * internal first ({@link #makeFeatureSetInternal(FeatureSet)}).
+     *
+     * Reported as a change of {@code ModelProperty.FEATURE_DECLARED} (after the one of the
+     * set, if it is declared too); reverting it makes the feature undeclared again.
+     *
+     * @param feature an undeclared feature of a set of this header
+     * @throws IllegalArgumentException if its set is not in this header, or it is declared
+     * @throws IllegalStateException if its set is defined in an external ranges file
+     */
+    public void declareFeature(Feature feature) {
+        FeatureSet fs = feature == null ? null : feature.getParentFeatureSet();
+        if (fs == null || featureSetsMap.get(fs.getId()) != fs || fs.getFeatures().get(feature.getId()) != feature)
+            throw new IllegalArgumentException("This feature is not in a feature set of this header.");
+        if (feature.isDeclared())
+            throw new IllegalArgumentException("The feature " + feature.getId() + " is already declared.");
+        if (fs.isExternallyDefined())
+            throw new IllegalStateException("The feature set " + fs.getId()
+                + " is defined in an external file; make it internal to declare its values.");
+        if (!fs.isDeclared()) {
+            fs.setDeclared(true);
+        }
+        feature.setDeclared(true);
     }
 
     /**
@@ -979,7 +1054,7 @@ public final class LiftHeader extends AbstractLiftRoot {
         }
         // Not refused in a feature set defined in an external file: the XML of the traits
         // and fields does not change, only what their name refers to.
-        return () -> ExternalDefinitionGuard.withoutGuard(() -> {
+        return () -> DefinitionGuard.withoutGuard(() -> {
             for (LiftTrait trait : traitsToReplace) {
                 replaceTrait(trait, traitTarget);
             }

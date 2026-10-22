@@ -97,6 +97,7 @@ public final class DictionarySnapshot {
             ? set.getExternalDefinitionFile().map(f -> f.getFileName().toString()).orElse("(not found)")
             : "");
         emit(p + ".guid", set.getGuid().orElse(""));
+        emit(p + ".declared", String.valueOf(set.isDeclared()));
         emit(p + ".inline", set.isDeclaredInline(set.getLabel()) + " " + set.isDeclaredInline(set.getDescription())
             + " " + set.isDeclaredInline(set.getAbbrev()));
         multiText(p + ".label", set.getLabel());
@@ -111,6 +112,7 @@ public final class DictionarySnapshot {
             emit(q + ".guid", f.getGuid().orElse(""));
             emit(q + ".parent", f.getSuperOrdinateFeature().map(Feature::getId).orElse(""));
             emit(q + ".inline", String.valueOf(f.isDeclaredInline()));
+            emit(q + ".declared", String.valueOf(f.isDeclared()));
             multiText(q + ".label", f.getLabel());
             multiText(q + ".abbrev", f.getAbbrev());
             multiText(q + ".description", f.getDescription());

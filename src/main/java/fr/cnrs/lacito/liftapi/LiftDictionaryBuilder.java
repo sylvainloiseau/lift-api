@@ -114,8 +114,7 @@ public class LiftDictionaryBuilder {
     // ------------------------------------------------------------------
 
     public LiftDictionaryBuilder withPartOfSpeech(String... poss) {
-        for (String pos : poss)
-            this.dictionary.getHeader().getGrammaticalInfoManager().addFeature(pos);
+        addTypes(this.dictionary.getHeader().getGrammaticalInfoManager(), poss);
         return this;
     }
 
@@ -155,7 +154,14 @@ public class LiftDictionaryBuilder {
         return this;
     }
 
+    /**
+     * Adds types to a built-in feature set, which is declared first: the header creates it
+     * undeclared (see {@code FeatureSet.isDeclared()}), and giving it types is declaring it.
+     */
     private void addTypes(FeatureSet set, String[] types) {
+        if (!set.isDeclared()) {
+            this.dictionary.getHeader().declareFeatureSet(set);
+        }
         for (String type : types)
             set.addFeature(type);
     }

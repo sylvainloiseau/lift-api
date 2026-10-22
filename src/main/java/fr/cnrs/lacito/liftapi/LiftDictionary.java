@@ -143,6 +143,19 @@ public final class LiftDictionary {
     }
 
     /**
+     * What the reader warned about the definitions of the file it read, in order: the
+     * ranges the file does not declare, the values a range does not declare (kept, but not
+     * saved: see {@code FeatureSet.isDeclared()} and {@code Feature.isDeclared()}), the
+     * external ranges that could not be found, the range elements declared twice. Each is
+     * warned about once. Empty for a dictionary that was not read from a file.
+     *
+     * @return a read-only list of messages
+     */
+    public List<String> getLoadWarnings() {
+        return mutator.loadWarnings();
+    }
+
+    /**
      * The change listeners of this dictionary.
      *
      * <b>Not public API</b>, for the same reason as {@link #getMutator()}: use

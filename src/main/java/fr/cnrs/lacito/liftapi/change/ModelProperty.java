@@ -188,6 +188,16 @@ public final class ModelProperty<T> {
             ModelInternals.get().withoutRebinding(header, () -> header.renameFeatureSet(s, v));
         });
 
+    /// Whether the range of a feature declares it; set to {@code true} through
+    /// {@link LiftHeader#declareFeature(Feature)}.
+    public static final ModelProperty<Boolean> FEATURE_DECLARED = new ModelProperty<>(
+        "featureDeclared", (o, v) -> ModelInternals.get().setDeclared((Feature) o, v));
+
+    /// Whether the file declares a feature set; set to {@code true} through
+    /// {@link LiftHeader#declareFeatureSet(FeatureSet)}.
+    public static final ModelProperty<Boolean> FEATURE_SET_DECLARED = new ModelProperty<>(
+        "featureSetDeclared", (o, v) -> ModelInternals.get().setDeclared((FeatureSet) o, v));
+
     /// The parent of a feature in its feature set's hierarchy.
     public static final ModelProperty<Feature> SUPERORDINATE_FEATURE = new ModelProperty<>(
         "superordinateFeature", (o, v) -> ((Feature) o).setSuperordinateFeature(v));
@@ -227,7 +237,7 @@ public final class ModelProperty<T> {
         DATE_CREATED, DATE_MODIFIED, TYPE, LIFT_ID, GUID, ENTRY_ORDER, ORDER, DATE_DELETED,
         GRAMMATICAL_INFO_VALUE, REF_ID, REF_OBJECT, HREF, SOURCE, FORM_TEXT,
         ANNOTATION_VALUE, ANNOTATION_WHO, ANNOTATION_WHEN, TRAIT_VALUE, FIELD_SPECIFICATION, FEATURE_ID,
-        FEATURE_SET_ID, SUPERORDINATE_FEATURE, DEFINITION_KIND, DEFINITION_TARGETS, DEFINITION_DATA_MODEL,
+        FEATURE_SET_ID, FEATURE_DECLARED, FEATURE_SET_DECLARED, SUPERORDINATE_FEATURE, DEFINITION_KIND, DEFINITION_TARGETS, DEFINITION_DATA_MODEL,
         DEFINITION_WRITING_SYSTEM, DEFINITION_RANGE
     );
 

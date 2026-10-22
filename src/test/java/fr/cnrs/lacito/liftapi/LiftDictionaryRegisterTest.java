@@ -83,6 +83,7 @@ public class LiftDictionaryRegisterTest {
 
     @Test
     public void testReferenceCounting() {
+        dictionary.getHeader().declareFeatureSet(dictionary.getHeader().getRelationTypeManager()); // built in: created undeclared
         dictionary.getHeader().getRelationTypeManager().addFeature("suppletion");
 
         DictionaryComponentBuilderFactory builder = dictionary.getComponentBuilder();
