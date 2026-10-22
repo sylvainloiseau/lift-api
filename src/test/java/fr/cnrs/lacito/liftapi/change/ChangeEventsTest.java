@@ -296,7 +296,7 @@ class ChangeEventsTest {
         // This dictionary is observed, so emission points cannot take their fast path.
         long before = ChangeSupport.firedCount();
         LiftDictionary loaded = LiftDictionary.loadDictionaryFromFile(
-            new File("src/test/resources/lift/20240828Lift.lift"));
+            new File("src/test/resources/lift/DictionaryLift20261022.lift"));
         assertEquals(before, ChangeSupport.firedCount());
         assertTrue(events.isEmpty());
         assertFalse(loaded.getLiftDictionaryRegistry().getEntries().isEmpty());

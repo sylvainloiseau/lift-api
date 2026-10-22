@@ -35,8 +35,8 @@ public class LiftDictionaryWriterTest {
 
     @Test
     public void saveWritesAReadableFile() throws Exception {
-        LiftDictionary lf = Utils.loadDictionaryForTest("lift/20240828Lift.lift");
-        File out = new File(tempDir, "20240828Lift.written.lift");
+        LiftDictionary lf = Utils.loadDictionaryForTest("lift/DictionaryLift20261022.lift");
+        File out = new File(tempDir, "DictionaryLift20261022.written.lift");
         LOGGER.info("Writing to " + out);
         lf.save(out);
 
@@ -104,20 +104,20 @@ public class LiftDictionaryWriterTest {
     }
 
     /**
-     * {@code 20240828Lift.lift} declares {@code <range href="..."/>} pointing at a
+     * {@code DictionaryLift20261022.lift} declares {@code <range href="..."/>} pointing at a
      * ranges file that is never loaded. Saving must not create or truncate that
      * file, because the data to put in it was never read.
      */
     @Test
     public void saveDoesNotRewriteExternalRangesThatWereNeverRead()
         throws Exception {
-        LiftDictionary lf = Utils.loadDictionaryForTest("lift/20240828Lift.lift");
+        LiftDictionary lf = Utils.loadDictionaryForTest("lift/DictionaryLift20261022.lift");
         File out = new File(tempDir, "out.lift");
         lf.save(out);
 
         File externalRanges = new File(
             tempDir,
-            "20240828Lift/20240828Lift.lift-ranges"
+            "DictionaryLift20261022.lift-ranges"
         );
         assertTrue(
             !externalRanges.exists(),

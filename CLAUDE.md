@@ -38,8 +38,10 @@ is a JavaFX editor that binds directly to this model.
 non-export in `module-info.java` is what keeps them private. Keep it that way.
 
 Resources: LIFT schemas in `src/main/resources/fr/cnrs/lacito/liftapi/schema/`.
-Test corpora in `src/test/resources/lift/` — `20240828Lift.lift` is a real ~1900-entry
-dictionary (with a `.lift-ranges` file) used by the census and round-trip tests.
+Test corpora in `src/test/resources/lift/` — `DictionaryLift20261022.lift` is a real ~2600-entry
+FLEx export (LIFT 0.13), used by the census and round-trip tests; all its ranges are
+`href` references to the companion `DictionaryLift20261022.lift-ranges`, which the
+reader does not load yet.
 
 ## Core design (read before changing mutation code)
 

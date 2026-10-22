@@ -28,12 +28,10 @@ public class LiftDictionaryTest {
 
     @Test
     public void testGetMetaLanguagesInAllField() {
-        LiftDictionary lf = Utils.loadDictionaryForTest("lift/20240828Lift.lift");
+        LiftDictionary lf = Utils.loadDictionaryForTest("lift/DictionaryLift20261022.lift");
         Set<String> metaLanguages = lf.getMetaLanguageManager().getLanguages();
-        assertEquals(2, metaLanguages.size());
-        //System.out.println(metaLanguages.toString());
-        assertTrue(metaLanguages.contains("tpi"));
-        assertTrue(metaLanguages.containsAll(Arrays.asList("tpi", "en")));
+        // oc-FR-fonipa, the object language, is also in one label and one field.
+        assertEquals(Set.of("fr", "en", "qaa-x-spec", "oc-FR-fonipa"), metaLanguages);
     }
 
     @Test
@@ -59,11 +57,11 @@ public class LiftDictionaryTest {
 
     @Test
     public void testGetGramInfoCounterLargeDictionary () {
-        LiftDictionary lf = Utils.loadDictionaryForTest("lift/20240828Lift.lift");
-        assertEquals(1927, lf.entryCount());
+        LiftDictionary lf = Utils.loadDictionaryForTest("lift/DictionaryLift20261022.lift");
+        assertEquals(2604, lf.entryCount());
         Map<String, Long> gramInfo = lf.getGramInfoCounter();
         LOGGER.info(gramInfo.toString());
-        assertEquals(20, gramInfo.get("Interrogative pro-form"));
+        assertEquals(161, gramInfo.get("Adverbe"));
     }
 
     @Test
@@ -75,7 +73,7 @@ public class LiftDictionaryTest {
 
     @Test
     public void testGetTraitName() {
-        LiftDictionary lf = Utils.loadDictionaryForTest("lift/20240828Lift.lift");
+        LiftDictionary lf = Utils.loadDictionaryForTest("lift/DictionaryLift20261022.lift");
         Set<String> traitNames = lf.getLiftDictionaryRegistry().getTraits().stream()
             .map(LiftTrait::getName)
             .collect(Collectors.toSet());
@@ -87,9 +85,9 @@ public class LiftDictionaryTest {
 
     @Test
     public void testGetValueCounterForTraitName() {
-        LiftDictionary lf = Utils.loadDictionaryForTest("lift/20240828Lift.lift");
+        LiftDictionary lf = Utils.loadDictionaryForTest("lift/DictionaryLift20261022.lift");
         Map<String, Long> traitValueCounter = lf.getValueCounterForTraitName("semantic-domain-ddp4");
-        assertEquals(traitValueCounter.get("6.7 Tool"), Long.valueOf(33));
+        assertEquals(Long.valueOf(102), traitValueCounter.get("6.2 Agriculture"));
     }
 
     @Test

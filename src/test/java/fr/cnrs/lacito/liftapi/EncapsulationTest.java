@@ -125,7 +125,7 @@ class EncapsulationTest {
     private static List<Object> samples() {
         LiftDictionary d;
         try {
-            d = LiftDictionary.loadDictionaryFromFile(new File("src/test/resources/lift/20240828Lift.lift"));
+            d = LiftDictionary.loadDictionaryFromFile(new File("src/test/resources/lift/DictionaryLift20261022.lift"));
         } catch (LiftDocumentLoadingException e) {
             throw new AssertionError(e);
         }

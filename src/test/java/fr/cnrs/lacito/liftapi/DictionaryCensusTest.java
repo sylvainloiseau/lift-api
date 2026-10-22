@@ -53,7 +53,7 @@ public class DictionaryCensusTest {
 
     @Test
     public void largeCorpusIsFullyRegistered() {
-        assertCensus("lift/20240828Lift.lift");
+        assertCensus("lift/DictionaryLift20261022.lift");
     }
 
     @Test
@@ -73,7 +73,7 @@ public class DictionaryCensusTest {
      */
     @Test
     public void thePartsOfSpeechOfTheCorpusAreReportedUsed() {
-        LiftDictionary d = Utils.loadDictionaryForTest("lift/20240828Lift.lift");
+        LiftDictionary d = Utils.loadDictionaryForTest("lift/DictionaryLift20261022.lift");
         LiftHeader header = d.getHeader();
         Map<Feature, Long> bySense = d.getLiftDictionaryRegistry().getGrammaticalInfos().stream()
             .map(GrammaticalInfo::getGramInfoValue)

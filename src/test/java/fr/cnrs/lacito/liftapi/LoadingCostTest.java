@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
 @Tag("perf")
 class LoadingCostTest {
 
-    private static final File CORPUS = new File("src/test/resources/lift/20240828Lift.lift");
+    private static final File CORPUS = new File("src/test/resources/lift/DictionaryLift20261022.lift");
     private static final int WARM_UP = 10;
     private static final int RUNS = 25;
 

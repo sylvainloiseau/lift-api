@@ -42,7 +42,7 @@ import fr.cnrs.lacito.liftapi.model.UndeclaredName;
  */
 public class TraitSpecificationTest {
 
-    private static final File CORPUS = new File("src/test/resources/lift/20240828Lift.lift");
+    private static final File CORPUS = new File("src/test/resources/lift/DictionaryLift20261022.lift");
 
     private LiftDictionary dictionary;
     private LiftHeader header;
@@ -103,7 +103,7 @@ public class TraitSpecificationTest {
         String text = Files.readString(CORPUS.toPath());
         String fields = text.substring(text.indexOf("<fields>"), text.indexOf("</fields>"));
         Set<String> declared = new TreeSet<>();
-        Matcher m = Pattern.compile("<field-definition name=\"([^\"]+)\"").matcher(fields);
+        Matcher m = Pattern.compile("<field(?:-definition name| tag)=\"([^\"]+)\"").matcher(fields);
         while (m.find()) {
             declared.add(m.group(1));
         }

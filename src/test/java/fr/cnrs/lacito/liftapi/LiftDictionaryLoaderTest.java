@@ -25,7 +25,7 @@ public class LiftDictionaryLoaderTest {
 
     @Test
     public void testReadLarge() {
-        Utils.loadDictionaryForTest("lift/20240828Lift.lift");
+        Utils.loadDictionaryForTest("lift/DictionaryLift20261022.lift");
     }
 
     @Test

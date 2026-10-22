@@ -53,7 +53,7 @@ public class RoundTripTest {
 
     @Test
     public void roundTripLargeDictionary() throws Exception {
-        assertRoundTrip("lift/20240828Lift.lift");
+        assertRoundTrip("lift/DictionaryLift20261022.lift");
     }
 
     @Test
@@ -180,7 +180,7 @@ public class RoundTripTest {
      */
     @Test
     public void savingTwiceGivesTheSameBytes() throws Exception {
-        LiftDictionary first = Utils.loadDictionaryForTest(Utils.resourceFile("lift/20240828Lift.lift"));
+        LiftDictionary first = Utils.loadDictionaryForTest(Utils.resourceFile("lift/DictionaryLift20261022.lift"));
         File a = save(first, "first.lift");
         LiftDictionary second = Utils.loadDictionaryForTest(a);
         File b = save(second, "second.lift");
@@ -219,9 +219,8 @@ public class RoundTripTest {
      * Compare the schema errors of the saved file with those of the original.
      *
      * The corpora are real FLEx exports and are not all strictly valid to begin
-     * with (20240828Lift.lift is a 0.13 document that already uses the 0.15
-     * {@code <field-definition>} element), so the meaningful assertion is that
-     * saving introduces no error that the input did not already have.
+     * with, so the meaningful assertion is that saving introduces no error that the
+     * input did not already have.
      *
      * The JDK ships no RELAX NG {@link SchemaFactory}, so validation falls back to
      * the bundled {@code lift-0.13.xsd}; 0.15 documents are covered by the

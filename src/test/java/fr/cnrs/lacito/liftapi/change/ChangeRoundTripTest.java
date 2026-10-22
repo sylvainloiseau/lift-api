@@ -66,7 +66,7 @@ import fr.cnrs.lacito.liftapi.model.MultiText;
  */
 class ChangeRoundTripTest {
 
-    private static final File CORPUS = new File("src/test/resources/lift/20240828Lift.lift");
+    private static final File CORPUS = new File("src/test/resources/lift/DictionaryLift20261022.lift");
     private static final int OPERATIONS = 250;
 
     static Stream<Long> seeds() {
