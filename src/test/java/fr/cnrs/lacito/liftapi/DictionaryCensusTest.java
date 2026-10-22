@@ -84,6 +84,8 @@ public class DictionaryCensusTest {
             assertTrue(header.isUsed(e.getKey()), e.getKey().getId());
             assertTrue(header.countUses(e.getKey()) >= e.getValue(), e.getKey().getId());
         }
+        // The parts of speech of the corpus are defined in its ranges file: read-only.
+        header.makeFeatureSetInternal(header.getGrammaticalInfoManager());
         Feature fresh = header.getGrammaticalInfoManager().addFeature("not-a-part-of-speech");
         assertFalse(header.isUsed(fresh));
         assertEquals(0, header.countUses(fresh));

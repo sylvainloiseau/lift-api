@@ -1,5 +1,6 @@
 package fr.cnrs.lacito.liftapi.change;
 
+import fr.cnrs.lacito.liftapi.internal.ModelInternals;
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDictionaryLanguagesManager;
 
@@ -20,11 +21,15 @@ public record LanguageAdded(LiftDictionary dictionary, LiftDictionaryLanguagesMa
 
     @Override
     public void revert() {
-        languages.removeLanguage(language);
+        ModelInternals.get().withoutExternalDefinitionGuard(() -> {
+            languages.removeLanguage(language);
+        });
     }
 
     @Override
     public void reapply() {
-        languages.addLanguage(language);
+        ModelInternals.get().withoutExternalDefinitionGuard(() -> {
+            languages.addLanguage(language);
+        });
     }
 }

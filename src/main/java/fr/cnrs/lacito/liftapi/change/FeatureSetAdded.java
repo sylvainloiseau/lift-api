@@ -19,12 +19,16 @@ public record FeatureSetAdded(LiftDictionary dictionary, LiftHeader header, Feat
 
     @Override
     public void revert() {
-        header.removeFeatureSet(featureSet);
+        ModelInternals.get().withoutExternalDefinitionGuard(() -> {
+            header.removeFeatureSet(featureSet);
+        });
     }
 
     @Override
     public void reapply() {
-        // The traits the addition rebound are put back by their own changes.
-        ModelInternals.get().withoutRebinding(header, () -> header.addFeatureSet(featureSet));
+        ModelInternals.get().withoutExternalDefinitionGuard(() -> {
+            // The traits the addition rebound are put back by their own changes.
+            ModelInternals.get().withoutRebinding(header, () -> header.addFeatureSet(featureSet));
+        });
     }
 }

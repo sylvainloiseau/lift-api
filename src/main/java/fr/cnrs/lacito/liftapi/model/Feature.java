@@ -20,6 +20,12 @@ public final class Feature extends AbstractExtensibleWithField {
     private MultiText abbrev = new MultiText(this);
     private final TrackedProperty<Feature> superOrdinateFeature;
 
+    /** Declared in the {@code <range>} of the {@code .lift} file, overriding an external ranges file. */
+    private boolean declaredInline;
+
+    /** Created for a value its externally defined range does not declare. */
+    private boolean undeclaredInTheExternalFile;
+
     /**
      * Creates a new {@code Feature} with the given id and parent {@code FeatureSet}.
      *
@@ -147,6 +153,34 @@ public final class Feature extends AbstractExtensibleWithField {
         return getMainMultiText();
     }
 
+
+    /**
+     * Whether the {@code .lift} file declared this feature inline, in the {@code <range>}
+     * of a set defined in an external ranges file: it overrides (or adds to) the file's
+     * range elements, and is written back after the reference. Always {@code false} for
+     * the features the external file declares, and for the bare features created for a
+     * value the range does not declare.
+     */
+    public boolean isDeclaredInline() {
+        return declaredInline;
+    }
+
+    void setDeclaredInline(boolean declaredInline) {
+        this.declaredInline = declaredInline;
+    }
+
+    /**
+     * Whether this is a bare feature the reader or a builder created in a set defined in an
+     * external ranges file, for a value a component uses and the file does not declare (a
+     * note type, a part of speech...). It is not written: the reload creates it the same way.
+     */
+    public boolean isUndeclaredInTheExternalFile() {
+        return undeclaredInTheExternalFile;
+    }
+
+    void setUndeclaredInTheExternalFile(boolean undeclaredInTheExternalFile) {
+        this.undeclaredInTheExternalFile = undeclaredInTheExternalFile;
+    }
 
     @Override
     public AbstractLiftRoot getParentNode() {

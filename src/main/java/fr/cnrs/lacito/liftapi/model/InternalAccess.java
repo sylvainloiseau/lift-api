@@ -1,5 +1,6 @@
 package fr.cnrs.lacito.liftapi.model;
 
+import java.nio.file.Path;
 import java.util.UUID;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
@@ -66,5 +67,31 @@ final class InternalAccess implements ModelInternals.Access {
     @Override
     public void resumeRebinding(LiftHeader header) {
         header.resumeRebinding();
+    }
+
+    @Override
+    public void withoutExternalDefinitionGuard(Runnable operation) {
+        ExternalDefinitionGuard.withoutGuard(operation);
+    }
+
+    @Override
+    public void setHref(FeatureSet set, String href) {
+        set.setHref(href);
+    }
+
+    @Override
+    public void setExternalDefinition(FeatureSet set, Path file, boolean missing) {
+        set.setExternalDefinitionFile(file);
+        set.setExternalDefinitionMissing(missing);
+    }
+
+    @Override
+    public void markDeclaredInline(FeatureSet set, Object part) {
+        set.markDeclaredInline(part);
+    }
+
+    @Override
+    public Feature getOrCreateUndeclaredFeature(FeatureSet set, String id) {
+        return set.getOrCreateUndeclaredFeature(id);
     }
 }

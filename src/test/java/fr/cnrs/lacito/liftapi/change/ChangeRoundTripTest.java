@@ -444,9 +444,11 @@ class ChangeRoundTripTest {
                 case 1 -> e.deleteRelation(c.pick(e.getRelations()));
                 default -> {
                     LiftRelation rel = c.pick(c.reg().getRelations());
+                    // First: a new type is refused in an external range.
+                    Feature type = c.type(c.d.getHeader().getRelationTypeManager());
                     rel.setRefId(c.entry().getId().orElseThrow());
                     rel.setOrder(c.r.nextInt(3));
-                    rel.setType(c.type(c.d.getHeader().getRelationTypeManager()));
+                    rel.setType(type);
                 }
             }
         }),
@@ -494,8 +496,10 @@ class ChangeRoundTripTest {
                 case 1 -> e.deleteEtymology(c.pick(e.getEtymologies()));
                 default -> {
                     LiftEtymology y = c.pick(c.reg().getEtymologies());
+                    // First: a new type is refused in an external range.
+                    Feature type = c.type(types);
                     y.setSource(c.fresh());
-                    y.setType(c.type(types));
+                    y.setType(type);
                 }
             }
         }),
@@ -537,14 +541,20 @@ class ChangeRoundTripTest {
         new Op("feature set", c -> {
             var h = c.d.getHeader();
             switch (c.r.nextInt(3)) {
-                case 0 -> {
-                    FeatureSet added = h.addFeatureSet("range-" + c.fresh());
-                    // An href whose file was never loaded makes the set unrenamable.
-                    if (c.r.nextBoolean()) added.setHref(c.fresh());
-                }
+                case 0 -> h.addFeatureSet("range-" + c.fresh());
                 case 1 -> h.removeFeatureSet(c.pick(h.getFeatureSets()));
-                // Refused for a built-in set or an unloaded external one, as allowed.
+                // Refused for a built-in set or an external one, as allowed.
                 default -> h.renameFeatureSet(c.pick(h.getFeatureSets()), "range-" + c.fresh());
+            }
+        }),
+        new Op("external range", c -> {
+            var h = c.d.getHeader();
+            FeatureSet set = c.pick(h.getFeatureSets().stream().filter(FeatureSet::isExternallyDefined).toList());
+            switch (c.r.nextInt(3)) {
+                case 0 -> h.makeFeatureSetInternal(set);
+                // Refused: an external set is read-only.
+                case 1 -> set.addFeature(c.fresh());
+                default -> c.pick(new ArrayList<>(set.getFeatures().values())).setGuid(c.fresh());
             }
         }),
         new Op("trait and field specifications", c -> {

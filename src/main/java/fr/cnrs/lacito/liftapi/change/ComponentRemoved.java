@@ -1,5 +1,6 @@
 package fr.cnrs.lacito.liftapi.change;
 
+import fr.cnrs.lacito.liftapi.internal.ModelInternals;
 import java.util.OptionalInt;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
@@ -33,15 +34,19 @@ public record ComponentRemoved(
 
     @Override
     public void revert() {
-        Slots.add(parent, component, position);
+        ModelInternals.get().withoutExternalDefinitionGuard(() -> {
+            Slots.add(parent, component, position);
+        });
     }
 
     @Override
     public void reapply() {
-        if (unregistered) {
-            Slots.delete(parent, component);
-        } else {
-            component.detach();
-        }
+        ModelInternals.get().withoutExternalDefinitionGuard(() -> {
+            if (unregistered) {
+                Slots.delete(parent, component);
+            } else {
+                component.detach();
+            }
+        });
     }
 }

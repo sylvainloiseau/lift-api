@@ -43,6 +43,7 @@ public abstract sealed class AbstractExtensibleWithoutField
      */
     @Override
     public void addTrait(int index, LiftTrait t) {
+        ExternalDefinitionGuard.requireWritable(this);
         traits.add(index, t);
         t.setParent(this);
         adopted(t);
@@ -61,6 +62,7 @@ public abstract sealed class AbstractExtensibleWithoutField
      */
     @Override
     public void addAnnotation(int index, LiftAnnotation a) {
+        ExternalDefinitionGuard.requireWritable(this);
         annotations.add(index, a);
         a.setParent(this);
         adopted(a);
@@ -70,6 +72,7 @@ public abstract sealed class AbstractExtensibleWithoutField
      * @param value the creation date, or {@code null} for none
      */
     public void setDateCreated(String value) {
+        ExternalDefinitionGuard.requireWritable(this);
         if (dateCreatedProperty != null) {
             dateCreatedProperty.set(value);
         } else {
@@ -83,6 +86,7 @@ public abstract sealed class AbstractExtensibleWithoutField
      * @param value the modification date, or {@code null} for none
      */
     public void setDateModified(String value) {
+        ExternalDefinitionGuard.requireWritable(this);
         if (dateModifiedProperty != null) {
             dateModifiedProperty.set(value);
         } else {
@@ -180,6 +184,7 @@ public abstract sealed class AbstractExtensibleWithoutField
      */
     @Override
     public void deleteTrait(LiftTrait t) {
+        ExternalDefinitionGuard.requireWritable(this);
         requireChild(t, traits.contains(t));
         removeChild(t);
     }
@@ -192,12 +197,14 @@ public abstract sealed class AbstractExtensibleWithoutField
      */
     @Override
     public void deleteAnnotation(LiftAnnotation a) {
+        ExternalDefinitionGuard.requireWritable(this);
         requireChild(a, annotations.contains(a));
         removeChild(a);
     }
 
     @Override
     public void retypeAnnotation(LiftAnnotation a, Feature type) {
+        ExternalDefinitionGuard.requireWritable(this);
         requireChild(a, annotations.contains(a));
         a.assignType(type);
     }

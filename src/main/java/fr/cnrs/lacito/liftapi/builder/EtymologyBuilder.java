@@ -39,7 +39,7 @@ public class EtymologyBuilder
         if (source == null) {
             throw new IllegalArgumentException("Etymology source cannot be null");
         }
-        this.element.setType(dictionary.getHeader().getEtymologyTypeManager().getOrCreateFeature(type));
+        this.element.setType(typeFeature(dictionary.getHeader().getEtymologyTypeManager(), type));
         this.element.setSource(source);
 
     }
@@ -94,7 +94,7 @@ public class EtymologyBuilder
 
     public EtymologyBuilder withType(String type) {
         if (type == null || type.isBlank()) throw new IllegalArgumentException("Type cannot be null or empty.");
-        super.withType(dictionary.getHeader().getEtymologyTypeManager().getOrCreateFeature(type));
+        super.withType(typeFeature(dictionary.getHeader().getEtymologyTypeManager(), type));
         return this;
     }
 

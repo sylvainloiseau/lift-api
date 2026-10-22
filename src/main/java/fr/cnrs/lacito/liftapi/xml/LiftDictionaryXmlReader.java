@@ -6,14 +6,10 @@ import fr.cnrs.lacito.liftapi.model.DuplicateIdException;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.StringReader;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.xml.XMLConstants;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
-import javax.xml.parsers.SAXParserFactory;
-import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 /**
@@ -58,36 +54,9 @@ public final class LiftDictionaryXmlReader {
         );
         LOGGER.fine("Dictionary: " + f.getAbsolutePath());
 
-        SAXParserFactory saxFactory = SAXParserFactory.newInstance();
-        saxFactory.setNamespaceAware(true);
         SAXParser saxParser = null;
         try {
-            // LIFT files are routinely exchanged between FLEx users, so the input is
-            // untrusted: disable DTDs, external entities and XInclude to close the
-            // XXE and entity-expansion ("billion laughs") surface.
-            saxFactory.setFeature(
-                XMLConstants.FEATURE_SECURE_PROCESSING,
-                true
-            );
-            saxFactory.setFeature(
-                "http://apache.org/xml/features/disallow-doctype-decl",
-                true
-            );
-            saxFactory.setFeature(
-                "http://xml.org/sax/features/external-general-entities",
-                false
-            );
-            saxFactory.setFeature(
-                "http://xml.org/sax/features/external-parameter-entities",
-                false
-            );
-            saxFactory.setXIncludeAware(false);
-            saxParser = saxFactory.newSAXParser();
-            saxParser
-                .getXMLReader()
-                .setEntityResolver((publicId, systemId) ->
-                    new InputSource(new StringReader(""))
-                );
+            saxParser = LiftXmlParsers.newSecureParser();
         } catch (ParserConfigurationException | SAXException e) {
             LOGGER.log(
                 Level.SEVERE,
@@ -98,7 +67,7 @@ public final class LiftDictionaryXmlReader {
             throw new LiftDocumentLoadingException(e);
         }
 
-        LiftSaxHandler lsh = new LiftSaxHandler(dictionary, strict);
+        LiftSaxHandler lsh = new LiftSaxHandler(dictionary, strict, f);
         try {
             saxParser.parse(f, lsh);
         } catch (SAXException e) {

@@ -17,6 +17,13 @@ final class TrackedIntegerProperty extends SimpleIntegerProperty {
         this.last = initialValue;
     }
 
+    /** Refused for a value of a feature set defined in an external file (see {@link ExternalDefinitionGuard}). */
+    @Override
+    public void set(int newValue) {
+        ExternalDefinitionGuard.requireWritable(getBean());
+        super.set(newValue);
+    }
+
     @Override
     protected void invalidated() {
         int now = get();

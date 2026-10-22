@@ -27,7 +27,7 @@ public final class TranslationBuilder extends AbstractLiftElementBuilder<LiftTra
         this(
             dictionary,
             parent,
-            dictionary.getHeader().getTranslationTypeManager().getOrCreateFeature(requireType(type))
+            typeFeature(dictionary.getHeader().getTranslationTypeManager(), requireType(type))
         );
     }
 

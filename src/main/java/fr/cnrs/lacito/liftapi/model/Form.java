@@ -111,6 +111,7 @@ public final class Form implements HasAnnotation {
      * {@link #changeText(String)} or {@link #textProperty()}.
      */
     public void append(String string) {
+        ExternalDefinitionGuard.requireWritable(this);
         current.peek().addSpan(new TextSpan(string));
         textSpanNumber += 1;
     }
@@ -119,6 +120,7 @@ public final class Form implements HasAnnotation {
      * Open a nested span; see {@link #append(String)} and {@link #pop()}.
      */
     public void append(TextSpan span) {
+        ExternalDefinitionGuard.requireWritable(this);
         this.current.peek().addSpan(span);
         this.current.push(span);
         textSpanNumber += 1;
@@ -211,6 +213,7 @@ public final class Form implements HasAnnotation {
      */
     @Override
     public void addAnnotation(int index, LiftAnnotation a) {
+        ExternalDefinitionGuard.requireWritable(this);
         annotations().add(index, a);
         a.setParent(this);
         AbstractLiftRoot component = owner == null ? null : owner.getParent();
@@ -226,6 +229,7 @@ public final class Form implements HasAnnotation {
      */
     @Override
     public void deleteAnnotation(LiftAnnotation a) {
+        ExternalDefinitionGuard.requireWritable(this);
         if (a == null || annotationsOrEmpty().stream().noneMatch(x -> x == a)) {
             throw new IllegalArgumentException(
                 "This annotation is not held by this " + getClass().getSimpleName() + "."
@@ -241,6 +245,7 @@ public final class Form implements HasAnnotation {
 
     @Override
     public void retypeAnnotation(LiftAnnotation a, Feature type) {
+        ExternalDefinitionGuard.requireWritable(this);
         if (a == null || annotationsOrEmpty().stream().noneMatch(x -> x == a)) {
             throw new IllegalArgumentException(
                 "This annotation is not held by this " + getClass().getSimpleName() + "."
@@ -292,6 +297,8 @@ public final class Form implements HasAnnotation {
     }
 
     public void changeText(String input) {
+
+        ExternalDefinitionGuard.requireWritable(this);
         // The old text is only computed when somebody listens.
         String old = Changes.observing(this) == null ? null : getMarkup();
         // Réinitialise le contenu

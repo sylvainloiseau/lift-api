@@ -1,5 +1,6 @@
 package fr.cnrs.lacito.liftapi.change;
 
+import fr.cnrs.lacito.liftapi.internal.ModelInternals;
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.MultiText;
@@ -19,11 +20,15 @@ public record FormAdded(LiftDictionary dictionary, MultiText text, Form form) im
 
     @Override
     public void revert() {
-        text.removeForm(form.getLang());
+        ModelInternals.get().withoutExternalDefinitionGuard(() -> {
+            text.removeForm(form.getLang());
+        });
     }
 
     @Override
     public void reapply() {
-        text.add(form);
+        ModelInternals.get().withoutExternalDefinitionGuard(() -> {
+            text.add(form);
+        });
     }
 }

@@ -39,7 +39,6 @@ import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
  *       .addFeatureSet(
  *           fs -> fs.withAbbreviation("en", "myabbreviation")
  *              .withDescription("en", "my description")
- *              .withHref("http://www.foo.fr")
  *              .withLabel("en", "my label")
  *              .addFeature(f -> f.withLabel("en", "foo"), "my category 1")
  *              .addFeature(f -> f.withLabel("en", "bar"), "my category 2"),

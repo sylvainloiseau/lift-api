@@ -386,7 +386,7 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
             )
         );
         if (createFeatures) {
-            return range.getOrCreateFeature(id);
+            return range.getOrCreateUndeclaredFeature(id);
         }
         if (!range.hasFeature(id)) {
             throw new IllegalArgumentException("Feature not known: " + id);
@@ -423,6 +423,7 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
      */
     @SuppressWarnings("unchecked")
     public void setTypedValue(Object value) {
+        ExternalDefinitionGuard.requireWritable(this);
         switch (specification.getDataModel()) {
             case STRING -> stringValueProperty.set(value == null ? "" : (String) value);
             case INTEGER -> integerProperty.set(value == null ? 0 : (Integer) value);
@@ -598,6 +599,7 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
 
     @Override
     public void addAnnotation(int index, LiftAnnotation a) {
+        ExternalDefinitionGuard.requireWritable(this);
         annotations.add(index, a);
         a.setParent(this);
         adopted(a);
@@ -626,12 +628,14 @@ public final class LiftTrait extends AbstractLiftRoot implements HasAnnotation {
      */
     @Override
     public void deleteAnnotation(LiftAnnotation a) {
+        ExternalDefinitionGuard.requireWritable(this);
         requireChild(a, annotations.contains(a));
         removeChild(a);
     }
 
     @Override
     public void retypeAnnotation(LiftAnnotation a, Feature type) {
+        ExternalDefinitionGuard.requireWritable(this);
         requireChild(a, annotations.contains(a));
         a.assignType(type);
     }

@@ -39,8 +39,13 @@ import java.util.TreeMap;
  *
  * Everything the LIFT serialization is supposed to preserve is included: LIFT ids, every
  * {@link MultiText} form (lang + markup-bearing text), traits, fields, notes, annotations,
- * media/illustration labels and reversal nesting depth; the header's definitions, and what
- * the name of each trait and field refers to (a definition, a range, or nothing).
+ * media/illustration labels and reversal nesting depth; the header's definitions and
+ * ranges, and what the name of each trait and field refers to (a definition, a range, or
+ * nothing).
+ *
+ * A range defined in an external file is described by the file it was read from, not by
+ * its {@code href}: saved in another directory, the {@code href} changes so as to name
+ * the same file.
  */
 public final class DictionarySnapshot {
 
@@ -64,6 +69,9 @@ public final class DictionarySnapshot {
         d.getHeader().getFieldsAndTraitsDefinitions().stream()
             .sorted(Comparator.comparing(LiftFieldAndTraitDefinition::getName))
             .forEach(definition -> s.definition("header.definition[" + definition.getName() + "]", definition));
+        d.getHeader().getFeatureSets().stream()
+            .sorted(Comparator.comparing(FeatureSet::getId))
+            .forEach(set -> s.featureSet("header.range[" + set.getId() + "]", set));
         for (LiftEntry e : d.getLiftDictionaryRegistry().getEntries()) {
             s.entry("entry", e);
         }
@@ -82,6 +90,35 @@ public final class DictionarySnapshot {
             case UndeclaredName name -> "name:" + name.getName();
             default -> throw new IllegalArgumentException("Not a specification: " + specification);
         };
+    }
+
+    private void featureSet(String p, FeatureSet set) {
+        emit(p + ".external", set.isExternallyDefined()
+            ? set.getExternalDefinitionFile().map(f -> f.getFileName().toString()).orElse("(not found)")
+            : "");
+        emit(p + ".guid", set.getGuid().orElse(""));
+        emit(p + ".inline", set.isDeclaredInline(set.getLabel()) + " " + set.isDeclaredInline(set.getDescription())
+            + " " + set.isDeclaredInline(set.getAbbrev()));
+        multiText(p + ".label", set.getLabel());
+        multiText(p + ".abbrev", set.getAbbrev());
+        multiText(p + ".description", set.getDescription());
+        extensible(p, set);
+        for (LiftField f : new TreeMap<>(set.getFields()).values()) {
+            field(p + ".field", f);
+        }
+        for (Feature f : new TreeMap<>(set.getFeatures()).values()) {
+            String q = p + ".element[" + f.getId() + "]";
+            emit(q + ".guid", f.getGuid().orElse(""));
+            emit(q + ".parent", f.getSuperOrdinateFeature().map(Feature::getId).orElse(""));
+            emit(q + ".inline", String.valueOf(f.isDeclaredInline()));
+            multiText(q + ".label", f.getLabel());
+            multiText(q + ".abbrev", f.getAbbrev());
+            multiText(q + ".description", f.getDescription());
+            extensible(q, f);
+            for (LiftField field : new TreeMap<>(f.getFields()).values()) {
+                field(q + ".field", field);
+            }
+        }
     }
 
     private void definition(String p, LiftFieldAndTraitDefinition definition) {

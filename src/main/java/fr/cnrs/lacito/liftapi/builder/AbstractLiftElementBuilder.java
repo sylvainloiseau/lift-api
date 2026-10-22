@@ -3,9 +3,11 @@ package fr.cnrs.lacito.liftapi.builder;
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.internal.BuilderInternals;
 import fr.cnrs.lacito.liftapi.internal.DictionaryMutator;
+import fr.cnrs.lacito.liftapi.internal.ModelInternals;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
 import fr.cnrs.lacito.liftapi.model.AbstractNotable;
 import fr.cnrs.lacito.liftapi.model.Feature;
+import fr.cnrs.lacito.liftapi.model.FeatureSet;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.HasAnnotation;
 import fr.cnrs.lacito.liftapi.model.HasField;
@@ -63,6 +65,16 @@ public abstract class AbstractLiftElementBuilder<T extends AbstractLiftRoot, U e
         this.element = element;
         this.dictionary = dictionary;
         this.parent = parent;
+    }
+
+    /**
+     * The feature of the given id in a feature set of types (of notes, relations...),
+     * created as a bare feature if the set lacks it - even when the set is defined in an
+     * external ranges file, which is otherwise read-only: a component may use a type its
+     * range does not declare (FLEx files do), and the reload creates it the same way.
+     */
+    protected static Feature typeFeature(FeatureSet types, String id) {
+        return ModelInternals.get().getOrCreateUndeclaredFeature(types, id);
     }
 
     /**

@@ -69,10 +69,9 @@ public final class GrammaticalInfoBuilder
         if (partOfSpeech == null) {
             throw new IllegalArgumentException("Part of speech cannot be null");
         }
-        return dictionary
+        return typeFeature(dictionary
             .getHeader()
-            .getGrammaticalInfoManager()
-            .getOrCreateFeature(partOfSpeech);
+            .getGrammaticalInfoManager(), partOfSpeech);
     }
 
     // Override addTrait so that the correct type is returned.

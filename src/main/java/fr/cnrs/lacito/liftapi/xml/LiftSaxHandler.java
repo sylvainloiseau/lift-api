@@ -20,6 +20,8 @@ import fr.cnrs.lacito.liftapi.model.LiftTranslation;
 import fr.cnrs.lacito.liftapi.model.MultiText;
 import fr.cnrs.lacito.liftapi.model.TextSpan;
 import fr.cnrs.lacito.liftapi.xml.LiftXmlDecoder.Frame;
+import java.io.File;
+import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.logging.Logger;
@@ -28,6 +30,7 @@ import org.xml.sax.Locator;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
 import org.xml.sax.helpers.DefaultHandler;
+import org.xml.sax.helpers.LocatorImpl;
 
 /**
  * SAX handler turning a LIFT XML file into a dictionary.
@@ -36,6 +39,13 @@ import org.xml.sax.helpers.DefaultHandler;
  * components, MultiTexts and forms, and the text and spans of a form. What an element
  * and its attributes mean, and the builder calls they translate into, is the job of
  * {@link LiftXmlDecoder}: every component is created by the builders.
+ *
+ * A {@code <range href="...">} of the header is filled from the external ranges file it
+ * refers to: once the range is open, the range of that id recorded from the file
+ * ({@link LiftRangesFileReader}) is replayed through {@link #startElement},
+ * {@link #characters} and {@link #endElement}, as if it were written there; errors then
+ * name the ranges file and its line. The {@code <range>}'s own children follow, and
+ * override it.
  */
 public final class LiftSaxHandler extends DefaultHandler {
 
@@ -79,13 +89,20 @@ public final class LiftSaxHandler extends DefaultHandler {
 
     private StringBuffer sb;
 
+    /** The ranges file being replayed, or {@code null} while the {@code .lift} file is read. */
+    private Path replayedFile;
+
     /**
      * @param dictionary the dictionary the components read are added to
      * @param strict when {@code true}, recoverable parse errors abort the parse
-     *        instead of only being logged.
+     *        instead of only being logged, and so does an external range that cannot be
+     *        found
+     * @param source the file read, against whose directory the {@code href} of ranges
+     *        are resolved
      */
-    public LiftSaxHandler(LiftDictionary dictionary, boolean strict) {
-        this.decoder = new LiftXmlDecoder(dictionary);
+    public LiftSaxHandler(LiftDictionary dictionary, boolean strict, File source) {
+        Path directory = source.getAbsoluteFile().toPath().getParent();
+        this.decoder = new LiftXmlDecoder(dictionary, directory, strict);
         this.strict = strict;
     }
 
@@ -166,7 +183,8 @@ public final class LiftSaxHandler extends DefaultHandler {
             return e;
         }
         String where = "<" + localName + "> at line " + locator.getLineNumber() +
-            ", column " + locator.getColumnNumber();
+            ", column " + locator.getColumnNumber() +
+            (replayedFile == null ? "" : " of the ranges file " + replayedFile);
         if (e instanceof DuplicateIdException) {
             DuplicateIdException d = new DuplicateIdException(e.getMessage() + " (" + where + ")");
             d.initCause(e);
@@ -217,6 +235,49 @@ public final class LiftSaxHandler extends DefaultHandler {
             throw located(localName, e);
         }
         super.startElement(uri, localName, qName, attributes);
+        RecordedElement externalRange = decoder.takeRangeToReplay();
+        if (externalRange != null) {
+            replay(externalRange, decoder.openRangeFile());
+        }
+    }
+
+    /**
+     * Replays the content of a range recorded from an external ranges file into the
+     * {@code <range>} just opened, with the locator pointing into that file.
+     */
+    private void replay(RecordedElement range, Path file) throws SAXException {
+        Locator main = locator;
+        LocatorImpl inTheRangesFile = new LocatorImpl();
+        inTheRangesFile.setSystemId(file.toUri().toString());
+        locator = inTheRangesFile;
+        decoder.setLocator(inTheRangesFile);
+        replayedFile = file;
+        decoder.setReplaying(true);
+        try {
+            for (Object child : range.children()) {
+                replay(child, inTheRangesFile);
+            }
+        } finally {
+            decoder.setReplaying(false);
+            replayedFile = null;
+            locator = main;
+            decoder.setLocator(main);
+        }
+    }
+
+    private void replay(Object node, LocatorImpl inTheRangesFile) throws SAXException {
+        if (node instanceof String text) {
+            characters(text.toCharArray(), 0, text.length());
+            return;
+        }
+        RecordedElement element = (RecordedElement) node;
+        inTheRangesFile.setLineNumber(element.lineNumber());
+        inTheRangesFile.setColumnNumber(element.columnNumber());
+        startElement(LiftVocabulary.LIFT_URI, element.localName(), element.localName(), element.attributes());
+        for (Object child : element.children()) {
+            replay(child, inTheRangesFile);
+        }
+        endElement(LiftVocabulary.LIFT_URI, element.localName(), element.localName());
     }
 
     /**
@@ -347,7 +408,13 @@ public final class LiftSaxHandler extends DefaultHandler {
                 frames.push(decoder.range(attributes));
                 break;
             case LiftVocabulary.HEADER_RANGE_ELEMENT_LOCAL_NAME:
-                frames.push(decoder.rangeElement(top(), attributes));
+                Frame rangeElement = decoder.rangeElement(top(), attributes);
+                if (rangeElement == null) {
+                    // Declared twice: the decoder warned.
+                    skipDepth = 1;
+                    return false;
+                }
+                frames.push(rangeElement);
                 break;
             case LiftVocabulary.TRANSLATION_LOCAL_NAME:
                 frames.push(decoder.translation(top(), attributes));
@@ -437,7 +504,10 @@ public final class LiftSaxHandler extends DefaultHandler {
                 // in header: elements header, range, range-element, field-definition
                 switch (top()) {
                     case LiftHeader h -> multiTextStack.push(h.getDescription());
-                    case FeatureSet r -> multiTextStack.push(r.getDescription());
+                    case FeatureSet r -> {
+                        decoder.rangeText(r, r.getDescription());
+                        multiTextStack.push(r.getDescription());
+                    }
                     case Feature re -> multiTextStack.push(re.getDescription());
                     case LiftFieldAndTraitDefinition fd -> multiTextStack.push(fd.getDescription());
                     default -> throw new IllegalStateException();
@@ -446,7 +516,10 @@ public final class LiftSaxHandler extends DefaultHandler {
             case LiftVocabulary.HEADER_RANGE_ABBREV_LOCAL_NAME:
                 // header only in range and range-element
                 switch (top()) {
-                    case FeatureSet r -> multiTextStack.push(r.getAbbrev());
+                    case FeatureSet r -> {
+                        decoder.rangeText(r, r.getAbbrev());
+                        multiTextStack.push(r.getAbbrev());
+                    }
                     case Feature re -> multiTextStack.push(re.getAbbrev());
                     default -> throw new IllegalStateException();
                 }
@@ -454,7 +527,10 @@ public final class LiftSaxHandler extends DefaultHandler {
             case LiftVocabulary.LABEL_LOCAL_NAME:
                 // label is on range-element, range, field-definition, and "URLRef-content" i.e. illustration, media
                 switch (top()) {
-                    case FeatureSet r -> multiTextStack.push(r.getLabel());
+                    case FeatureSet r -> {
+                        decoder.rangeText(r, r.getLabel());
+                        multiTextStack.push(r.getLabel());
+                    }
                     case Feature re -> multiTextStack.push(re.getLabel());
                     case LiftFieldAndTraitDefinition fd -> multiTextStack.push(fd.getLabel());
                     case LiftIllustration i -> multiTextStack.push(i.getLabel());
@@ -588,7 +664,6 @@ public final class LiftSaxHandler extends DefaultHandler {
             case LiftVocabulary.ANNOTATION_LOCAL_NAME:
             case LiftVocabulary.NOTE_LOCAL_NAME:
             case LiftVocabulary.PRONUNCIATION_LOCAL_NAME:
-            case LiftVocabulary.HEADER_RANGE_LOCAL_NAME:
             case LiftVocabulary.HEADER_RANGE_ELEMENT_LOCAL_NAME:
             case LiftVocabulary.TRAIT_LOCAL_NAME:
             case LiftVocabulary.GRAM_INFO_LOCAL_NAME:
@@ -598,6 +673,9 @@ public final class LiftSaxHandler extends DefaultHandler {
             case LiftVocabulary.REVERSAL_LOCAL_NAME:
             case LiftVocabulary.MAIN_LOCAL_NAME:
                 decoder.close(frames.pop());
+                break;
+            case LiftVocabulary.HEADER_RANGE_LOCAL_NAME:
+                decoder.closeRange(frames.pop());
                 break;
             case LiftVocabulary.HEADER_LOCAL_NAME:
                 decoder.endHeader();

@@ -25,6 +25,19 @@ final class TrackedProperty<T> extends ReadOnlyObjectWrapper<T> {
         this.last = initialValue;
     }
 
+    /**
+     * Refused for a value of a feature set defined in an external file (see
+     * {@link ExternalDefinitionGuard}); the {@code href} itself is how such a set is made
+     * internal, and is not guarded.
+     */
+    @Override
+    public void set(T newValue) {
+        if (key != ModelProperty.HREF) {
+            ExternalDefinitionGuard.requireWritable(getBean());
+        }
+        super.set(newValue);
+    }
+
     @Override
     protected void invalidated() {
         // get() also revalidates the property, so that the next set() is seen too.

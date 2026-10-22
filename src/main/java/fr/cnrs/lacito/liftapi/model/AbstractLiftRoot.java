@@ -395,6 +395,7 @@ public abstract sealed class AbstractLiftRoot implements LiftObject
             // A root (an entry, the header), or a node already detached.
             return;
         }
+        ExternalDefinitionGuard.requireWritable(this);
         Object holder = holder();
         LiftDictionary observer = Changes.observing(this);
         OptionalInt position = observer == null ? OptionalInt.empty() : positionInParent();

@@ -18,6 +18,13 @@ final class TrackedStringProperty extends ReadOnlyStringWrapper {
         this.last = initialValue;
     }
 
+    /** Refused for a value of a feature set defined in an external file (see {@link ExternalDefinitionGuard}). */
+    @Override
+    public void set(String newValue) {
+        ExternalDefinitionGuard.requireWritable(getBean());
+        super.set(newValue);
+    }
+
     @Override
     protected void invalidated() {
         String now = get();

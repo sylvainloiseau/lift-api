@@ -84,6 +84,19 @@
  * or renaming a range, rebinds the traits and fields of that name, so that the model is
  * what a save and a reload give. See {@link LiftHeader}.
  *
+ * <h2>Ranges defined in an external file</h2>
+ *
+ * A header {@code <range href="...">} takes its content from a {@code .lift-ranges} file,
+ * which the reader reads and the writer never writes: such a feature set
+ * ({@link FeatureSet#isExternallyDefined()}) is read-only - its id, texts, features, their
+ * hierarchy and texts, and the traits, fields and annotations they hold - until
+ * {@link LiftHeader#makeFeatureSetInternal(FeatureSet)}. Every mutator of what a feature
+ * set holds checks it; so do the tracked properties, bindings included. The
+ * {@code <range>} of the {@code .lift} file may override the external file; what it
+ * declares is flagged ({@link FeatureSet#isDeclaredInline(Feature)}) and written back. A
+ * value the external range does not declare is a bare feature, created by the reader and
+ * the builders and never written.
+ *
  * <h2>Naming</h2>
  *
  * <ul>

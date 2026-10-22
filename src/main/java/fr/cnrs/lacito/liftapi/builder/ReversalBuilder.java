@@ -58,10 +58,9 @@ public class ReversalBuilder extends AbstractLiftElementBuilder<LiftReversal, Ha
             throw new IllegalArgumentException("Reversal type cannot be null");
         }
         // Create the type on demand.
-        Feature f = dictionary
+        Feature f = typeFeature(dictionary
             .getHeader()
-            .getInverseTypeManager()
-            .getOrCreateFeature(type);
+            .getInverseTypeManager(), type);
         super.withType(f);
         return this;
     }

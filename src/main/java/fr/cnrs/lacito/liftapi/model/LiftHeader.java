@@ -55,6 +55,13 @@ import javafx.collections.transformation.FilteredList;
  * <li>removing a definition or a feature set that a name resolves to is refused while
  *     traits or fields of that name exist; so is a kind that would exclude them.</li>
  * </ul>
+ *
+ * <h2>Feature sets defined in an external file</h2>
+ *
+ * A {@code <range href="...">} takes its content from a {@code .lift-ranges} file: the set
+ * is read-only (see {@link FeatureSet}) until {@link #makeFeatureSetInternal(FeatureSet)}.
+ * Rebinding is not refused in such a set: it changes what the names of traits refer to,
+ * not what the file says.
  */
 public final class LiftHeader extends AbstractLiftRoot {
 
@@ -293,11 +300,10 @@ public final class LiftHeader extends AbstractLiftRoot {
      *
      * Refused for a built-in feature set: its id is the LIFT range name that a reader
      * maps to the types of notes, relations... or to the parts of speech, and under
-     * another name it would no longer be one. Refused too for a set whose content lives
-     * in an external ranges file ({@code href}) that was not loaded: that file is not
-     * rewritten on save, and would go on naming the set by its old id. A ranges file
-     * that was loaded is rewritten with the new id; if other projects share it, they see
-     * the rename too.
+     * another name it would no longer be one. Refused too for a set defined in an
+     * external ranges file ({@link FeatureSet#isExternallyDefined()}): that file is never
+     * written, and names the set by its id; make the set internal first
+     * ({@link #makeFeatureSetInternal(FeatureSet)}).
      *
      * Reported as a change of {@code ModelProperty.FEATURE_SET_ID}.
      *
@@ -305,9 +311,9 @@ public final class LiftHeader extends AbstractLiftRoot {
      * @param newId its new id
      * @throws IllegalArgumentException if {@code fs} is not in this header, is built in,
      *         or if {@code newId} is blank or already the id of a feature set
-     * @throws IllegalStateException if {@code fs} has an external ranges file that was
-     *         not loaded, or if traits are named after it and a definition named
-     *         {@code newId} fits traits
+     * @throws IllegalStateException if {@code fs} is defined in an external ranges file,
+     *         or if traits are named after it and a definition named {@code newId} fits
+     *         traits
      */
     public void renameFeatureSet(FeatureSet fs, String newId) {
         if (fs == null || featureSetsMap.get(fs.getId()) != fs)
@@ -318,11 +324,7 @@ public final class LiftHeader extends AbstractLiftRoot {
             throw new IllegalArgumentException("The id of a feature set cannot be blank.");
         if (featureSetsMap.containsKey(newId))
             throw new IllegalArgumentException("Duplicate feature set: " + newId);
-        if (fs.getHref().isPresent() && !fs.isExternalContentLoaded()) {
-            throw new IllegalStateException(
-                "The feature set " + fs.getId() + " is defined in an external ranges file that was "
-                    + "not loaded, and cannot be renamed.");
-        }
+        ExternalDefinitionGuard.requireWritable(fs);
         LiftFieldAndTraitDefinition definitionOfTheNewId = fieldsAndTraitsDefinition.get(newId);
         if (definitionOfTheNewId != null && definitionOfTheNewId.fitsTraits()
             && traitsNamingTheRange(fs, null).findAny().isPresent()) {
@@ -336,6 +338,28 @@ public final class LiftHeader extends AbstractLiftRoot {
         // Last, so that the change is reported once the set is under its new key.
         fs.setId(newId);
         rebinding.apply();
+    }
+
+    /**
+     * Makes a feature set defined in an external ranges file internal: its {@code href}
+     * is removed, it becomes writable, and the writer writes it in full in the header
+     * instead of the reference. It keeps its content, as read from the file (with what the
+     * {@code .lift} file declared inline). It no longer follows the external file: if other
+     * dictionaries share that file, their changes are not seen any more.
+     *
+     * Reported as a change of {@code ModelProperty.HREF}; reverting it makes the set
+     * external, and read-only, again.
+     *
+     * @param fs an externally defined feature set of this header
+     * @throws IllegalArgumentException if {@code fs} is not in this header, or is not
+     *         externally defined
+     */
+    public void makeFeatureSetInternal(FeatureSet fs) {
+        if (fs == null || featureSetsMap.get(fs.getId()) != fs)
+            throw new IllegalArgumentException("This feature set is not in this header.");
+        if (!fs.isExternallyDefined())
+            throw new IllegalArgumentException("The feature set " + fs.getId() + " is not defined in an external file.");
+        fs.setHref(null);
     }
 
     /**
@@ -953,14 +977,16 @@ public final class LiftHeader extends AbstractLiftRoot {
         if (traitsToReplace.isEmpty() && fieldsToRebind.isEmpty()) {
             return Rebinding.NONE;
         }
-        return () -> {
+        // Not refused in a feature set defined in an external file: the XML of the traits
+        // and fields does not change, only what their name refers to.
+        return () -> ExternalDefinitionGuard.withoutGuard(() -> {
             for (LiftTrait trait : traitsToReplace) {
                 replaceTrait(trait, traitTarget);
             }
             for (LiftField field : fieldsToRebind) {
                 field.respecify(fieldTarget);
             }
-        };
+        });
     }
 
     /**

@@ -40,11 +40,10 @@ public class FeatureSetBuilderTest {
             "myfeature"
         ).withAbbreviation("en", "myabbreviation")
         .withDescription("en", "my description")
-        .withHref("http://www.foo.fr")
         .withLabel("en", "my label")
         .build();
         assertEquals("myfeature", fs.getId());
-        assertEquals("http://www.foo.fr", fs.getHref().get());
+        assertEquals(java.util.Optional.empty(), fs.getHref());
         assertEquals("my description", fs.getDescription().getForm("en").get().toPlainText());
         assertEquals(0, fs.getFeatures().keySet().size());
     }

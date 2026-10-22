@@ -72,6 +72,8 @@ final class ModelSnapshot {
     private void featureSet(String p, FeatureSet fs) {
         emit(p + ".guid", fs.getGuid().orElse(""));
         emit(p + ".href", fs.getHref().orElse(""));
+        emit(p + ".inline", fs.isDeclaredInline(fs.getLabel()) + " " + fs.isDeclaredInline(fs.getDescription())
+            + " " + fs.isDeclaredInline(fs.getAbbrev()));
         multiText(p + ".label", fs.getLabel());
         multiText(p + ".abbrev", fs.getAbbrev());
         multiText(p + ".description", fs.getDescription());
@@ -80,6 +82,7 @@ final class ModelSnapshot {
             String q = p + ".feature[" + f.getId() + "]";
             emit(q + ".guid", f.getGuid().orElse(""));
             emit(q + ".parent", f.getSuperOrdinateFeature().map(Feature::getId).orElse(""));
+            emit(q + ".inline", String.valueOf(f.isDeclaredInline()));
             multiText(q + ".label", f.getLabel());
             multiText(q + ".abbrev", f.getAbbrev());
             multiText(q + ".description", f.getDescription());

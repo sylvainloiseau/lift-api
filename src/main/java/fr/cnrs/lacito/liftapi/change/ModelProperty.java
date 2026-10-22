@@ -122,7 +122,7 @@ public final class ModelProperty<T> {
             switch (o) {
                 case LiftMedia m -> m.setHref(v);
                 case LiftIllustration i -> i.setHref(v);
-                case FeatureSet s -> s.setHref(v);
+                case FeatureSet s -> ModelInternals.get().setHref(s, v);
                 default -> throw unsupported("href", o);
             }
         });

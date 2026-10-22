@@ -1,10 +1,13 @@
 package fr.cnrs.lacito.liftapi.internal;
 
+import java.nio.file.Path;
 import java.util.UUID;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDictionaryLanguagesManager;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
+import fr.cnrs.lacito.liftapi.model.Feature;
+import fr.cnrs.lacito.liftapi.model.FeatureSet;
 import fr.cnrs.lacito.liftapi.model.FieldSpecification;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftField;
@@ -69,6 +72,40 @@ public final class ModelInternals {
          * the header's components hold to what its name resolves to.
          */
         void resumeRebinding(LiftHeader header);
+
+        /**
+         * Runs {@code operation} without refusing the changes of feature sets defined in
+         * an external ranges file: for the reader, which fills them, and for the changes
+         * that are reverted or reapplied, which put back a state that was valid.
+         */
+        void withoutExternalDefinitionGuard(Runnable operation);
+
+        /**
+         * Sets the {@code href} of a feature set: by the reader, once the set holds the
+         * content of its external file, and by the revert of
+         * {@code LiftHeader.makeFeatureSetInternal}.
+         */
+        void setHref(FeatureSet set, String href);
+
+        /**
+         * Records the ranges file the {@code href} of a feature set was resolved to on load
+         * ({@code null} if none was found), and whether the range was missing from it.
+         */
+        void setExternalDefinition(FeatureSet set, Path file, boolean missing);
+
+        /**
+         * Records that the {@code .lift} file declared {@code part} inline in the
+         * {@code <range>} of an externally defined set: a feature, a text of the set, or a
+         * trait, field or annotation of the set.
+         */
+        void markDeclaredInline(FeatureSet set, Object part);
+
+        /**
+         * The feature of that id, or a new bare one - even in a set defined in an external
+         * file: a component uses a value its range does not declare. For the reader and the
+         * builders.
+         */
+        Feature getOrCreateUndeclaredFeature(FeatureSet set, String id);
     }
 
     private static volatile Access access;

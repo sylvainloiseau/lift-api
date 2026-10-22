@@ -10,7 +10,7 @@ is a JavaFX editor that binds directly to this model.
 - Java 25 (`maven.compiler.release=25`), JPMS module `fr.cnrs.lacito.liftapi`.
 - From this directory: `mvn test`; one test: `mvn test -Dtest=MultiTextTest#testTextAndSeveralSpan`.
   From the repo root: `mvn test -pl lift-api`; `mvn install` installs both modules.
-- ~225 JUnit 6 tests, all fast (~20 s, most of it `ChangeRoundTripTest`). They are headless —
+- ~240 JUnit 6 tests, all fast (~20 s, most of it `ChangeRoundTripTest`). They are headless —
   no JavaFX toolkit is started.
 - `LoadingCostTest` (tag `perf`) measures the time and heap of loading the corpus; it is
   excluded by default: `mvn test -Dgroups=perf -DexcludedTestGroups=none -Dtest=LoadingCostTest`.
@@ -40,8 +40,8 @@ non-export in `module-info.java` is what keeps them private. Keep it that way.
 Resources: LIFT schemas in `src/main/resources/fr/cnrs/lacito/liftapi/schema/`.
 Test corpora in `src/test/resources/lift/` — `DictionaryLift20261022.lift` is a real ~2600-entry
 FLEx export (LIFT 0.13), used by the census and round-trip tests; all its ranges are
-`href` references to the companion `DictionaryLift20261022.lift-ranges`, which the
-reader does not load yet.
+`href` references to the companion `DictionaryLift20261022.lift-ranges` (read-only once
+loaded: a test that edits one makes it internal first).
 
 ## Core design (read before changing mutation code)
 
@@ -100,6 +100,21 @@ Summary:
   (`FIELD_SPECIFICATION`). Rebinding is all-or-nothing, and is suspended while the reader
   reads the header (rebound at `endHeader`) and while changes are reverted/reapplied
   (`ModelInternals.withoutRebinding`): the cascade is put back by its own events.
+- **Ranges defined in an external file** (`<range id href>`): the reader reads the
+  `.lift-ranges` file once per load (`xml/ExternalRangesFiles`: href = path or `file:` URI,
+  falling back on the file of that name next to the `.lift`; `LiftRangesFileReader`
+  records it) and *replays* the range into the header's `<range>`, so the one decoder reads
+  both. The `<range>`'s own children override the file and are flagged as declared inline.
+  The `href` is set when the `<range>` closes: from then on the set is **read-only**
+  (`model/ExternalDefinitionGuard`, called by every mutator of what a set holds and by the
+  `Tracked*Property.set`), until `LiftHeader.makeFeatureSetInternal`. The guard is
+  suspended (per thread) for the reader, rebinding, change revert/reapply, and the bare
+  features the builders/reader create for values a range does not declare
+  (`ModelInternals.getOrCreateUndeclaredFeature`; the public `getOrCreateFeature` refuses).
+  The writer writes the reference plus the inline content, never the ranges file; saved
+  elsewhere, the `href` is rewritten to name the same file. A missing range/file gives an
+  empty external range with a warning (an error in strict mode); a range element declared
+  twice keeps its first declaration.
 - `MultiText` has an optional language manager: once registered, adding a `Form` in a
   language the dictionary doesn't declare throws. Registration of a pre-filled MultiText
   (parse, moved subtree) declares its languages instead. Each MultiText is either

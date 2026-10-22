@@ -1,5 +1,6 @@
 package fr.cnrs.lacito.liftapi.change;
 
+import fr.cnrs.lacito.liftapi.internal.ModelInternals;
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.model.Feature;
 import fr.cnrs.lacito.liftapi.model.FeatureSet;
@@ -19,11 +20,15 @@ public record FeatureRemoved(LiftDictionary dictionary, FeatureSet featureSet, F
 
     @Override
     public void revert() {
-        featureSet.addFeature(feature);
+        ModelInternals.get().withoutExternalDefinitionGuard(() -> {
+            featureSet.addFeature(feature);
+        });
     }
 
     @Override
     public void reapply() {
-        featureSet.removeFeature(feature.getId());
+        ModelInternals.get().withoutExternalDefinitionGuard(() -> {
+            featureSet.removeFeature(feature.getId());
+        });
     }
 }

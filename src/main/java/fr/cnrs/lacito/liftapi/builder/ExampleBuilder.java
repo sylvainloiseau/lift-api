@@ -97,7 +97,7 @@ public final class ExampleBuilder extends AbstractLiftElementWithFieldAndNoteBui
         if (type == null || translation == null) {
             throw new IllegalArgumentException("Type and translation cannot be null");
         }
-        Feature f = dictionary.getHeader().getTranslationTypeManager().getOrCreateFeature(type);
+        Feature f = typeFeature(dictionary.getHeader().getTranslationTypeManager(), type);
         requireNoBuiltTranslation(f);
         pendingTranslations.computeIfAbsent(f, k -> new ArrayList<>()).add(translation);
         return this;

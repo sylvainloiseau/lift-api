@@ -1,5 +1,6 @@
 package fr.cnrs.lacito.liftapi.change;
 
+import fr.cnrs.lacito.liftapi.internal.ModelInternals;
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 
 /// A value replaced: a text, a date, a type, an id, a trait value...
@@ -25,11 +26,15 @@ public record ValueChanged<T>(
 
     @Override
     public void revert() {
-        property.apply(owner, oldValue);
+        ModelInternals.get().withoutExternalDefinitionGuard(() -> {
+            property.apply(owner, oldValue);
+        });
     }
 
     @Override
     public void reapply() {
-        property.apply(owner, newValue);
+        ModelInternals.get().withoutExternalDefinitionGuard(() -> {
+            property.apply(owner, newValue);
+        });
     }
 }

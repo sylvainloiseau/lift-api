@@ -40,7 +40,7 @@ public class RelationBuilder extends AbstractLiftElementWithFieldBuilder<LiftRel
         if (type == null) {
             throw new IllegalArgumentException("Relation type cannot be null");
         }
-        this.element.setType(dictionary.getHeader().getRelationTypeManager().getOrCreateFeature(type));
+        this.element.setType(typeFeature(dictionary.getHeader().getRelationTypeManager(), type));
     }
 
     /**
@@ -61,10 +61,9 @@ public class RelationBuilder extends AbstractLiftElementWithFieldBuilder<LiftRel
             throw new IllegalArgumentException("Relation type cannot be null or blank");
         }
         // Create the type on demand, as this builder's own constructor already does.
-        Feature e = dictionary
+        Feature e = typeFeature(dictionary
             .getHeader()
-            .getRelationTypeManager()
-            .getOrCreateFeature(type);
+            .getRelationTypeManager(), type);
 
         super.withType(e);
         return this;

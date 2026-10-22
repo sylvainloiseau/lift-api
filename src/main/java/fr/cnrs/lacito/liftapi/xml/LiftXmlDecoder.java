@@ -11,7 +11,6 @@ import fr.cnrs.lacito.liftapi.builder.EntryBuilder;
 import fr.cnrs.lacito.liftapi.builder.EtymologyBuilder;
 import fr.cnrs.lacito.liftapi.builder.ExampleBuilder;
 import fr.cnrs.lacito.liftapi.builder.FeatureBuilder;
-import fr.cnrs.lacito.liftapi.builder.FeatureSetBuilder;
 import fr.cnrs.lacito.liftapi.builder.FieldBuilder;
 import fr.cnrs.lacito.liftapi.builder.FieldDefinitionBuilder;
 import fr.cnrs.lacito.liftapi.builder.NoteBuilder;
@@ -42,9 +41,12 @@ import fr.cnrs.lacito.liftapi.model.LiftReversal;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.MultiText;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -89,6 +91,20 @@ import org.xml.sax.Locator;
  * A frame may also hold a component that already exists and is only being filled: the
  * header, a built-in feature set (the types of notes, of relations...) that the file
  * declares again, a range element declared twice. Those have no builder.
+ *
+ * <h2>Ranges defined in an external file</h2>
+ *
+ * A {@code <range href="...">} takes its content from a {@code .lift-ranges} file
+ * ({@link ExternalRangesFiles}): {@link LiftSaxHandler} replays the recorded range into the
+ * open {@code <range>} as if it were written there ({@link #setReplaying(boolean)}), then
+ * reads the {@code <range>}'s own children, which override it: an inline range element
+ * replaces the file's one of the same id, an inline label, description or abbreviation of
+ * the range replaces the file's, inline traits, fields and annotations of the range are
+ * added. What was declared inline is flagged on the set, for the writer. The {@code href}
+ * is set when the {@code <range>} closes, once the set is filled, and makes it read-only.
+ *
+ * A range the file lacks, or a file that is not found, gives an empty range with a
+ * warning (FLEx leaves empty ranges out of its ranges file), or an error in strict mode.
  */
 final class LiftXmlDecoder {
 
@@ -126,6 +142,35 @@ final class LiftXmlDecoder {
     /** Where the parser is, for the warnings; {@code null} if the parser gives none. */
     private Locator locator;
 
+    /** Whether a missing external range is an error rather than a warning. */
+    private final boolean strict;
+
+    /** The ranges files the header refers to, read once each, until the end of the header. */
+    private final ExternalRangesFiles externalRanges;
+
+    /** The ids of the ranges the file declared, and those declared with an {@code href}. */
+    private final Set<String> rangesDeclared = new HashSet<>();
+    private final Set<String> rangesDeclaredWithHref = new HashSet<>();
+
+    /** The open {@code <range>}: its set, and its {@code href} and file if it has one. */
+    private FeatureSet openRange;
+    private String openRangeHref;
+    private Path openRangeFile;
+    private boolean openRangeMissing;
+
+    /** The recorded range the handler is to replay into the open {@code <range>}, or {@code null}. */
+    private RecordedElement rangeToReplay;
+
+    /** Whether the handler is replaying a recorded range (not reading the {@code .lift} file). */
+    private boolean replaying;
+
+    /**
+     * The range elements declared so far, as opposed to the bare features a value created
+     * before its range element was read (a trait of a range element naming a feature of a
+     * range declared further down).
+     */
+    private final Set<Feature> rangeElementsDeclared = Collections.newSetFromMap(new IdentityHashMap<>());
+
     /**
      * The names of traits and fields already warned about: their definition is for the
      * other kind of component, so they do not take it (one warning per name, not per
@@ -133,10 +178,45 @@ final class LiftXmlDecoder {
      */
     private final Set<String> namesWarnedAboutTheirDefinitionKind = new HashSet<>();
 
-    LiftXmlDecoder(LiftDictionary dictionary) {
+    /**
+     * @param baseDirectory the directory of the {@code .lift} file, against which the
+     *        {@code href} of ranges are resolved
+     * @param strict whether a missing external range is an error rather than a warning
+     */
+    LiftXmlDecoder(LiftDictionary dictionary, Path baseDirectory, boolean strict) {
         this.dictionary = dictionary;
         this.header = dictionary.getHeader();
         this.factory = dictionary.getComponentBuilder();
+        this.externalRanges = new ExternalRangesFiles(baseDirectory);
+        this.strict = strict;
+    }
+
+    /** Whether the handler is replaying a recorded range of an external file. */
+    void setReplaying(boolean replaying) {
+        this.replaying = replaying;
+    }
+
+    /**
+     * The recorded range of an external file the handler is to replay into the
+     * {@code <range>} just opened, or {@code null}; cleared by the call.
+     */
+    RecordedElement takeRangeToReplay() {
+        RecordedElement range = rangeToReplay;
+        rangeToReplay = null;
+        return range;
+    }
+
+    /** The file of the open {@code <range href>}, for the messages of errors raised while it is replayed. */
+    Path openRangeFile() {
+        return openRangeFile;
+    }
+
+    /**
+     * Whether the element being read is a child of a {@code <range href>} in the
+     * {@code .lift} file itself: an override of the external file, declared inline.
+     */
+    private boolean readingInlineOverride() {
+        return openRangeHref != null && !replaying;
     }
 
     void setLocator(Locator locator) {
@@ -302,7 +382,7 @@ final class LiftXmlDecoder {
         if (created != null) b.dateCreated(created);
         String modified = attribute(attributes, LiftVocabulary.DATE_MODIFIED_ATTRIBUTE);
         if (modified != null) b.dateModified(modified);
-        return rest(Frame.of(b), attributes,
+        return rest(inlineIfOnTheOpenRange(parent, Frame.of(b)), attributes,
             LiftVocabulary.NAME_ATTRIBUTE, LiftVocabulary.TYPE_ATTRIBUTE,
             LiftVocabulary.DATE_CREATED_ATTRIBUTE, LiftVocabulary.DATE_MODIFIED_ATTRIBUTE);
     }
@@ -313,11 +393,23 @@ final class LiftXmlDecoder {
         }
         String name = attribute(attributes, LiftVocabulary.NAME_ATTRIBUTE);
         warnIfTheDefinitionIsForTheOtherKind(name, true);
-        return rest(Frame.of(factory.trait(
+        return rest(inlineIfOnTheOpenRange(parent, Frame.of(factory.trait(
             ht,
             name,
             attribute(attributes, LiftVocabulary.VALUE_ATTRIBUTE)
-        )), attributes, LiftVocabulary.NAME_ATTRIBUTE, LiftVocabulary.VALUE_ATTRIBUTE);
+        ))), attributes, LiftVocabulary.NAME_ATTRIBUTE, LiftVocabulary.VALUE_ATTRIBUTE);
+    }
+
+    /**
+     * A trait, field or annotation of the open {@code <range href>} itself, read from the
+     * {@code .lift} file: it is added to the external range, and flagged as declared
+     * inline so that it is written back.
+     */
+    private Frame inlineIfOnTheOpenRange(Object parent, Frame frame) {
+        if (parent == openRange && readingInlineOverride()) {
+            MODEL.markDeclaredInline(openRange, frame.element());
+        }
+        return frame;
     }
 
     /**
@@ -357,7 +449,7 @@ final class LiftXmlDecoder {
             .withValue(attribute(attributes, LiftVocabulary.VALUE_ATTRIBUTE))
             .withWho(attribute(attributes, LiftVocabulary.WHO_ATTRIBUTE))
             .withWhen(attribute(attributes, LiftVocabulary.WHEN_ATTRIBUTE));
-        return rest(Frame.of(b), attributes,
+        return rest(inlineIfOnTheOpenRange(parent, Frame.of(b)), attributes,
             LiftVocabulary.NAME_ATTRIBUTE, LiftVocabulary.VALUE_ATTRIBUTE,
             LiftVocabulary.WHO_ATTRIBUTE, LiftVocabulary.WHEN_ATTRIBUTE);
     }
@@ -530,37 +622,114 @@ final class LiftXmlDecoder {
      * A {@code <range>}: a new feature set, or one the header already has - a built-in
      * one (the types of notes, relations...) that the file declares, which is filled in
      * place.
+     *
+     * With an {@code href}, the range of that id in the external file is looked up, and
+     * left for the handler to replay ({@link #takeRangeToReplay()}); its attributes (guid,
+     * dates) are applied to the set, then those of the {@code .lift} file's element. The
+     * {@code href} itself is set by {@link #closeRange(Frame)}.
+     *
+     * A range declared twice is merged into the first declaration, unless one of them has
+     * an {@code href}: which one would win is unclear, so that is an error.
      */
     Frame range(Attributes attributes) {
         String id = attribute(attributes, LiftVocabulary.ID_ATTRIBUTE);
         if (id == null) throw new IllegalArgumentException("Range ID cannot be null");
-        String created = attribute(attributes, LiftVocabulary.DATE_CREATED_ATTRIBUTE);
-        String modified = attribute(attributes, LiftVocabulary.DATE_MODIFIED_ATTRIBUTE);
+        String href = attribute(attributes, LiftVocabulary.HREF_ATTRIBUTE);
+        if (rangesDeclared.contains(id) && (href != null || rangesDeclaredWithHref.contains(id))) {
+            throw new IllegalArgumentException(
+                "The range " + id + " is declared twice, and one of the declarations refers to an external file.");
+        }
+        rangesDeclared.add(id);
+        if (href != null) {
+            rangesDeclaredWithHref.add(id);
+        }
         Frame frame;
         if (header.hasFeatureSet(id)) {
-            // Filled in place: it has no builder. Its href and guid are ignored, as before.
-            FeatureSet existing = header.getFeatureSet(id);
-            if (created != null) existing.setDateCreated(created);
-            if (modified != null) existing.setDateModified(modified);
-            frame = Frame.existing(existing);
+            // Filled in place: it has no builder.
+            frame = Frame.existing(header.getFeatureSet(id));
         } else {
-            FeatureSetBuilder b = factory.range(id);
-            String href = attribute(attributes, LiftVocabulary.HREF_ATTRIBUTE);
-            if (href != null) b.withHref(href);
-            String guid = attribute(attributes, LiftVocabulary.GUID_ATTRIBUTE);
-            if (guid != null) b.withGuid(guid);
-            if (created != null) b.dateCreated(created);
-            if (modified != null) b.dateModified(modified);
-            frame = Frame.of(b);
+            frame = Frame.of(factory.range(id));
         }
-        return rest(frame, attributes,
-            LiftVocabulary.ID_ATTRIBUTE, LiftVocabulary.HREF_ATTRIBUTE, LiftVocabulary.GUID_ATTRIBUTE,
-            LiftVocabulary.DATE_CREATED_ATTRIBUTE, LiftVocabulary.DATE_MODIFIED_ATTRIBUTE);
+        FeatureSet set = (FeatureSet) frame.element();
+        openRange = set;
+        if (href != null) {
+            ExternalRangesFiles.Lookup lookup = externalRanges.find(href, id);
+            openRangeHref = href;
+            openRangeFile = lookup.file();
+            openRangeMissing = lookup.range() == null;
+            if (lookup.range() == null) {
+                if (strict) {
+                    throw new IllegalArgumentException("The range " + id + " cannot be read: " + lookup.problem() + ".");
+                }
+                LOGGER.warning(() -> "The range " + id + " is empty: " + lookup.problem()
+                    + (locator == null ? "" : " (line " + locator.getLineNumber() + ")") + ".");
+            } else {
+                rangeToReplay = lookup.range();
+                applyRangeAttributes(set, lookup.range().attributes());
+            }
+        }
+        applyRangeAttributes(set, attributes);
+        return frame;
+    }
+
+    /** The attributes of a {@code <range>} other than its id and href. */
+    private void applyRangeAttributes(FeatureSet set, Attributes attributes) {
+        for (int i = 0; i < attributes.getLength(); i++) {
+            String name = attributes.getLocalName(i);
+            String value = attributes.getValue(i);
+            switch (name) {
+                case LiftVocabulary.ID_ATTRIBUTE, LiftVocabulary.HREF_ATTRIBUTE -> { }
+                case LiftVocabulary.GUID_ATTRIBUTE -> set.setGuid(value);
+                case LiftVocabulary.DATE_CREATED_ATTRIBUTE -> set.setDateCreated(value);
+                case LiftVocabulary.DATE_MODIFIED_ATTRIBUTE -> set.setDateModified(value);
+                default -> other(set, name, value);
+            }
+        }
+    }
+
+    /**
+     * The end of a {@code <range>}: the set is built (added to the header) if it is new,
+     * and, if it refers to an external file, gets its {@code href} - which makes it
+     * read-only - now that it holds the file's content and the inline overrides.
+     */
+    void closeRange(Frame frame) {
+        close(frame);
+        if (openRangeHref != null) {
+            MODEL.setHref(openRange, openRangeHref);
+            MODEL.setExternalDefinition(openRange, openRangeFile, openRangeMissing);
+        }
+        openRange = null;
+        openRangeHref = null;
+        openRangeFile = null;
+        openRangeMissing = false;
+    }
+
+    /**
+     * A {@code <label>}, {@code <description>} or {@code <abbrev>} of the open
+     * {@code <range href>} itself, read from the {@code .lift} file: it replaces the
+     * external file's, and is flagged as declared inline.
+     */
+    void rangeText(FeatureSet set, MultiText text) {
+        if (set != openRange || !readingInlineOverride()) {
+            return;
+        }
+        for (Form form : List.copyOf(text.getForms())) {
+            text.removeForm(form.getLang());
+        }
+        MODEL.markDeclaredInline(set, text);
     }
 
     /**
      * A {@code <range-element>} of the open feature set. Its {@code parent} may be
      * declared further down the header, so it is resolved by {@link #endHeader()}.
+     *
+     * A range element declared twice in a range keeps its first declaration; the others
+     * are skipped, with a warning (FLEx cuts ids at the first space, so that
+     * {@code "non -dual"} and {@code "non -plural"} are both {@code non}). In the
+     * {@code <range href>} of the {@code .lift} file, an element overrides the external
+     * file's element of that id instead.
+     *
+     * @return the frame, or {@code null} if the element is to be skipped
      */
     Frame rangeElement(AbstractLiftRoot parent, Attributes attributes) {
         FeatureSet set = (FeatureSet) parent;
@@ -570,10 +739,26 @@ final class LiftXmlDecoder {
         String created = attribute(attributes, LiftVocabulary.DATE_CREATED_ATTRIBUTE);
         String modified = attribute(attributes, LiftVocabulary.DATE_MODIFIED_ATTRIBUTE);
 
+        boolean declaredAlready = set.hasFeature(id) && rangeElementsDeclared.contains(set.getFeature(id));
+        if (declaredAlready && !(readingInlineOverride() && !set.getFeature(id).isDeclaredInline())) {
+            LOGGER.warning(() -> "The range element " + id + " of the range " + set.getId()
+                + " is declared twice; the second declaration is ignored"
+                + (locator == null ? "" : " (line " + locator.getLineNumber() + ")") + ".");
+            return null;
+        }
+        if (declaredAlready) {
+            // An inline element overrides the external file's element of that id, as a
+            // whole: the file's one goes. Nothing uses it yet, but a child may have named
+            // it as its parent: that is resolved by id at the end of the header.
+            Feature overridden = set.removeFeature(id);
+            Map<String, List<Feature>> children = childFeaturesByParent.get(set.getId());
+            if (children != null) {
+                children.values().forEach(list -> list.remove(overridden));
+            }
+        }
         Frame frame;
         if (set.hasFeature(id)) {
-            // Declared twice: the declarations are merged into the first one.
-            // TODO duplicate range-element ids should be detected and reported as an error
+            // A bare feature a value created before its declaration: filled in place.
             Feature existing = set.getFeature(id);
             if (guid != null) existing.setGuid(guid);
             if (created != null) existing.setDateCreated(created);
@@ -587,6 +772,10 @@ final class LiftXmlDecoder {
             frame = Frame.of(b);
         }
 
+        rangeElementsDeclared.add((Feature) frame.element());
+        if (readingInlineOverride()) {
+            MODEL.markDeclaredInline(set, frame.element());
+        }
         String parentId = attribute(attributes, LiftVocabulary.PARENT_ATTRIBUTE);
         if (parentId != null) {
             childFeaturesByParent
@@ -685,6 +874,17 @@ final class LiftXmlDecoder {
      * elements can be resolved.
      */
     void endHeader() {
+        // The feature sets of external files are read-only by now; their hierarchy, the
+        // bare features a parent names, and the rebinding of their traits are part of
+        // reading them.
+        MODEL.withoutExternalDefinitionGuard(this::resolveTheHeader);
+        externalRanges.clear();
+        rangeElementsDeclared.clear();
+        rangesDeclared.clear();
+        rangesDeclaredWithHref.clear();
+    }
+
+    private void resolveTheHeader() {
         for (Map.Entry<String, List<LiftFieldAndTraitDefinition>> e : definitionsByOptionRange.entrySet()) {
             FeatureSet range = header.getFeatureSet(e.getKey());
             for (LiftFieldAndTraitDefinition definition : e.getValue()) {
@@ -696,7 +896,7 @@ final class LiftXmlDecoder {
         for (Map.Entry<String, Map<String, List<Feature>>> set : childFeaturesByParent.entrySet()) {
             FeatureSet range = header.getFeatureSet(set.getKey());
             for (Map.Entry<String, List<Feature>> byParent : set.getValue().entrySet()) {
-                Feature parent = range.getOrCreateFeature(byParent.getKey());
+                Feature parent = MODEL.getOrCreateUndeclaredFeature(range, byParent.getKey());
                 for (Feature child : byParent.getValue()) {
                     child.setSuperordinateFeature(parent);
                 }

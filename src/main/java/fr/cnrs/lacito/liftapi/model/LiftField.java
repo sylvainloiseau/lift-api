@@ -99,6 +99,8 @@ public final class LiftField extends AbstractExtensibleWithoutField {
     }
 
     public void addText(Form form) {
+
+        ExternalDefinitionGuard.requireWritable(this);
         getMainMultiText().add(form);
     }
 

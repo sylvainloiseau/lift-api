@@ -526,19 +526,15 @@ public class RegressionTest {
         FeatureSet usage = header.addFeatureSet("usage");
         header.addFeatureSet("status");
         FeatureSet pos = header.getGrammaticalInfoManager();
-        FeatureSet external = header.addFeatureSet("dialects");
-        external.setHref("dialects.lift-ranges");
         FeatureSet elsewhere = new FeatureSet("elsewhere", header);
 
         assertThrows(IllegalArgumentException.class, () -> header.renameFeatureSet(pos, "pos"));
         assertThrows(IllegalArgumentException.class, () -> header.renameFeatureSet(usage, "status"));
         assertThrows(IllegalArgumentException.class, () -> header.renameFeatureSet(usage, " "));
         assertThrows(IllegalArgumentException.class, () -> header.renameFeatureSet(elsewhere, "x"));
-        assertThrows(IllegalStateException.class, () -> header.renameFeatureSet(external, "regions"));
 
         assertSame(usage, header.getFeatureSet("usage"));
         assertSame(pos, header.getFeatureSet("grammatical-info"));
-        assertSame(external, header.getFeatureSet("dialects"));
     }
 
     @Test
@@ -563,21 +559,61 @@ public class RegressionTest {
             trait.getTypedValue());
     }
 
+    /**
+     * A range defined in an external ranges file used to be renamable once "loaded", and
+     * the save then rewrote the ranges file - which other dictionaries may share. The file
+     * is now never written, and the set cannot be renamed until it is made internal.
+     */
     @Test
-    public void aLoadedExternalRangesFileIsRewrittenWithTheNewId(
+    public void anExternalRangeCannotBeRenamedAndItsFileIsNeverWritten(
         @org.junit.jupiter.api.io.TempDir java.nio.file.Path dir
     ) throws Exception {
-        FeatureSet dialects = dictionary.getHeader().addFeatureSet("dialects");
-        dialects.addFeature("north");
-        dialects.setHref("test.lift-ranges");
-        dialects.setExternalContentLoaded(true);
+        String ranges = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <lift-ranges><range id="dialects"><range-element id="north"/></range></lift-ranges>
+            """;
+        java.nio.file.Files.writeString(dir.resolve("test.lift-ranges"), ranges);
+        LiftDictionary d = load(dir, """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <lift version="0.15" producer="test">
+            <header><ranges><range id="dialects" href="test.lift-ranges"/></ranges></header>
+            </lift>
+            """);
+        FeatureSet dialects = d.getHeader().getFeatureSet("dialects");
 
-        dictionary.getHeader().renameFeatureSet(dialects, "regions");
-        dictionary.save(dir.resolve("test.lift").toFile());
+        assertThrows(IllegalStateException.class, () -> d.getHeader().renameFeatureSet(dialects, "regions"));
+        d.save(dir.resolve("test.lift").toFile());
 
-        String ranges = java.nio.file.Files.readString(dir.resolve("test.lift-ranges"));
-        assertTrue(ranges.contains("\"regions\""), ranges);
-        assertFalse(ranges.contains("\"dialects\""), ranges);
+        assertEquals(ranges, java.nio.file.Files.readString(dir.resolve("test.lift-ranges")));
+        d.getHeader().makeFeatureSetInternal(dialects);
+        d.getHeader().renameFeatureSet(dialects, "regions");
+        assertEquals("regions", dialects.getId());
+    }
+
+    /** The built-in ranges (note types, parts of speech...) lost their href on save. */
+    @Test
+    public void theBuiltInRangesKeepTheirHrefOnSave(
+        @org.junit.jupiter.api.io.TempDir java.nio.file.Path dir
+    ) throws Exception {
+        java.nio.file.Files.writeString(dir.resolve("test.lift-ranges"), """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <lift-ranges><range id="note-type"><range-element id="grammar"/></range></lift-ranges>
+            """);
+        LiftDictionary d = load(dir, """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <lift version="0.15" producer="test">
+            <header><ranges><range id="note-type" href="test.lift-ranges"/></ranges></header>
+            </lift>
+            """);
+        assertSame(d.getHeader().getNoteTypeManager(), d.getHeader().getFeatureSet("note-type"));
+        assertTrue(d.getHeader().getNoteTypeManager().isExternallyDefined());
+        File saved = dir.resolve("saved.lift").toFile();
+        d.save(saved);
+
+        String written = java.nio.file.Files.readString(saved.toPath());
+        assertTrue(written.contains("<range id=\"note-type\" href=\"test.lift-ranges\">"), written);
+        assertFalse(written.contains("grammar"), written);
+        assertTrue(LiftDictionary.loadDictionaryFromFile(saved).getHeader().getNoteTypeManager().hasFeature("grammar"));
     }
 
     @Test

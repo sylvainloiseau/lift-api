@@ -104,12 +104,12 @@ public class LiftDictionaryWriterTest {
     }
 
     /**
-     * {@code DictionaryLift20261022.lift} declares {@code <range href="..."/>} pointing at a
-     * ranges file that is never loaded. Saving must not create or truncate that
-     * file, because the data to put in it was never read.
+     * {@code DictionaryLift20261022.lift} defines its ranges in a {@code .lift-ranges}
+     * file, which other dictionaries may share. Saving writes the references only, and
+     * never writes a ranges file - not even next to a copy saved elsewhere.
      */
     @Test
-    public void saveDoesNotRewriteExternalRangesThatWereNeverRead()
+    public void saveNeverWritesARangesFile()
         throws Exception {
         LiftDictionary lf = Utils.loadDictionaryForTest("lift/DictionaryLift20261022.lift");
         File out = new File(tempDir, "out.lift");
@@ -121,7 +121,7 @@ public class LiftDictionaryWriterTest {
         );
         assertTrue(
             !externalRanges.exists(),
-            "Saving rewrote an external ranges file that was never loaded: " +
+            "Saving wrote a ranges file: " +
                 externalRanges
         );
     }

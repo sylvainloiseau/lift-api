@@ -133,6 +133,8 @@ public final class MultiText
     }
 
     public void removeForm(String lang) {
+
+        ExternalDefinitionGuard.requireWritable(this);
         if (isEmpty()) {
             throw new IllegalArgumentException("This multitext is empty.");
         }
@@ -162,6 +164,8 @@ public final class MultiText
     }
 
     public void add(Form f) {
+
+        ExternalDefinitionGuard.requireWritable(this);
         // Validate everything before touching the language counters: incrementing
         // first left the count permanently inflated when the duplicate check threw.
         if (languageManager != null && !languageManager.hasLanguage(f.lang)) {
@@ -205,6 +209,7 @@ public final class MultiText
      */
     @Override
     public void addAnnotation(int index, LiftAnnotation a) {
+        ExternalDefinitionGuard.requireWritable(this);
         annotations().add(index, a);
         a.setParent(this);
         if (parent != null) {
@@ -218,6 +223,7 @@ public final class MultiText
      */
     @Override
     public void deleteAnnotation(LiftAnnotation a) {
+        ExternalDefinitionGuard.requireWritable(this);
         if (a == null || annotationsOrEmpty().stream().noneMatch(x -> x == a)) {
             throw new IllegalArgumentException(
                 "This annotation is not held by this " + getClass().getSimpleName() + "."
@@ -232,6 +238,7 @@ public final class MultiText
 
     @Override
     public void retypeAnnotation(LiftAnnotation a, Feature type) {
+        ExternalDefinitionGuard.requireWritable(this);
         if (a == null || annotationsOrEmpty().stream().noneMatch(x -> x == a)) {
             throw new IllegalArgumentException(
                 "This annotation is not held by this " + getClass().getSimpleName() + "."

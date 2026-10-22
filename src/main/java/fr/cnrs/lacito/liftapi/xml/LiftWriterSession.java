@@ -8,6 +8,7 @@ import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftEtymology;
 import fr.cnrs.lacito.liftapi.model.LiftExample;
+import fr.cnrs.lacito.liftapi.model.LiftField;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
 import fr.cnrs.lacito.liftapi.model.LiftHeader;
 import fr.cnrs.lacito.liftapi.model.FeatureSet;
@@ -26,16 +27,13 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Logger;
 import javax.xml.stream.FactoryConfigurationError;
 import javax.xml.stream.XMLOutputFactory;
@@ -133,9 +131,6 @@ public class LiftWriterSession implements AutoCloseable {
                 writeHeader(header);
             }
             out.writeCharacters(NEW_LINE);
-            if (header != null && header.getFeatureSets() != null) {
-                writeRangesToExternalFiles(header);
-            }
 
             List<LiftEntry> entries = d.getLiftDictionaryRegistry().getEntries();
             if (entries != null) {
@@ -243,7 +238,7 @@ public class LiftWriterSession implements AutoCloseable {
         if (ranges != null && !ranges.isEmpty()) {
             out.writeStartElement(LiftVocabulary.HEADER_RANGES_LOCAL_NAME);
             for (FeatureSet r : ranges) {
-                writeHeaderRange(out, r, true);
+                writeHeaderRange(out, r);
             }
             out.writeEndElement();
         }
@@ -264,62 +259,95 @@ public class LiftWriterSession implements AutoCloseable {
     }
 
     /**
-     * Write a {@code <range>}.
+     * Write a {@code <range>} of the header.
      *
-     * The same method serves the header and the external {@code .lift-ranges} file;
-     * they used to be two copies that had already drifted apart (the copy for the
-     * ranges file had lost the {@code href} handling).
-     *
-     * @param inHeader {@code true} inside {@code <header><ranges>}, where a range with
-     *        an {@code href} is only a reference and carries no content
+     * A set defined in an external ranges file is written as the reference
+     * ({@code id} and {@code href}), followed by what the {@code .lift} file declared
+     * inline - which overrides the external file - and nothing else: the ranges file is
+     * never written. Its {@code href} is written as read, unless the dictionary is saved in
+     * another directory, from which it no longer names the same file (see
+     * {@link ExternalRangesFiles#hrefForSaving}).
      */
-    private void writeHeaderRange(
-        XMLStreamWriter w,
-        FeatureSet range,
-        boolean inHeader
-    ) throws Exception {
+    private void writeHeaderRange(XMLStreamWriter w, FeatureSet range) throws Exception {
         w.writeStartElement(LiftVocabulary.HEADER_RANGE_LOCAL_NAME);
         w.writeAttribute(LiftVocabulary.ID_ATTRIBUTE, range.getId());
+        if (range.isExternallyDefined()) {
+            w.writeAttribute(
+                LiftVocabulary.HREF_ATTRIBUTE,
+                ExternalRangesFiles.hrefForSaving(
+                    range.getHref().orElseThrow(),
+                    range.getExternalDefinitionFile().orElse(null),
+                    outputFile.getAbsoluteFile().toPath().getParent()
+                )
+            );
+            writeInlineContent(w, range);
+            w.writeEndElement();
+            return;
+        }
         if (range.getGuid().isPresent()) {
             w.writeAttribute(
                 LiftVocabulary.GUID_ATTRIBUTE,
                 range.getGuid().get()
             );
         }
-        boolean external = range.getHref().isPresent();
-        if (inHeader && external) {
-            w.writeAttribute(
-                LiftVocabulary.HREF_ATTRIBUTE,
-                range.getHref().get()
-            );
+        AbstractPropertyWriters.writeAbstractExtensibleWithoutField(w, range);
+        AbstractPropertyWriters.writeAbstractExtensibleWithField(
+            w,
+            range,
+            version
+        );
+        writeMultiTextElement(
+            w,
+            LiftVocabulary.HEADER_DESCRIPTION_LOCAL_NAME,
+            range.getDescription()
+        );
+        writeMultiTextElement(
+            w,
+            LiftVocabulary.LABEL_LOCAL_NAME,
+            range.getLabel()
+        );
+        writeMultiTextElement(
+            w,
+            LiftVocabulary.HEADER_RANGE_ABBREV_LOCAL_NAME,
+            range.getAbbrev()
+        );
+        for (Feature e : AbstractPropertyWriters.sortedBy(range.getFeatures().values(), Feature::getId)) {
+            writeHeaderRangeElement(w, e);
         }
-        if (!inHeader || !external) {
-            AbstractPropertyWriters.writeAbstractExtensibleWithoutField(w, range);
-            AbstractPropertyWriters.writeAbstractExtensibleWithField(
-                w,
-                range,
-                version
-            );
-            writeMultiTextElement(
-                w,
-                LiftVocabulary.HEADER_DESCRIPTION_LOCAL_NAME,
-                range.getDescription()
-            );
-            writeMultiTextElement(
-                w,
-                LiftVocabulary.LABEL_LOCAL_NAME,
-                range.getLabel()
-            );
-            writeMultiTextElement(
-                w,
-                LiftVocabulary.HEADER_RANGE_ABBREV_LOCAL_NAME,
-                range.getAbbrev()
-            );
-            for (Feature e : AbstractPropertyWriters.sortedBy(range.getFeatures().values(), Feature::getId)) {
+        w.writeEndElement();
+    }
+
+    /** What the {@code .lift} file declared inline in the {@code <range>} of an external set. */
+    private void writeInlineContent(XMLStreamWriter w, FeatureSet range) throws Exception {
+        for (LiftAnnotation a : range.getAnnotations()) {
+            if (range.isDeclaredInline(a)) {
+                AbstractPropertyWriters.writeAnnotation(w, a);
+            }
+        }
+        for (LiftTrait t : range.getTraits()) {
+            if (range.isDeclaredInline(t)) {
+                AbstractPropertyWriters.writeTrait(w, t);
+            }
+        }
+        for (LiftField f : AbstractPropertyWriters.sortedBy(range.getFields().values(), LiftField::getName)) {
+            if (range.isDeclaredInline(f)) {
+                AbstractPropertyWriters.writeField(w, f, version);
+            }
+        }
+        if (range.isDeclaredInline(range.getDescription())) {
+            writeMultiTextElement(w, LiftVocabulary.HEADER_DESCRIPTION_LOCAL_NAME, range.getDescription());
+        }
+        if (range.isDeclaredInline(range.getLabel())) {
+            writeMultiTextElement(w, LiftVocabulary.LABEL_LOCAL_NAME, range.getLabel());
+        }
+        if (range.isDeclaredInline(range.getAbbrev())) {
+            writeMultiTextElement(w, LiftVocabulary.HEADER_RANGE_ABBREV_LOCAL_NAME, range.getAbbrev());
+        }
+        for (Feature e : AbstractPropertyWriters.sortedBy(range.getFeatures().values(), Feature::getId)) {
+            if (e.isDeclaredInline()) {
                 writeHeaderRangeElement(w, e);
             }
         }
-        w.writeEndElement();
     }
 
     private void writeHeaderRangeElement(XMLStreamWriter w, Feature el)
@@ -368,109 +396,6 @@ public class LiftWriterSession implements AutoCloseable {
         w.writeStartElement(elementName);
         MultiTextWriters.writeMultiText(w, mt);
         w.writeEndElement();
-    }
-
-    private void writeRangesToExternalFiles(LiftHeader header)
-        throws Exception {
-        File baseDir = outputFile.getAbsoluteFile().getParentFile();
-        if (baseDir == null) {
-            return;
-        }
-
-        Map<File, List<FeatureSet>> byHref = new LinkedHashMap<>();
-        for (FeatureSet r : header.getFeatureSets()) {
-            if (!r.getHref().isPresent()) {
-                continue;
-            }
-            String href = r.getHref().get();
-            if (href == null || href.isBlank()) {
-                continue;
-            }
-            if (!r.isExternalContentLoaded()) {
-                LOGGER.info(
-                    "Not rewriting the external ranges file of range '" +
-                        r.getId() +
-                        "' (" +
-                        href +
-                        "): its content was never loaded."
-                );
-                continue;
-            }
-            File targetFile = resolveHrefToFile(href, baseDir);
-            byHref
-                .computeIfAbsent(targetFile, k -> new java.util.ArrayList<>())
-                .add(r);
-        }
-
-        for (Map.Entry<File, List<FeatureSet>> e : byHref.entrySet()) {
-            writeLiftRangesFile(e.getKey(), e.getValue());
-        }
-        // TODO write Range that are not external
-    }
-
-    /**
-     * Resolve an {@code @href} taken from document content to a file inside the
-     * dictionary directory.
-     *
-     * The href comes from the document being saved, so it is untrusted: a
-     * {@code ../../..} path or an absolute {@code file:} URI would otherwise turn
-     * into a truncation target anywhere on the filesystem.
-     *
-     * @throws IOException if the href does not resolve inside {@code baseDir}
-     */
-    private File resolveHrefToFile(String href, File baseDir)
-        throws IOException {
-        href = href.trim();
-        Path base = baseDir.toPath().toAbsolutePath().normalize();
-        Path resolved;
-        if (href.startsWith("file:/")) {
-            try {
-                resolved = Path.of(URI.create(href)).toAbsolutePath().normalize();
-            } catch (IllegalArgumentException | java.nio.file.FileSystemNotFoundException ex) {
-                throw new IOException("Invalid file href: " + href, ex);
-            }
-        } else {
-            resolved = base.resolve(href).normalize();
-        }
-        if (!resolved.startsWith(base)) {
-            throw new IOException(
-                "Refusing to write a ranges file outside the dictionary directory: " +
-                    href +
-                    " resolves to " +
-                    resolved
-            );
-        }
-        return resolved.toFile();
-    }
-
-    private void writeLiftRangesFile(File file, List<FeatureSet> ranges)
-        throws Exception {
-        File parent = file.getParentFile();
-        if (parent != null) Files.createDirectories(parent.toPath());
-        try (
-            OutputStream fos = Files.newOutputStream(file.toPath());
-            OutputStreamWriter osw = new OutputStreamWriter(
-                fos,
-                StandardCharsets.UTF_8
-            )
-        ) {
-            XMLStreamWriter rangesOut =
-                XMLOutputFactory.newInstance().createXMLStreamWriter(osw);
-            rangesOut.writeStartDocument(
-                StandardCharsets.UTF_8.name(),
-                XML_VERSION
-            );
-            rangesOut.writeCharacters(NEW_LINE);
-            rangesOut.writeStartElement(LiftVocabulary.LIFT_RANGES_ROOT);
-            rangesOut.writeCharacters(NEW_LINE);
-            for (FeatureSet r : ranges) {
-                writeHeaderRange(rangesOut, r, false);
-                rangesOut.writeCharacters(NEW_LINE);
-            }
-            rangesOut.writeEndElement();
-            rangesOut.writeEndDocument();
-            rangesOut.flush();
-        }
     }
 
     private void writeHeaderFieldDescription(LiftFieldAndTraitDefinition f)

@@ -17,7 +17,6 @@ import java.util.function.Consumer;
  *       .addFeatureSet(
  *           fs -> fs.withAbbreviation("en", "myabbreviation")
  *              .withDescription("en", "my description")
- *              .withHref("http://www.foo.fr")
  *              .withLabel("en", "my label")
  *              .addFeature(f -> f.withLabel("en", "foo"), "my category 1")
  *              .addFeature(f -> f.withLabel("en", "bar"), "my category 2"),
@@ -26,6 +25,10 @@ import java.util.function.Consumer;
  *       .build();
  * </pre>
  * 
+ * A feature set defined in an external ranges file ({@code <range href>}) is only
+ * created by the reader, which has the file's content: an {@code href} without it would
+ * be a reference to nothing.
+ *
  * Or after a dictionary object creation:
  * 
  * <pre>
@@ -62,11 +65,6 @@ public class FeatureSetBuilder
 
     public FeatureSetBuilder withDescription(String lang, String text) {
         element.getDescription().add(new Form(lang, text));
-        return this;
-    }
-
-    public FeatureSetBuilder withHref(String href) {
-        element.setHref(href);
         return this;
     }
 
