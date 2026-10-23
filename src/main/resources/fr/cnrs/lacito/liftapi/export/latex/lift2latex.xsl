@@ -2,20 +2,24 @@
 	version="2.0"
 	xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 
-	<xsl:import href="style.xsl"/>
+<!--	TODO for every element with analysis or vernacular language, set
+ |	the polyglossia language correctly
+ -->
+
+	<xsl:import href="parameters.xsl"/>
+	<xsl:import href="latex.xsl"/>
 
 	<xsl:output encoding="UTF-8" method="text"
 	/>
 
-	<xsl:variable name="urlillustration" select="'/Users/sloiseau/Recherche/Corpus/Corpus/tuwari/20190507/export/pictures/'"/>
-	
-	
+
 	<xsl:template match="/">
-	<xsl:call-template name="latex-preamble" />	
+	<xsl:call-template name="latex-preamble" />
 	<xsl:call-template name="latex-startdocument" />
 	<xsl:text>
 	\section{Alphabetic dictionary}
 	</xsl:text>
+
 	<xsl:for-each-group select="/lift/entry" group-by="if (starts-with(lexical-unit/form/text, '-')) then substring(lexical-unit/form/text, 2, 1) else substring(lexical-unit/form/text, 1, 1)">
 	<xsl:sort select="if (starts-with(lexical-unit/form/text, '-')) then substring(lexical-unit/form/text, 2, 1) else substring(lexical-unit/form/text, 1, 1)" />
 	<xsl:call-template name="latex-startsection">
@@ -27,19 +31,21 @@
 	<xsl:apply-templates select="."/>
 	</xsl:for-each>
 	<xsl:call-template name="latex-endsection"/>
-	
+
+	<xsl:if test="$makeFigure">
     <xsl:for-each select="current-group()//sense[illustration]">
     <xsl:call-template name="make_illustration">
     <xsl:with-param name="sense" select="." />
-    </xsl:call-template>    
+    </xsl:call-template>
     </xsl:for-each>
+	</xsl:if>
 
-	</xsl:for-each-group>	
+	</xsl:for-each-group>
 
+	<xsl:if test="$makeThematicDictionary">
 	<xsl:text>
 	\section{Thematic dictionary}
 	</xsl:text>
-
 	<xsl:for-each-group select="/lift/entry//sense/trait[@name='semantic-domain-ddp4']" group-by="@value">
 	<xsl:sort select="@value" />
 	<xsl:call-template name="latex-startsection">
@@ -50,7 +56,8 @@
 	<xsl:apply-templates select="ancestor::entry" />
 	</xsl:for-each>
 	<xsl:call-template name="latex-endsection"/>
-	</xsl:for-each-group>	
+	</xsl:for-each-group>
+	</xsl:if>
 
 	<xsl:call-template name="latex-enddocument" />
 	</xsl:template>
@@ -65,7 +72,7 @@
 	<xsl:call-template name="make_headword">
 	<xsl:with-param name="entry" select="." />
 	</xsl:call-template>
-	
+
 	<xsl:if test="variant">
 	<xsl:text>\latexvariantstart</xsl:text>
 	<xsl:for-each select="variant">
@@ -90,7 +97,7 @@
 	<xsl:with-param name="command" select="'latexrelationcomponenttype'" />
 <!--	il peut y en avoir d'autres ??? -->
 	<xsl:with-param name="content" select="./trait[@name ='complex-form-type'][1]/@value"/>
-	</xsl:call-template>	
+	</xsl:call-template>
 	</xsl:if>
 	<xsl:variable name="ref" select="@ref"/>
 	<!--
@@ -116,7 +123,7 @@
 	<xsl:text>\latexentryend</xsl:text>
 	<xsl:text>&#10;</xsl:text>
 	</xsl:template>
-	
+
 <!--
 ............................................................
 !
@@ -128,9 +135,9 @@
 	<xsl:if test="preceding-sibling::sense or following-sibling::sense">
 	<xsl:call-template name="make_sense_number">
 	<xsl:with-param name="sense" select="."/>
-	</xsl:call-template>	
+	</xsl:call-template>
 	</xsl:if>
-	
+
 	<xsl:if test="./grammatical-info/@value">
 	<xsl:call-template name="make_sense_gram">
 	<xsl:with-param name="sense" select="." />
@@ -156,7 +163,7 @@
 	<xsl:apply-templates select="gloss" />
 	<xsl:text>\latexsenseglossend</xsl:text>
 	</xsl:if>
-	
+
 	<xsl:if test="relation[@type]">
 	<xsl:text>\latexsenserelationstart</xsl:text>
 	<xsl:for-each-group select="relation[@type]" group-by="@type">
@@ -186,7 +193,7 @@
 	<xsl:if test="position() != last()">
 	<xsl:text>\latexsenserelationbetween</xsl:text>
 	</xsl:if>
-	</xsl:for-each-group>	
+	</xsl:for-each-group>
 	<xsl:text>\latexsenserelationend</xsl:text>
 	</xsl:if>
 
@@ -223,7 +230,7 @@
 	<!--
 	 | <xsl:call-template name="make_illustration">
 	 | <xsl:with-param name="sense" select="." />
-	 | </xsl:call-template>    
+	 | </xsl:call-template>
 	-->
 
 	<xsl:text>\latexsenseend</xsl:text>
@@ -242,21 +249,21 @@
 	<xsl:choose>
 	<xsl:when test="matches(./text, '^[-_A-Z.]+$')">
 		<xsl:call-template name="make_command_with_string">
-		<xsl:with-param name="command" select="concat('glossgram', 
+		<xsl:with-param name="command" select="concat('glossgram',
 		./@lang)" />
 		<xsl:with-param name="content" select="lower-case(./text)" />
-		</xsl:call-template>	
+		</xsl:call-template>
 	</xsl:when>
 	<xsl:otherwise>
 		<xsl:call-template name="make_command_with_string">
-		<xsl:with-param name="command" select="concat('gloss', 
+		<xsl:with-param name="command" select="concat('gloss',
 		./@lang)" />
 		<xsl:with-param name="content" select="./text" />
-		</xsl:call-template>	
+		</xsl:call-template>
 	</xsl:otherwise>
 	</xsl:choose>
 	</xsl:template>
-	
+
 <!--
 ............................................................
 !
@@ -301,16 +308,16 @@
 	<xsl:param name="sense" />
 
 		<xsl:text>\latexsensegramstart </xsl:text>
-		
+
 	<xsl:call-template name="make_command_with_string">
 	<xsl:with-param name="command" select="'pos'" />
 	<xsl:with-param name="content">
 	<xsl:call-template name="abbreviate_pos">
 	<xsl:with-param name="pos" select="./grammatical-info/@value" />
 	</xsl:call-template>
-	</xsl:with-param> 
+	</xsl:with-param>
 	</xsl:call-template>
-	
+
 	<xsl:if test="./grammatical-info/trait[not(@name='type')]">
 	<xsl:for-each select="./grammatical-info/trait[not(@name='type')]">
 
@@ -320,16 +327,16 @@
 	<xsl:call-template name="abbreviate_slot">
 	<xsl:with-param name="slot" select="./@name" />
 	</xsl:call-template>
-	</xsl:with-param>    
+	</xsl:with-param>
 	</xsl:call-template>
-	
+
 	<xsl:call-template name="make_command_with_string">
 	<xsl:with-param name="command" select="'gramtrait'" />
 	<xsl:with-param name="content">
 	<xsl:call-template name="abbreviate_trait">
 	<xsl:with-param name="trait" select="./@value" />
 	</xsl:call-template>
-	</xsl:with-param> 	
+	</xsl:with-param>
 <!--	<xsl:with-param name="content" select="./@value" />-->
 	</xsl:call-template>
 	<xsl:if test="position() != last()">
@@ -337,12 +344,12 @@
 	</xsl:if>
 	</xsl:for-each>
 	</xsl:if>
-	
+
 		<xsl:text>\latexsensegramend </xsl:text>
 	</xsl:template>
 
-	
-	
+
+
 <!--
 ............................................................
 !
@@ -368,8 +375,8 @@
 	</xsl:for-each>
 	</xsl:if>
 	</xsl:template>
-	
-	
+
+
 <!--
 ............................................................
 !
@@ -393,7 +400,7 @@
 	<xsl:param name="entry" />
 	<xsl:variable name="entrystring">
 	<xsl:call-template name="escape_for_latex">
-		<xsl:with-param name="string" select="$entry/lexical-unit/form/text/text()" />	
+		<xsl:with-param name="string" select="$entry/lexical-unit/form/text/text()" />
 	</xsl:call-template>
 	</xsl:variable>
 	<xsl:choose>
@@ -418,7 +425,7 @@
 	<xsl:value-of select="$command" />
 	<xsl:text>{</xsl:text>
 	<xsl:call-template name="escape_for_latex">
-	<xsl:with-param name="string" select="$content" />	
+	<xsl:with-param name="string" select="$content" />
 	</xsl:call-template>
 	<xsl:text>}</xsl:text>
 	</xsl:template>
@@ -442,7 +449,7 @@
 	<xsl:param name="environement" />
 	<xsl:param name="string" />
 	</xsl:template>
-	
+
 <!--
 ............................................................
 !
@@ -460,10 +467,18 @@
 -->
 	<xsl:template name="escape_for_latex">
 	<xsl:param name="string" />
-	<xsl:value-of select="replace($string, '_', '\\_')"/>	
+	<xsl:value-of select="replace(
+	  replace(
+			$string,
+			'\\',
+			'\\\\'
+	  ),
+	  '_',
+	  '\\_'
+	)"/>
 	</xsl:template>
 
-	
+
 <!--
 ............................................................
 !
@@ -472,7 +487,7 @@
 	<xsl:template name="abbreviate_pos">
 	<xsl:param name="pos" />
 	<xsl:choose>
-	
+
 	<xsl:when test="$pos='Noun'">
 	<xsl:text>n</xsl:text>
 	</xsl:when>
@@ -500,7 +515,7 @@
 		<xsl:when test="$pos='n_Npr'">
 	<xsl:text>Npr</xsl:text>
 	</xsl:when>
-	
+
 		<xsl:when test="$pos=''">
 	<xsl:text></xsl:text>
 	</xsl:when>
@@ -517,7 +532,7 @@
 	<xsl:when test="$pos='Interrogative pro-form'">
 	<xsl:text>inter. pro.</xsl:text>
 	</xsl:when>
-	
+
 	<xsl:when test="$pos='Pronoun'">
 	<xsl:text>pro.</xsl:text>
 	</xsl:when>
@@ -526,10 +541,10 @@
 	<xsl:text>interj.</xsl:text>
 	</xsl:when>
 
-	
+
 	<xsl:otherwise>
 				<xsl:value-of select="$pos"/>
-				
+
 	</xsl:otherwise>
 
 	</xsl:choose>
@@ -543,13 +558,13 @@
 		<xsl:template name="abbreviate_trait">
 	<xsl:param name="trait" />
 	<xsl:choose>
-	
+
 	<xsl:when test="$trait='Noun'">
 	<xsl:text>n</xsl:text>
 	</xsl:when>
 	<xsl:otherwise>
 				<xsl:value-of select="$trait"/>
-				
+
 	</xsl:otherwise>
 
 	</xsl:choose>
@@ -577,7 +592,7 @@
 	</xsl:when>
 	<xsl:otherwise>
 				<xsl:value-of select="$slot"/>
-				
+
 	</xsl:otherwise>
 
 	</xsl:choose>

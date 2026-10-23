@@ -1,2 +1,4 @@
 # lift2latex
-Convert Lift (Lexicon Interchange FormaT) document into latex
+
+XSLT stylesheet for converting Lift (Lexicon Interchange FormaT) document to latex
+

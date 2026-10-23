@@ -8,7 +8,7 @@
 
 <xsl:stylesheet version="1.0"
                 xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
-	
+
 <!--
 ............................................................
 ! Latex command for styling the dictionary components
@@ -36,8 +36,10 @@
 \newcommand\latexsenseglossend{}
 \newcommand{\gloss}[1]{ `lang?: #1'}
 \newcommand{\glossen}[1]{ \textit{`#1'}}
+\newcommand{\glossfr}[1]{ \textit{`#1'}}
 \newcommand{\glosstpi}[1]{ (\textit{`#1'})}
 \newcommand{\glossgramen}[1]{ \textsc{`#1'}}
+\newcommand{\glossgramfr}[1]{ \textsc{`#1'}}
 \newcommand{\glossgramtpi}[1]{ (\textsc{`#1'})}
 
 \newcommand\latexsensedomainstart{ $\diamond$\ } %\textbardbl
@@ -82,7 +84,7 @@
 
 % \newlength\lead \setlength\lead{9.6pt} % = 1.2 * 8pt
 % \usepackage{geometry}
-% 
+%
 % % Basic geometry of document
 % \geometry
 %   { headsep    =   \lead
@@ -93,7 +95,7 @@
 %   , bindingoffset = 0cm
 %   , onecolumn
 %   }
-% 
+%
 % % Geometry of the dictionary section
 % \newcommand\dictionarygeometry{\newgeometry
 %   { textwidth  = 42\lead
@@ -103,20 +105,20 @@
 %   , bindingoffset = 0cm
 %   , twocolumn
 %   }}
-% 
+%
 %  % Two columns layout
 % \setlength\columnsep    {2\lead}
 % \setlength\columnseprule{0.4pt}
-% 
+%
 % % Necessary for baseline alignment
 % \topskip=\lead
 % \raggedbottom
 % \setlength\parskip{0pt} % it's better to avoid glue
-% 
+%
 % % This value is ENORMOUS but I can't think of a better non-manual solution.
 % % Stil, microtype helps a lot to lower it.
 % \setlength\emergencystretch{17pt}
-% 
+%
 % % End of importation
 
 %\usepackage{palatino} % Use the Palatino font
@@ -182,7 +184,7 @@
 	 | \texten
 	<xsl:call-template name="set_languages" />
 	-->
-	
+
 	<!--
 	 | Command defined for styling the dictionary components
 	-->
@@ -219,7 +221,7 @@
 		<xsl:text>\subsection{</xsl:text>
 		<xsl:value-of select="$letter" />
 		<xsl:text>}</xsl:text>
-		<xsl:text>\begin{multicols}{2}</xsl:text>		
+		<xsl:text>\begin{multicols}{2}</xsl:text>
 	</xsl:template>
 
 	<xsl:template name="latex-endsection">
@@ -251,7 +253,7 @@
 			<xsl:text>}</xsl:text>
 			<xsl:text>&#10;</xsl:text>
 		</xsl:for-each>
-		
+
 		<!--
 		 | <xsl:for-each select="key('languages', 'analysis_language')">
 		 |     <xsl:text>\setotherlanguage{</xsl:text>
@@ -279,8 +281,8 @@
 		 |     <xsl:text>}</xsl:text>
 		 | </xsl:for-each>
 		-->
-		
+
 		<xsl:text>&#10;</xsl:text>
 	</xsl:template>
-	
+
 </xsl:stylesheet>
