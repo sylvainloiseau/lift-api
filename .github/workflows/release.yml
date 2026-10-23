@@ -1,0 +1,47 @@
+# Publishes lift-api to Maven Central when a version tag is pushed:
+#   git tag v0.1.0 && git push origin v0.1.0
+# The version released is the tag without its "v"; the pom keeps its -SNAPSHOT version.
+#
+# Repository secrets it needs (Settings > Secrets and variables > Actions):
+#   CENTRAL_TOKEN_USERNAME, CENTRAL_TOKEN_PASSWORD  the user token generated on
+#                                                   https://central.sonatype.com/account
+#   GPG_PRIVATE_KEY   the armored private key: gpg --armor --export-secret-keys KEY_ID
+#   GPG_PASSPHRASE    its passphrase
+name: Release to Maven Central
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 25, the Central credentials and the signing key
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+          # Writes a settings.xml whose server "central" reads these two variables.
+          server-id: central
+          server-username: CENTRAL_TOKEN_USERNAME
+          server-password: CENTRAL_TOKEN_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+
+      - name: Set the version from the tag
+        run: mvn -B -ntp versions:set -DnewVersion="${GITHUB_REF_NAME#v}" -DgenerateBackupPoms=false
+
+      - name: Test, sign and publish
+        run: mvn -B -ntp -P release deploy
+        env:
+          CENTRAL_TOKEN_USERNAME: ${{ secrets.CENTRAL_TOKEN_USERNAME }}
+          CENTRAL_TOKEN_PASSWORD: ${{ secrets.CENTRAL_TOKEN_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}

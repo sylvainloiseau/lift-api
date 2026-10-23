@@ -41,6 +41,9 @@
 \newcommand{\glossgramen}[1]{ \textsc{`#1'}}
 \newcommand{\glossgramfr}[1]{ \textsc{`#1'}}
 \newcommand{\glossgramtpi}[1]{ (\textsc{`#1'})}
+% A gloss in a given language: \gloss&lt;lang&gt; when it is defined above, else \gloss.
+\newcommand{\glossin}[2]{\ifcsname gloss#1\endcsname\csname gloss#1\endcsname{#2}\else\gloss{#2}\fi}
+\newcommand{\glossgramin}[2]{\ifcsname glossgram#1\endcsname\csname glossgram#1\endcsname{#2}\else\gloss{#2}\fi}
 
 \newcommand\latexsensedomainstart{ $\diamond$\ } %\textbardbl
 \newcommand\latexsensedomainend{}
@@ -123,8 +126,13 @@
 
 %\usepackage{palatino} % Use the Palatino font
 \usepackage{fontspec}
-\setmainfont{Charis SIL}
-
+</xsl:text>
+		<xsl:if test="$mainFont != ''">
+			<xsl:text>\setmainfont{</xsl:text>
+			<xsl:value-of select="$mainFont"/>
+			<xsl:text>}&#10;</xsl:text>
+		</xsl:if>
+		<xsl:text>
 \usepackage{graphicx}
 \usepackage{microtype}
 
@@ -143,9 +151,9 @@
 \pagestyle{fancy} % Use the custom headers and footers throughout the document
 
 \usepackage{polyglossia}
-%\setotherlanguage{arabic}
-% \textenglish, etc.
-
+</xsl:text>
+		<xsl:call-template name="set_languages"/>
+		<xsl:text>
 \setcounter{secnumdepth}{-2} % no numbering of section
 
 \usepackage{expex}
@@ -164,7 +172,7 @@
 ............................................................
 -->
 	<xsl:template name="latex-preamble">
-	<xsl:text>%&amp;xelatex
+	<xsl:text>% Compile with XeLaTeX or LuaLaTeX (fontspec, polyglossia).
 \documentclass[9pt,a4paper,twoside, openright]{book}
 %extbook
 	</xsl:text>
@@ -175,17 +183,6 @@
 	<xsl:call-template name="latex-package" />
 
 	<!--
-	 | Set languages for polyglossia,
-	 | The languages are defined in parameters.xsl
-	 |
-	 | Switching to the analysis language is available through
-	 | \text<$flex_name_of_analysis_language>
-	 | for instance:
-	 | \texten
-	<xsl:call-template name="set_languages" />
-	-->
-
-	<!--
 	 | Command defined for styling the dictionary components
 	-->
 	<xsl:call-template name="latex-styling-command" />
@@ -194,10 +191,14 @@
 	 | Title and author
 	-->
 	<xsl:text>\title{</xsl:text>
-	<xsl:value-of select="$title"/>
+	<xsl:call-template name="escape_for_latex">
+		<xsl:with-param name="string" select="$title"/>
+	</xsl:call-template>
 	<xsl:text>}</xsl:text>
 	<xsl:text>\author{</xsl:text>
-	<xsl:value-of select="$author"/>
+	<xsl:call-template name="escape_for_latex">
+		<xsl:with-param name="string" select="$author"/>
+	</xsl:call-template>
 	<xsl:text>}</xsl:text>
     </xsl:template>
 
@@ -209,7 +210,12 @@
 	</xsl:template>
 
 	<xsl:template name="latex-enddocument">
-		<xsl:if test="$makeListOfFigure">
+		<xsl:variable name="listOfFigures">
+			<xsl:call-template name="is-true">
+				<xsl:with-param name="value" select="$makeListOfFigure"/>
+			</xsl:call-template>
+		</xsl:variable>
+		<xsl:if test="$listOfFigures = 'true'">
 			<xsl:text>\listoffigures</xsl:text>
 		</xsl:if>
 		<xsl:text>\end{document}</xsl:text>
@@ -219,7 +225,9 @@
 		<xsl:param name="letter" />
 		<xsl:text>&#10;</xsl:text>
 		<xsl:text>\subsection{</xsl:text>
-		<xsl:value-of select="$letter" />
+		<xsl:call-template name="escape_for_latex">
+			<xsl:with-param name="string" select="$letter"/>
+		</xsl:call-template>
 		<xsl:text>}</xsl:text>
 		<xsl:text>\begin{multicols}{2}</xsl:text>
 	</xsl:template>
@@ -229,60 +237,112 @@
 		<xsl:text>&#10;</xsl:text>
 	</xsl:template>
 
+<!--
+............................................................
+! Languages and fonts, from the parameters "languages", "sortLanguage" and "fonts"
+............................................................
+-->
 	<xsl:template name="set_languages">
-		<xsl:text>&#10;</xsl:text>
+		<xsl:variable name="default">
+			<xsl:call-template name="default-language"/>
+		</xsl:variable>
 		<xsl:text>\setdefaultlanguage{</xsl:text>
-		<xsl:value-of select="'english'"/>
-		<xsl:text>}</xsl:text>
-		<xsl:text>&#10;</xsl:text>
-		<!-- TODO not available before polyglossia v1.46 -->
-		<xsl:text>%\setlanguagealias{english}{en}</xsl:text>
-		<xsl:text>&#10;</xsl:text>
+		<xsl:value-of select="$default"/>
+		<xsl:text>}&#10;</xsl:text>
+		<xsl:call-template name="set-other-languages">
+			<xsl:with-param name="pairs" select="$languages"/>
+			<xsl:with-param name="default" select="$default"/>
+		</xsl:call-template>
+		<xsl:call-template name="set-fonts">
+			<xsl:with-param name="pairs" select="$fonts"/>
+		</xsl:call-template>
+	</xsl:template>
 
-		<xsl:for-each select="map:keys($languages)"
-		xmlns:map="http://www.w3.org/2005/xpath-functions/map">
-			<xsl:text>\setotherlanguage{</xsl:text>
-			<xsl:value-of select="$languages(.)"/>
-			<xsl:text>}</xsl:text>
-			<!-- not available before polyglossia v1.46 -->
-			<xsl:text>%\setlanguagealias{</xsl:text>
-			<xsl:value-of select="$languages(.)"/>
-			<xsl:text>}</xsl:text>
-			<xsl:text>{</xsl:text>
-			<xsl:value-of select="."/>
-			<xsl:text>}</xsl:text>
-			<xsl:text>&#10;</xsl:text>
-		</xsl:for-each>
+	<!-- The polyglossia name of sortLanguage, or english. -->
+	<xsl:template name="default-language">
+		<xsl:param name="code" select="$sortLanguage"/>
+		<xsl:param name="pairs" select="$languages"/>
+		<xsl:variable name="name">
+			<xsl:call-template name="polyglossia-name">
+				<xsl:with-param name="code" select="$code"/>
+				<xsl:with-param name="pairs" select="$pairs"/>
+			</xsl:call-template>
+		</xsl:variable>
+		<xsl:choose>
+			<xsl:when test="$name != ''"><xsl:value-of select="$name"/></xsl:when>
+			<xsl:otherwise>english</xsl:otherwise>
+		</xsl:choose>
+	</xsl:template>
 
-		<!--
-		 | <xsl:for-each select="key('languages', 'analysis_language')">
-		 |     <xsl:text>\setotherlanguage{</xsl:text>
-		 |     <xsl:value-of select="'english'"/>
-		 |     <xsl:text>}</xsl:text>
-		 |     <xsl:variable name="language_abbreviation">
-		 |         <xsl:analyze-string select="." regex="^([^,]+),[^,]+$">
-		 |             <xsl:matching-substring>
-		 |                 <xsl:value-of select="regex-group(1)"/>
-		 |             </xsl:matching-substring>
-		 |         </xsl:analyze-string>
-		 |     </xsl:variable>
-		 |     <xsl:variable name="language_name">
-		 |         <xsl:analyze-string select="." regex="^[^,]+,([^,]+)$">
-		 |             <xsl:matching-substring>
-		 |                 <xsl:value-of select="regex-group(1)"/>
-		 |             </xsl:matching-substring>
-		 |         </xsl:analyze-string>
-		 |     </xsl:variable>
-		 |     <xsl:text>\setlanguagealias{</xsl:text>
-		 |     <xsl:value-of select="$language_name"/>
-		 |     <xsl:text>}</xsl:text>
-		 |     <xsl:text>{</xsl:text>
-		 |     <xsl:value-of select="$language_abbreviation"/>
-		 |     <xsl:text>}</xsl:text>
-		 | </xsl:for-each>
-		-->
+	<!--
+	 | \setotherlanguage for each name of the code=name pairs: once per name, since two
+	 | codes may map to one name, and not for the default language.
+	 -->
+	<xsl:template name="set-other-languages">
+		<xsl:param name="pairs"/>
+		<xsl:param name="default"/>
+		<xsl:param name="done" select="';'"/>
+		<xsl:if test="normalize-space($pairs) != ''">
+			<xsl:variable name="pair" select="substring-before(concat($pairs, ';'), ';')"/>
+			<xsl:variable name="name" select="normalize-space(substring-after($pair, '='))"/>
+			<xsl:variable name="new" select="$name != '' and $name != $default
+				and not(contains($done, concat(';', $name, ';')))"/>
+			<xsl:if test="$new">
+				<xsl:text>\setotherlanguage{</xsl:text>
+				<xsl:value-of select="$name"/>
+				<xsl:text>}&#10;</xsl:text>
+			</xsl:if>
+			<xsl:call-template name="set-other-languages">
+				<xsl:with-param name="pairs" select="substring-after($pairs, ';')"/>
+				<xsl:with-param name="default" select="$default"/>
+				<xsl:with-param name="done">
+					<xsl:choose>
+						<xsl:when test="$new"><xsl:value-of select="concat($done, $name, ';')"/></xsl:when>
+						<xsl:otherwise><xsl:value-of select="$done"/></xsl:otherwise>
+					</xsl:choose>
+				</xsl:with-param>
+			</xsl:call-template>
+		</xsl:if>
+	</xsl:template>
 
-		<xsl:text>&#10;</xsl:text>
+	<!-- \newfontfamily\<name>font{<font>} for each name=font pair. -->
+	<xsl:template name="set-fonts">
+		<xsl:param name="pairs"/>
+		<xsl:if test="normalize-space($pairs) != ''">
+			<xsl:variable name="pair" select="substring-before(concat($pairs, ';'), ';')"/>
+			<xsl:variable name="name" select="normalize-space(substring-before($pair, '='))"/>
+			<xsl:variable name="font" select="normalize-space(substring-after($pair, '='))"/>
+			<xsl:if test="$name != '' and $font != ''">
+				<xsl:text>\newfontfamily\</xsl:text>
+				<xsl:value-of select="$name"/>
+				<xsl:text>font{</xsl:text>
+				<xsl:value-of select="$font"/>
+				<xsl:text>}&#10;</xsl:text>
+			</xsl:if>
+			<xsl:call-template name="set-fonts">
+				<xsl:with-param name="pairs" select="substring-after($pairs, ';')"/>
+			</xsl:call-template>
+		</xsl:if>
+	</xsl:template>
+
+	<!-- The polyglossia name of a language code, from the parameter "languages", or ''. -->
+	<xsl:template name="polyglossia-name">
+		<xsl:param name="code"/>
+		<xsl:param name="pairs" select="$languages"/>
+		<xsl:if test="$code != '' and normalize-space($pairs) != ''">
+			<xsl:variable name="pair" select="substring-before(concat($pairs, ';'), ';')"/>
+			<xsl:choose>
+				<xsl:when test="normalize-space(substring-before($pair, '=')) = $code">
+					<xsl:value-of select="normalize-space(substring-after($pair, '='))"/>
+				</xsl:when>
+				<xsl:otherwise>
+					<xsl:call-template name="polyglossia-name">
+						<xsl:with-param name="code" select="$code"/>
+						<xsl:with-param name="pairs" select="substring-after($pairs, ';')"/>
+					</xsl:call-template>
+				</xsl:otherwise>
+			</xsl:choose>
+		</xsl:if>
 	</xsl:template>
 
 </xsl:stylesheet>

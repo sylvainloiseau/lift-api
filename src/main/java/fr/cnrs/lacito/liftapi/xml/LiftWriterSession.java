@@ -70,8 +70,12 @@ public class LiftWriterSession implements AutoCloseable {
     private static final String NEW_LINE = "\n";
     private static final String XML_VERSION = "1.0";
 
+    /** The file written, or null when writing to a caller's stream. */
     private final File outputFile;
+    /** The temporary file promoted to {@link #outputFile}; null when writing to a stream. */
     private final Path temporaryFile;
+    /** The directory the {@code href}s of external ranges are relative to. */
+    private final Path baseDirectory;
     private XMLStreamWriter out;
     private OutputStream outputStream;
 
@@ -102,12 +106,38 @@ public class LiftWriterSession implements AutoCloseable {
             ".tmp"
         );
         this.outputStream = Files.newOutputStream(temporaryFile);
+        this.baseDirectory = directory;
+    }
+
+    /**
+     * Write to a stream, which {@link #close()} flushes but does not close.
+     *
+     * @param out the stream written
+     * @param baseDirectory the directory the {@code href}s of external ranges are written
+     *        relative to: the dictionary's own, so that they name the same files
+     */
+    public LiftWriterSession(OutputStream out, Path baseDirectory) {
+        if (out == null || baseDirectory == null) {
+            throw new IllegalArgumentException("out and baseDirectory cannot be null");
+        }
+        this.outputFile = null;
+        this.temporaryFile = null;
+        this.outputStream = out;
+        this.baseDirectory = baseDirectory;
     }
 
     /**
      * Marshall a dictionary to XML.
      */
     public void marshall(LiftDictionary d) throws Exception {
+        marshall(d, e -> true);
+    }
+
+    /**
+     * Marshall a dictionary to XML, with only the entries {@code entries} accepts. The
+     * header is written in full.
+     */
+    public void marshall(LiftDictionary d, java.util.function.Predicate<LiftEntry> entries) throws Exception {
         try {
             initializeWriter();
 
@@ -132,10 +162,10 @@ public class LiftWriterSession implements AutoCloseable {
             }
             out.writeCharacters(NEW_LINE);
 
-            List<LiftEntry> entries = d.getLiftDictionaryRegistry().getEntries();
-            if (entries != null) {
-                for (LiftEntry e : entries) {
-                    if (e != null) {
+            List<LiftEntry> all = d.getLiftDictionaryRegistry().getEntries();
+            if (all != null) {
+                for (LiftEntry e : all) {
+                    if (e != null && entries.test(e)) {
                         writeEntry(e);
                     }
                 }
@@ -173,6 +203,19 @@ public class LiftWriterSession implements AutoCloseable {
                 complete = false;
                 failure = new IOException("Error closing XML writer", e);
             }
+        }
+        if (temporaryFile == null) {
+            // A caller's stream: flushed, left open.
+            if (outputStream != null) {
+                try {
+                    outputStream.flush();
+                } catch (IOException e) {
+                    if (failure == null) failure = e;
+                    else failure.addSuppressed(e);
+                }
+            }
+            if (failure != null) throw failure;
+            return;
         }
         if (outputStream != null) {
             try {
@@ -280,7 +323,7 @@ public class LiftWriterSession implements AutoCloseable {
                 ExternalRangesFiles.hrefForSaving(
                     range.getHref().orElseThrow(),
                     range.getExternalDefinitionFile().orElse(null),
-                    outputFile.getAbsoluteFile().toPath().getParent()
+                    baseDirectory
                 )
             );
             writeInlineContent(w, range);

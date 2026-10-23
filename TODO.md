@@ -1,35 +1,5 @@
-## external ranges files
-
-Please make a plan for fixing the href issue : href attribute on range element in the header. Note that next to test file "20240828Lift.lift" there is now a 20240828Lift.lift-ranges file, towards which the test file is making reference in href attributes.
-
-When encountering an href attribute on range element in the header, the sax parser should open the referred file, parse it through a dedicated SAX handler and decoder (the file contain only a lift-ranges root element, containing range element with id attribute, containing range-element element with id attribute, containing label and description element containing multitext). You will create this parser and decoder; the main logic is only a simple version of the existing SAX handler and decoder.
-
-The content of the parsed file should be kept up to the end of the parsing of the header of the main file, so that if other reference to this files is found in the header it is not parsed again.
-
-When a range in the main file has a href element, its id attribute must match an id attribute of a range element in the file refered. If no matching id is found, an error is raised.
-
-For instance if "20240828Lift.lift" contains:
-
-<range id="dialect" href="20240828Lift.lift-ranges"/>
-
-Then "20240828Lift.lift-ranges" must contain a range with id "dialect".
-
-The ranges loaded through reference to an external files cannot be written (re-typed, or have new feature, or have change to any of its feature). The blocking of modification can be tested against the presence of an href property; or (it is your implementation decision) a new boolean "hasExternalReadOnlyDefinition" property, linked to the presence of an href, could be created on featureSet (= range) object, and read by its feature (= range element) before accepting being modified. If this property is turned true, then the href is removed, and then the featureset and its features are writable and will be savec in the header.
-
-In the writter, when featureSet has href propery (or a boolean property linked to it, depending on the implementation decision), it is not written: only a <range> element with an id and an href. The refered file need not be written again, since it has not changed.
-
-In DictionaryEditor, a featureSet with an href cannot be changed (its ID, label, description, feature). A button offer to turn it to an internally-defined feature set in order to make it modifiable.
-
-the href of the test file currently contain relative path "DictionaryLift20261022.lift-ranges". Please note that the href can also contains URI (file:///home/user/DictionaryLift20261022.lift-ranges") and that both syntax should be tried.
-
-Please analyse this plan, report bugs or issues and suggest useful improvements.
-
-
-
 
 ## 
-
-Unrelated, found on the way: the built-in feature sets that the corpus declares with an href (etymology, grammatical-info, lexical-relation, note-type, reversal-type, translation-type) lose that href on save and are written inline with the values seen in the data. LiftXmlDecoder.range ignores the href of a range the header already has. 
 
 LiftDictionaryCounterManager.discoverFields / attachTargetOnField: a TreeSet of non-Comparable definitions (dead code today, §7).
 LiftFieldAndTraitDefinition.setResolvedRange has no guard. Changing the range of a definition in use leaves its traits holding features of the old set. Refuse it while used, as setDataModel does. A TODO.md entry.
@@ -96,3 +66,44 @@ Please investigate this fix and report issues and bug it may create.
 It's about the range of a definition that is already used by traits.
 
 Today. LiftFieldAndTraitDefinition.setResolvedRange(...) sets a definition's option-range, meaning the feature set its trait values come from. Nothing stops you calling it while traits use the definition. The traits keep the Feature objects they hold, which belong to the old range.
+
+## external ranges files plan
+
+Please make a plan for fixing the href issue : href attribute on range element in the header. Note that next to test file "20240828Lift.lift" there is now a 20240828Lift.lift-ranges file, towards which the test file is making reference in href attributes.
+
+When encountering an href attribute on range element in the header, the sax parser should open the referred file, parse it through a dedicated SAX handler and decoder (the file contain only a lift-ranges root element, containing range element with id attribute, containing range-element element with id attribute, containing label and description element containing multitext). You will create this parser and decoder; the main logic is only a simple version of the existing SAX handler and decoder.
+
+The content of the parsed file should be kept up to the end of the parsing of the header of the main file, so that if other reference to this files is found in the header it is not parsed again.
+
+When a range in the main file has a href element, its id attribute must match an id attribute of a range element in the file refered. If no matching id is found, an error is raised.
+
+For instance if "20240828Lift.lift" contains:
+
+<range id="dialect" href="20240828Lift.lift-ranges"/>
+
+Then "20240828Lift.lift-ranges" must contain a range with id "dialect".
+
+The ranges loaded through reference to an external files cannot be written (re-typed, or have new feature, or have change to any of its feature). The blocking of modification can be tested against the presence of an href property; or (it is your implementation decision) a new boolean "hasExternalReadOnlyDefinition" property, linked to the presence of an href, could be created on featureSet (= range) object, and read by its feature (= range element) before accepting being modified. If this property is turned true, then the href is removed, and then the featureset and its features are writable and will be savec in the header.
+
+In the writter, when featureSet has href propery (or a boolean property linked to it, depending on the implementation decision), it is not written: only a <range> element with an id and an href. The refered file need not be written again, since it has not changed.
+
+In DictionaryEditor, a featureSet with an href cannot be changed (its ID, label, description, feature). A button offer to turn it to an internally-defined feature set in order to make it modifiable.
+
+the href of the test file currently contain relative path "DictionaryLift20261022.lift-ranges". Please note that the href can also contains URI (file:///home/user/DictionaryLift20261022.lift-ranges") and that both syntax should be tried.
+
+Please make this plan, report bugs or issues and suggest useful improvements.
+
+##
+
+If I understand correctly, a feature that is not declared in its featureset (range) in the header is still created silently if it is encountered on a trait in the corpus. It is then written in the header when the file is saved, resulting in a violation of the contract that saving a file just loaded produce the same document as the document read. Is this correct?
+
+lift-api should also flag *Undeclared features of internal ranges*, as are undeclared features comming from an external file, maybe then generalising `isUndeclaredInTheExternalFile()` to "undeclared in its range", set by the reader for any
+   set, so that the validator reports them like the external ones. They should not be modifiable. A button in the GUI should offer to turn them into a declared feature, so that they can be modified and saved. A warning should be issued for those too.
+
+You also mention Range not declared at all : your correct, those should be flagged, not modifiable, and not writted down; they should issue a warning (when first encountered, not at every occurrence) and a button in the GUI should offer to turn them into a declared range so that it can be edited and saved.
+
+In GUI, the table of range and range value, undeclared feature should appears in grey, so that the user can spot them easily.
+
+Regarding your paragraph "A second violation turned up:": those built-in ranges are written even when they are not used because they are hard-coded and created by default by the header. I agree with your fix: Record whether the file declared each built-in range. One that wasn't declared would not be written, unless something was explicitly added to it.
+
+Please write the plan according to this.

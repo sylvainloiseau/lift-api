@@ -1,0 +1,188 @@
+% Compile with XeLaTeX or LuaLaTeX (fontspec, polyglossia).
+\documentclass[9pt,a4paper,twoside, openright]{book}
+%extbook
+	
+%\usepackage[top=3.5cm,bottom=3.5cm,left=3.7cm,right=4.7cm,columnsep=30pt]{geometry} % Document margins and spacings
+\usepackage[top=2cm,bottom=2cm,left=2cm,right=2cm,columnsep=30pt]{geometry} % Document margins and spacings
+
+% \newlength\lead \setlength\lead{9.6pt} % = 1.2 * 8pt
+% \usepackage{geometry}
+%
+% % Basic geometry of document
+% \geometry
+%   { headsep    =   \lead
+%   , textwidth  = 42\lead
+%   , textheight = 60\lead
+%   , hmarginratio = 2:3
+%   , vmarginratio = 2:3
+%   , bindingoffset = 0cm
+%   , onecolumn
+%   }
+%
+% % Geometry of the dictionary section
+% \newcommand\dictionarygeometry{\newgeometry
+%   { textwidth  = 42\lead
+%   , textheight = 60\lead
+%   , hmarginratio = 2:3
+%   , vmarginratio = 3:2
+%   , bindingoffset = 0cm
+%   , twocolumn
+%   }}
+%
+%  % Two columns layout
+% \setlength\columnsep    {2\lead}
+% \setlength\columnseprule{0.4pt}
+%
+% % Necessary for baseline alignment
+% \topskip=\lead
+% \raggedbottom
+% \setlength\parskip{0pt} % it's better to avoid glue
+%
+% % This value is ENORMOUS but I can't think of a better non-manual solution.
+% % Stil, microtype helps a lot to lower it.
+% \setlength\emergencystretch{17pt}
+%
+% % End of importation
+
+%\usepackage{palatino} % Use the Palatino font
+\usepackage{fontspec}
+
+\usepackage{graphicx}
+\usepackage{microtype}
+
+\usepackage{pifont} % for number in circle
+
+\usepackage{multicol} % Required for splitting text into multiple columns
+
+\usepackage[bf,sf,center]{titlesec} % Required for modifying section titles - bold, sans-serif, centered
+
+\usepackage{fancyhdr} % Required for modifying headers and footers
+\fancyhead[L]{\textsf{\rightmark}} % Top left header
+\fancyhead[R]{\textsf{\leftmark}} % Top right header
+\renewcommand{\headrulewidth}{1.4pt} % Rule under the header
+\fancyfoot[C]{\textbf{\textsf{\thepage}}} % Bottom center footer
+\renewcommand{\footrulewidth}{1.4pt} % Rule under the footer
+\pagestyle{fancy} % Use the custom headers and footers throughout the document
+
+\usepackage{polyglossia}
+\setdefaultlanguage{french}
+\setotherlanguage{occitan}
+
+\setcounter{secnumdepth}{-2} % no numbering of section
+
+\usepackage{expex}
+%\DeclareUnicodeCharacter{294}{?}
+%\DeclareUnicodeCharacter{200E}{ }
+%\usepackage{lmodern}
+\usepackage[nottoc]{tocbibind} %include the list of figure in the table of contents.
+\usepackage{hyperref}
+%----------------------------------------------------------------------------------------
+		
+%\newcommand{\entry}[4]{\textbf{#1}\markboth{#1}{#1}\ {(#2)}\ \textit{#3}\ $\bullet$\ {#4}} % Defines the command to print each word on the page, \markboth{}{} prints the first word on the page in the top left header and the last word in the top right
+\newcommand{\entry}[1]{\noindent\textbf{#1}\markboth{#1}{#1}}
+
+\newcommand\latexentrystart{}
+\newcommand\latexentryend{
+
+}
+\newcommand{\latexsensestart}{\ }
+\newcommand\latexsenseend{}
+
+\newcommand\latexsensegramstart{ (}
+\newcommand\latexsensegramend{)}
+\newcommand{\pos}[1]{\textit{#1}}
+\newcommand{\gramtrait}[1]{ #1}
+\newcommand{\gramtraitslot}[1]{ #1:}
+
+\newcommand\latexsenseglossstart{}
+\newcommand\latexsenseglossend{}
+\newcommand{\gloss}[1]{ `lang?: #1'}
+\newcommand{\glossen}[1]{ \textit{`#1'}}
+\newcommand{\glossfr}[1]{ \textit{`#1'}}
+\newcommand{\glosstpi}[1]{ (\textit{`#1'})}
+\newcommand{\glossgramen}[1]{ \textsc{`#1'}}
+\newcommand{\glossgramfr}[1]{ \textsc{`#1'}}
+\newcommand{\glossgramtpi}[1]{ (\textsc{`#1'})}
+% A gloss in a given language: \gloss<lang> when it is defined above, else \gloss.
+\newcommand{\glossin}[2]{\ifcsname gloss#1\endcsname\csname gloss#1\endcsname{#2}\else\gloss{#2}\fi}
+\newcommand{\glossgramin}[2]{\ifcsname glossgram#1\endcsname\csname glossgram#1\endcsname{#2}\else\gloss{#2}\fi}
+
+\newcommand\latexsensedomainstart{ $\diamond$\ } %\textbardbl
+\newcommand\latexsensedomainend{}
+\newcommand\latexsensedomainbetween{, }
+\newcommand{\semanticdomain}[1]{#1}
+
+\newcommand\latexsensedefinitionstart{ }
+\newcommand\latexsensedefinitionend{}
+\newcommand\latexsensedefinitionbetween{, }
+\newcommand{\definition}[1]{'#1'}
+
+\newcommand\latexvariantstart{ [}
+\newcommand\latexvariantend{]}
+\newcommand\latexvariantbetween{, }
+\newcommand{\variant}[1]{#1}
+
+\newcommand\latexrelationcomponentstart{ \guilsinglleft}
+\newcommand\latexrelationcomponentend{\guilsinglright}
+\newcommand\latexrelationcomponentbetween{, }
+\newcommand{\latexrelationcomponent}[1]{#1}
+\newcommand{\latexrelationcomponenttype}[1]{#1}
+
+\newcommand\latexsenserelationstart{ $\rightarrow$}
+\newcommand\latexsenserelationend{}
+\newcommand\latexsenserelationbetween{, }
+\newcommand{\latexsenserelation}[1]{ #1}
+\newcommand{\latexsenserelationsensenumber}[1]{ (#1)}
+\newcommand{\latexsenserelationtype}[1]{ #1:}
+\title{Lexique d'essai}\author{Test}\begin{document}\maketitle\tableofcontents
+
+	\section{Alphabetic dictionary}
+	
+\subsection{A}\begin{multicols}{2}\label{agyj-4a1a6e0a-6152-4540-8ea7-746ab7aef768}\latexentrystart\entry{\foreignlanguage{occitan}{agyj}}\latexsensestart\latexsensegramstart \pos{Nom}\latexsensegramend \latexsenseglossstart\glossin{fr}{aiguille}\latexsenseglossend\latexsensedomainstart\semanticdomain{5.1.1 Mobilier}\latexsensedomainend\latexsenseend\latexentryend
+\label{agyju-0bd854fc-34e0-4cf8-83c5-4cb2cf20c155}\latexentrystart\entry{\foreignlanguage{occitan}{agyju}}\latexsensestart\latexsensegramstart \pos{Nom}\latexsensegramend \latexsenseglossstart\glossin{fr}{dard}\latexsenseglossend\latexsensedomainstart\semanticdomain{2.1 Le corps}\latexsensedomainend\latexsenseend\latexrelationcomponentstart\latexrelationcomponenttype{Dérivé}\latexrelationcomponent{\foreignlanguage{occitan}{agyj}}\latexrelationcomponentbetween\latexrelationcomponenttype{Dérivé}\latexrelationcomponent{\foreignlanguage{occitan}{-u}$_{1}$}\latexrelationcomponentend\latexentryend
+\label{ar----52e5f48d-26dd-45ec-86df-33acaae8ceaa}\latexentrystart\entry{\foreignlanguage{occitan}{arɛ̃ʒ}}\latexsensestart\latexsensegramstart \pos{Verbe}\gramtraitslot{Verbe-infl-class}\gramtrait{-ɑ}\latexsensegramend \latexsensedefinitionstart\definition{mettre en ordre}\latexsensedefinitionend\latexsenseglossstart\glossin{fr}{mettre\_en\_ordre}\latexsenseglossend\latexsenseend\latexentryend
+\label{-t-e-02c9a531-fb35-4bf1-a59e-fdb82c166b33}\latexentrystart\entry{\foreignlanguage{occitan}{ãtʃe}}\latexsensestart\latexsensegramstart \pos{Adverbe}\latexsensegramend \latexsenseglossstart\glossin{fr}{entier}\latexsenseglossend\latexsenseend\latexentryend
+\end{multicols}
+
+\subsection{B}\begin{multicols}{2}\label{bat-z-c18620ba-035f-4189-83fe-f302d610c161}\latexentrystart\entry{\foreignlanguage{occitan}{batøz}}\latexsensestart\ding{182}\latexsensegramstart \pos{Nom}\latexsensegramend \latexsenseglossstart\glossin{fr}{batteuse}\latexsenseglossend\latexsenserelationstart\latexsenserelationtype{Synonyme}\latexsenserelation{\foreignlanguage{occitan}{agyj}}\latexsenserelationsensenumber{1}\latexsenserelation{\foreignlanguage{occitan}{f\textasciitilde{}e}}\latexsenserelationsensenumber{1}\latexsenserelationbetween\latexsenserelationtype{Antonyme}\latexsenserelation{\foreignlanguage{occitan}{pir}}\latexsenserelationsensenumber{1}\latexsenserelationend\latexsensedomainstart\semanticdomain{6.2 Agriculture}\latexsensedomainend\latexsenseend\latexsensestart\ding{183}\latexsensegramstart \pos{Nom}\latexsensegramend \latexsensedefinitionstart\definition{moment du rassemblement pour faire fonctionner la batteuse dans une ferme}\latexsensedefinitionend\latexsenseglossstart\glossin{fr}{rassemblement\_pour\_la\_batteuse}\latexsenseglossend\latexsenseend\latexentryend
+\end{multicols}
+
+\subsection{F}\begin{multicols}{2}\label{f-e-93b25f44-982d-4484-820b-743b2434aaf1}\latexentrystart\entry{\foreignlanguage{occitan}{f\textasciitilde{}e}}\latexsensestart\latexsensegramstart \pos{Nom}\latexsensegramend \latexsensedefinitionstart\definition{odeur forte, bonne ou mauvaise.}\latexsensedefinitionend\latexsenseend\latexentryend
+\label{F-du-da57e74a-771c-432d-8c07-2d4f9a767cb7}\latexentrystart\entry{\foreignlanguage{occitan}{Fødu}}\latexsensestart\latexsensegramstart \pos{Anthroponyme}\latexsensegramend \latexsenseglossstart\glossin{fr}{Feudou}\latexsenseglossend\latexsenseend\latexentryend
+\end{multicols}
+
+\subsection{G}\begin{multicols}{2}\label{galup--t-0aae67a6-eaaf-4e51-981c-08ede90cdcb3}\latexentrystart\entry{\foreignlanguage{occitan}{galup͏ɛt}}\latexsensestart\latexsensegramstart \pos{Nom}\latexsensegramend \latexsensedefinitionstart\definition{Petite fenêtre }\latexsensedefinitionend\latexsenseglossstart\glossin{fr}{petite\_ouverture}\latexsenseglossend\latexsensedomainstart\semanticdomain{5 La maison}\latexsensedomainend\ $\bullet$\ See figure  \ref{illustration:ddb48c35-195c-48a2-9d64-8d30961d5f1b-1} p. \pageref{illustration:ddb48c35-195c-48a2-9d64-8d30961d5f1b-1}\latexsenseend\latexentryend
+\end{multicols}
+\begin{figure}[tbp]
+	\centering
+	\includegraphics[width=0.3\linewidth]{pictures/P1230164.JPG}
+	\caption{\foreignlanguage{occitan}{galup͏ɛt}, see p. \pageref{galup--t-0aae67a6-eaaf-4e51-981c-08ede90cdcb3}}
+	\label{illustration:ddb48c35-195c-48a2-9d64-8d30961d5f1b-1}
+\end{figure}
+
+\subsection{P}\begin{multicols}{2}\label{pir-d6ca37c6-4873-4322-9d1a-7f5c4eab004f}\latexentrystart\entry{\foreignlanguage{occitan}{pir}}\latexsensestart\latexsensegramstart \pos{Adjectif}\latexsensegramend \latexsensedefinitionstart\definition{\{a\} \$5 \& \#1 \^{}2 50\% \textasciitilde{}3 \textbackslash{}4 \_5}\latexsensedefinitionend\latexsenseglossstart\glossin{fr}{mauvais\textbackslash{}DEG.COMP}\latexsenseglossend\latexsenseend\latexentryend
+\end{multicols}
+
+\subsection{U}\begin{multicols}{2}\label{-u1-1d58bcaa-fd38-4834-9003-b2698e5a249d}\latexentrystart\entry{\foreignlanguage{occitan}{-u}$_{1}$}\latexsensestart\latexsensegramstart \pos{Nom}\gramtraitslot{from-part-of-speech}\gramtrait{Nom}\latexsensegramend \latexsenseglossstart\glossgramin{fr}{-diminutive}\latexsenseglossend\latexsenseend\latexentryend
+\end{multicols}
+
+\subsection{ʃ}\begin{multicols}{2}\label{---bri-2b7e9880-38f5-46ac-bc2e-3b3567db706e}\latexentrystart\entry{\foreignlanguage{occitan}{͏ʃəbri}}\latexvariantstart\variant{\foreignlanguage{occitan}{ʃœbri}}\latexvariantbetween\variant{\foreignlanguage{occitan}{ʃəbri}}\latexvariantbetween\variant{\foreignlanguage{occitan}{ʃøbri}}\latexvariantend\latexsensestart\latexsensegramstart \pos{Nom}\latexsensegramend \latexsenseglossstart\glossin{fr}{chevreau}\latexsenseglossend\latexsensedomainstart\semanticdomain{1.6 Animaux}\latexsensedomainend\latexsenseend\latexentryend
+\end{multicols}
+
+	\section{Thematic dictionary}
+	
+\subsection{1.6 Animaux}\begin{multicols}{2}\latexentrystart\entry{\foreignlanguage{occitan}{͏ʃəbri}}\latexvariantstart\variant{\foreignlanguage{occitan}{ʃœbri}}\latexvariantbetween\variant{\foreignlanguage{occitan}{ʃəbri}}\latexvariantbetween\variant{\foreignlanguage{occitan}{ʃøbri}}\latexvariantend\latexsensestart\latexsensegramstart \pos{Nom}\latexsensegramend \latexsenseglossstart\glossin{fr}{chevreau}\latexsenseglossend\latexsensedomainstart\semanticdomain{1.6 Animaux}\latexsensedomainend\latexsenseend\latexentryend
+\end{multicols}
+
+\subsection{2.1 Le corps}\begin{multicols}{2}\latexentrystart\entry{\foreignlanguage{occitan}{agyju}}\latexsensestart\latexsensegramstart \pos{Nom}\latexsensegramend \latexsenseglossstart\glossin{fr}{dard}\latexsenseglossend\latexsensedomainstart\semanticdomain{2.1 Le corps}\latexsensedomainend\latexsenseend\latexrelationcomponentstart\latexrelationcomponenttype{Dérivé}\latexrelationcomponent{\foreignlanguage{occitan}{agyj}}\latexrelationcomponentbetween\latexrelationcomponenttype{Dérivé}\latexrelationcomponent{\foreignlanguage{occitan}{-u}$_{1}$}\latexrelationcomponentend\latexentryend
+\end{multicols}
+
+\subsection{5 La maison}\begin{multicols}{2}\latexentrystart\entry{\foreignlanguage{occitan}{galup͏ɛt}}\latexsensestart\latexsensegramstart \pos{Nom}\latexsensegramend \latexsensedefinitionstart\definition{Petite fenêtre }\latexsensedefinitionend\latexsenseglossstart\glossin{fr}{petite\_ouverture}\latexsenseglossend\latexsensedomainstart\semanticdomain{5 La maison}\latexsensedomainend\ $\bullet$\ See figure  \ref{illustration:ddb48c35-195c-48a2-9d64-8d30961d5f1b-1} p. \pageref{illustration:ddb48c35-195c-48a2-9d64-8d30961d5f1b-1}\latexsenseend\latexentryend
+\end{multicols}
+
+\subsection{5.1.1 Mobilier}\begin{multicols}{2}\latexentrystart\entry{\foreignlanguage{occitan}{agyj}}\latexsensestart\latexsensegramstart \pos{Nom}\latexsensegramend \latexsenseglossstart\glossin{fr}{aiguille}\latexsenseglossend\latexsensedomainstart\semanticdomain{5.1.1 Mobilier}\latexsensedomainend\latexsenseend\latexentryend
+\end{multicols}
+
+\subsection{6.2 Agriculture}\begin{multicols}{2}\latexentrystart\entry{\foreignlanguage{occitan}{batøz}}\latexsensestart\ding{182}\latexsensegramstart \pos{Nom}\latexsensegramend \latexsenseglossstart\glossin{fr}{batteuse}\latexsenseglossend\latexsenserelationstart\latexsenserelationtype{Synonyme}\latexsenserelation{\foreignlanguage{occitan}{agyj}}\latexsenserelationsensenumber{1}\latexsenserelation{\foreignlanguage{occitan}{f\textasciitilde{}e}}\latexsenserelationsensenumber{1}\latexsenserelationbetween\latexsenserelationtype{Antonyme}\latexsenserelation{\foreignlanguage{occitan}{pir}}\latexsenserelationsensenumber{1}\latexsenserelationend\latexsensedomainstart\semanticdomain{6.2 Agriculture}\latexsensedomainend\latexsenseend\latexsensestart\ding{183}\latexsensegramstart \pos{Nom}\latexsensegramend \latexsensedefinitionstart\definition{moment du rassemblement pour faire fonctionner la batteuse dans une ferme}\latexsensedefinitionend\latexsenseglossstart\glossin{fr}{rassemblement\_pour\_la\_batteuse}\latexsenseglossend\latexsenseend\latexentryend
+\end{multicols}
+\end{document}

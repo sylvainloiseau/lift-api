@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- See https://github.com/sillsdev/lift-standard for more information on the format used here. -->
+<!--
+ Test dictionary for the LaTeX export: 10 entries of DictionaryLift20261022.lift
+ (see .claude/plan/latex-export-2026-10.md, step 8), and one more, with additions made
+ by hand, each marked by a comment. The header is the corpus's: it shares its
+ .lift-ranges file.
+-->
+<lift producer="SIL.FLEx 9.3.9.1439" version="0.13">
+<header>
+<ranges>
+<range id="dialect" href="DictionaryLift20261022.lift-ranges"/>
+<range id="etymology" href="DictionaryLift20261022.lift-ranges"/>
+<range id="grammatical-info" href="DictionaryLift20261022.lift-ranges"/>
+<range id="lexical-relation" href="DictionaryLift20261022.lift-ranges"/>
+<range id="note-type" href="DictionaryLift20261022.lift-ranges"/>
+<range id="paradigm" href="DictionaryLift20261022.lift-ranges"/>
+<range id="reversal-type" href="DictionaryLift20261022.lift-ranges"/>
+<range id="semantic-domain-ddp4" href="DictionaryLift20261022.lift-ranges"/>
+<range id="status" href="DictionaryLift20261022.lift-ranges"/>
+<range id="users" href="DictionaryLift20261022.lift-ranges"/>
+<range id="location" href="DictionaryLift20261022.lift-ranges"/>
+<!-- The following ranges are produced by FieldWorks Language Explorer, and are not part of the LIFT standard. -->
+<range id="anthro-code" href="DictionaryLift20261022.lift-ranges"/>
+<range id="translation-type" href="DictionaryLift20261022.lift-ranges"/>
+<!-- The parts of speech are duplicated in another range because derivational affixes require a "From" PartOfSpeech as well as a "To" PartOfSpeech. -->
+<range id="from-part-of-speech" href="DictionaryLift20261022.lift-ranges"/>
+<range id="morph-type" href="DictionaryLift20261022.lift-ranges"/>
+<range id="exception-feature" href="DictionaryLift20261022.lift-ranges"/>
+<range id="inflection-feature" href="DictionaryLift20261022.lift-ranges"/>
+<range id="inflection-feature-type" href="DictionaryLift20261022.lift-ranges"/>
+<range id="mood-feature-value" href="DictionaryLift20261022.lift-ranges"/>
+<range id="pers-feature-value" href="DictionaryLift20261022.lift-ranges"/>
+<range id="absten-feature-value" href="DictionaryLift20261022.lift-ranges"/>
+<range id="gen-feature-value" href="DictionaryLift20261022.lift-ranges"/>
+<range id="asp-feature-value" href="DictionaryLift20261022.lift-ranges"/>
+<range id="num-feature-value" href="DictionaryLift20261022.lift-ranges"/>
+<range id="Nom-slot" href="DictionaryLift20261022.lift-ranges"/>
+<range id="Verbe-slot" href="DictionaryLift20261022.lift-ranges"/>
+<range id="Adjectif-slot" href="DictionaryLift20261022.lift-ranges"/>
+<range id="Nom-infl-class" href="DictionaryLift20261022.lift-ranges"/>
+<range id="Pronom-infl-class" href="DictionaryLift20261022.lift-ranges"/>
+<range id="Verbe-infl-class" href="DictionaryLift20261022.lift-ranges"/>
+<range id="Adjectif-infl-class" href="DictionaryLift20261022.lift-ranges"/>
+<range id="Verbe-stem-name" href="DictionaryLift20261022.lift-ranges"/>
+<range id="do-not-publish-in" href="DictionaryLift20261022.lift-ranges"/>
+<range id="ParticularismSemantic" href="DictionaryLift20261022.lift-ranges"/>
+<range id="ParticularismSource" href="DictionaryLift20261022.lift-ranges"/>
+<range id="ParticularismFormal" href="DictionaryLift20261022.lift-ranges"/>
+<range id="usage-type" href="DictionaryLift20261022.lift-ranges"/>
+<range id="sense-type" href="DictionaryLift20261022.lift-ranges"/>
+</ranges>
+<fields>
+<field tag="cv-pattern">
+<form lang="en"><text>This records the syllable pattern for a LexPronunciation in FieldWorks.</text></form>
+</field>
+<field tag="tone">
+<form lang="en"><text>This records the tone information for a LexPronunciation in FieldWorks.</text></form>
+</field>
+<field tag="comment">
+<form lang="en"><text>This records a comment (note) in a LexEtymology in FieldWorks.</text></form>
+</field>
+<field tag="import-residue">
+<form lang="en"><text>This records residue left over from importing a standard format file into FieldWorks (or LinguaLinks).</text></form>
+</field>
+<field tag="literal-meaning">
+<form lang="en"><text>This field is used to store a literal meaning of the entry.  Typically, this field is necessary only for a compound or an idiom where the meaning of the whole is different from the sum of its parts.</text></form>
+</field>
+<field tag="summary-definition">
+<form lang="en"><text>A summary definition (located at the entry level in the Entry pane) is a general definition summarizing all the senses of a primary entry. It has no theoretical value; its use is solely pragmatic.</text></form>
+</field>
+<field tag="exemplar">
+<form lang="en"><text>This field stores the exemplar form for the current sense.</text></form>
+</field>
+<field tag="scientific-name">
+<form lang="en"><text>This field stores the scientific name pertinent to the current sense.</text></form>
+</field>
+<field tag="Particularism">
+<form lang="en"><text></text></form>
+<form lang="qaa-x-spec"><text>Class=LexEntry; Type=ReferenceAtom; WsSelector=kwsAnal; DstCls=CmCustomItem; range=ParticularismSemantic</text></form>
+</field>
+<field tag="ParticularismLexical">
+<form lang="en"><text></text></form>
+<form lang="qaa-x-spec"><text>Class=LexEntry; Type=ReferenceAtom; WsSelector=kwsAnal; DstCls=CmPossibility; range=ParticularismFormal</text></form>
+</field>
+<field tag="particularismSource">
+<form lang="en"><text></text></form>
+<form lang="qaa-x-spec"><text>Class=LexEntry; Type=ReferenceAtom; WsSelector=kwsAnal; DstCls=CmPossibility; range=ParticularismSource</text></form>
+</field>
+<field tag="Locution">
+<form lang="en"><text></text></form>
+<form lang="qaa-x-spec"><text>Class=LexSense; Type=MultiUnicode; WsSelector=kwsVernAnals</text></form>
+</field>
+<field tag="Particularism">
+<form lang="en"><text></text></form>
+<form lang="qaa-x-spec"><text>Class=LexSense; Type=ReferenceAtom; WsSelector=kwsAnal; DstCls=CmPossibility; range=ParticularismSemantic</text></form>
+</field>
+<field tag="particularismSource">
+<form lang="en"><text></text></form>
+<form lang="qaa-x-spec"><text>Class=LexSense; Type=ReferenceAtom; WsSelector=kwsAnal; DstCls=CmPossibility; range=ParticularismSource</text></form>
+</field>
+</fields>
+</header>
+<entry dateCreated="2016-08-19T07:27:23Z" dateModified="2026-07-10T15:14:56Z" id="agyju_0bd854fc-34e0-4cf8-83c5-4cb2cf20c155" guid="0bd854fc-34e0-4cf8-83c5-4cb2cf20c155">
+<lexical-unit>
+<form lang="oc-FR-fonipa"><text>agyju</text></form>
+</lexical-unit>
+<trait  name="morph-type" value="stem"/>
+<citation>
+<form lang="oc-FR-fonipa"><text>agyju</text></form>
+</citation>
+<note>
+<form lang="fr"><text>QuestionnaireLexical1 ,<span lang="oc-FR-fonipa">CheckedDanielle2016</span></text></form>
+</note>
+<relation type="_component-lexeme" ref="agyj_4a1a6e0a-6152-4540-8ea7-746ab7aef768" order="0">
+<trait name="is-primary" value="true"/>
+<trait  name="complex-form-type" value="Dérivé"/>
+</relation>
+<relation type="_component-lexeme" ref="-u1_1d58bcaa-fd38-4834-9003-b2698e5a249d" order="1">
+<trait  name="complex-form-type" value="Dérivé"/>
+</relation>
+<sense id="e802a1e2-24e2-4f4b-a1b7-7d6efb46e80a">
+<grammatical-info value="Nom">
+</grammatical-info>
+<gloss lang="fr"><text>dard</text></gloss>
+<trait name ="semantic-domain-ddp4" value="2.1 Le corps"/>
+</sense>
+</entry>
+<entry dateCreated="2016-08-19T08:18:52Z" dateModified="2018-07-13T07:11:33Z" id="agyj_4a1a6e0a-6152-4540-8ea7-746ab7aef768" guid="4a1a6e0a-6152-4540-8ea7-746ab7aef768">
+<lexical-unit>
+<form lang="oc-FR-fonipa"><text>agyj</text></form>
+</lexical-unit>
+<trait  name="morph-type" value="stem"/>
+<citation>
+<form lang="oc-FR-fonipa"><text>agyj</text></form>
+</citation>
+<note>
+<form lang="fr"><text>QuestionnaireLexical1 ,<span lang="oc-FR-fonipa">CheckedDanielle2016</span></text></form>
+</note>
+<sense id="f2e43aca-c7ac-44d6-890d-afb339f06f64">
+<grammatical-info value="Nom">
+</grammatical-info>
+<gloss lang="fr"><text>aiguille</text></gloss>
+<trait name ="semantic-domain-ddp4" value="5.1.1 Mobilier"/>
+</sense>
+</entry>
+<entry dateCreated="2016-06-30T15:46:29Z" dateModified="2018-09-06T21:02:57Z" id="-u1_1d58bcaa-fd38-4834-9003-b2698e5a249d" guid="1d58bcaa-fd38-4834-9003-b2698e5a249d" order="1">
+<lexical-unit>
+<form lang="oc-FR-fonipa"><text>-u</text></form>
+</lexical-unit>
+<trait  name="morph-type" value="suffix"/>
+<note>
+<form lang="fr"><text><span lang="oc-FR-fonipa">CheckedDanielle2016</span></text></form>
+</note>
+<sense id="fe2e24a4-c05b-42af-9b90-d157a072769f">
+<grammatical-info value="Nom">
+<trait name="type" value="derivAffix"/>
+<trait  name="from-part-of-speech" value="Nom"/>
+</grammatical-info>
+<gloss lang="fr"><text>-DIMINUTIVE</text></gloss>
+</sense>
+</entry>
+<entry dateCreated="2018-09-14T13:34:27Z" dateModified="2018-10-02T08:23:09Z" id="ãtʃe_02c9a531-fb35-4bf1-a59e-fdb82c166b33" guid="02c9a531-fb35-4bf1-a59e-fdb82c166b33">
+<lexical-unit>
+<form lang="oc-FR-fonipa"><text>ãtʃe</text></form>
+</lexical-unit>
+<trait  name="morph-type" value="stem"/>
+<trait name="ParticularismLexical" value="Phonétique"/>
+<sense id="7361e187-303c-4f00-bdc2-3dc3be63e20f">
+<grammatical-info value="Adverbe">
+</grammatical-info>
+<gloss lang="fr"><text>entier</text></gloss>
+</sense>
+</entry>
+<entry dateCreated="2018-08-07T17:08:28Z" dateModified="2018-10-02T15:19:20Z" id="arɛ̃ʒ_52e5f48d-26dd-45ec-86df-33acaae8ceaa" guid="52e5f48d-26dd-45ec-86df-33acaae8ceaa">
+<lexical-unit>
+<form lang="oc-FR-fonipa"><text>arɛ̃ʒ</text></form>
+</lexical-unit>
+<trait  name="morph-type" value="stem"/>
+<trait name="ParticularismLexical" value="Phonétique"/>
+<sense id="ad68a5b2-836a-4d89-b6ce-19445e7b0d9f">
+<grammatical-info value="Verbe">
+<trait name="Verbe-infl-class" value="-ɑ"/></grammatical-info>
+<gloss lang="fr"><text>mettre_en_ordre</text></gloss>
+<definition>
+<form lang="fr"><text>mettre en ordre</text></form>
+</definition>
+<trait name="Particularism" value="Semantic"/>
+<subsense id="3244b249-0ce1-4619-a094-89b8384eddc0">
+<grammatical-info value="Verbe">
+<trait name="Verbe-infl-class" value="-ɑ"/></grammatical-info>
+<field type="Locution">
+<form lang="fr"><text>faire son lit</text></form>
+<form lang="oc-FR-fonipa"><text>arɛ̃ʒɑ sõ je</text></form>
+</field>
+</subsense>
+</sense>
+</entry>
+<entry dateCreated="2018-07-17T17:51:48Z" dateModified="2018-09-14T09:40:31Z" id="galup͏ɛt_0aae67a6-eaaf-4e51-981c-08ede90cdcb3" guid="0aae67a6-eaaf-4e51-981c-08ede90cdcb3">
+<lexical-unit>
+<form lang="oc-FR-fonipa"><text>galup͏ɛt</text></form>
+</lexical-unit>
+<trait  name="morph-type" value="stem"/>
+<pronunciation>
+</pronunciation>
+<sense id="ddb48c35-195c-48a2-9d64-8d30961d5f1b">
+<grammatical-info value="Nom">
+</grammatical-info>
+<gloss lang="fr"><text>petite_ouverture</text></gloss>
+<definition>
+<form lang="fr"><text>Petite fenêtre </text></form>
+</definition>
+<trait name ="semantic-domain-ddp4" value="5 La maison"/>
+<note type="anthropology">
+<form lang="fr"><text>Petite ouverture généralement non vitrée</text></form>
+</note>
+<illustration href="P1230164.JPG">
+<label>
+<form lang="oc-FR-fonipa"><text>la galupɛt də la butik</text></form>
+</label>
+</illustration></sense>
+</entry>
+<entry dateCreated="2016-04-10T13:26:50Z" dateModified="2018-09-26T07:15:41Z" id="batøz_c18620ba-035f-4189-83fe-f302d610c161" guid="c18620ba-035f-4189-83fe-f302d610c161">
+<lexical-unit>
+<form lang="oc-FR-fonipa"><text>batøz</text></form>
+</lexical-unit>
+<trait  name="morph-type" value="stem"/>
+<note>
+<form lang="fr"><text><span lang="oc-FR-fonipa">CheckedDanielle2016</span></text></form>
+</note>
+<sense id="7bd1663c-f03f-444e-a1a3-7b999cead984" order="0">
+<grammatical-info value="Nom">
+</grammatical-info>
+<gloss lang="fr"><text>batteuse</text></gloss>
+<trait name ="semantic-domain-ddp4" value="6.2 Agriculture"/>
+
+<!-- Added by hand: sense relations of two types, to test their grouping. -->
+<relation type="Synonyme" ref="f2e43aca-c7ac-44d6-890d-afb339f06f64"/>
+<relation type="Antonyme" ref="f26c51b9-b6e3-416b-b41a-01ba0f0c13e6"/>
+<relation type="Synonyme" ref="f85f85b3-2dd7-4e2d-8232-ce14acd9dc54"/>
+</sense>
+<sense id="d16bcb10-4fff-47d5-96b1-b6dd901cd780" order="1">
+<grammatical-info value="Nom">
+</grammatical-info>
+<gloss lang="fr"><text>rassemblement_pour_la_batteuse</text></gloss>
+<definition>
+<form lang="fr"><text>moment du rassemblement pour faire fonctionner la batteuse dans une ferme</text></form>
+</definition>
+<example source="201601.07 10.2">
+<form lang="oc-FR-fonipa"><text>yn barik də vɛ̃ pur la batøz. </text></form>
+<translation type="Traduction libre">
+<form lang="fr"><text>U<span>n tonneau de vin pour la batteuse.</span></text></form>
+</translation>
+<note type="reference">
+<form lang="en"><text><span href="silfw://localhost/link?tool%3dinterlinearEdit%26guid%3d71e5b8e3-8313-4708-aef7-5b13e414cab1%26tag%3d" class="Hyperlink">201601.07 10.2</span></text></form>
+</note>
+</example>
+<trait  name="sense-type" value="par métonymie"/>
+</sense>
+</entry>
+<entry dateCreated="2025-12-11T14:30:35Z" dateModified="2025-12-11T14:30:56Z" id="Fødu_da57e74a-771c-432d-8c07-2d4f9a767cb7" guid="da57e74a-771c-432d-8c07-2d4f9a767cb7">
+<lexical-unit>
+<form lang="oc-FR-fonipa"><text>Fødu</text></form>
+</lexical-unit>
+<trait  name="morph-type" value="stem"/>
+<sense id="edceda96-fb44-45d2-b7b4-770d6beca846">
+<grammatical-info value="Anthroponyme">
+</grammatical-info>
+<gloss lang="fr"><text>Feudou</text></gloss>
+</sense>
+</entry>
+<entry dateCreated="2020-06-29T10:25:20Z" dateModified="2020-06-29T10:25:54Z" id="f~e_93b25f44-982d-4484-820b-743b2434aaf1" guid="93b25f44-982d-4484-820b-743b2434aaf1">
+<lexical-unit>
+<form lang="oc-FR-fonipa"><text>f~e</text></form>
+</lexical-unit>
+<trait  name="morph-type" value="stem"/>
+<sense id="f85f85b3-2dd7-4e2d-8232-ce14acd9dc54">
+<grammatical-info value="Nom">
+</grammatical-info>
+<definition>
+<form lang="fr"><text>odeur forte, bonne ou mauvaise.</text></form>
+</definition>
+</sense>
+</entry>
+<entry dateCreated="2026-06-26T18:47:28Z" dateModified="2026-06-26T18:47:28Z" id="pir_d6ca37c6-4873-4322-9d1a-7f5c4eab004f" guid="d6ca37c6-4873-4322-9d1a-7f5c4eab004f">
+<lexical-unit>
+<form lang="oc-FR-fonipa"><text>pir</text></form>
+</lexical-unit>
+<trait  name="morph-type" value="stem"/>
+<sense id="f26c51b9-b6e3-416b-b41a-01ba0f0c13e6">
+<grammatical-info value="Adjectif">
+</grammatical-info>
+<gloss lang="fr"><text>mauvais\DEG.COMP</text></gloss>
+
+<!-- Added by hand: every character LaTeX treats specially. -->
+<definition><form lang="fr"><text>{a} $5 &amp; #1 ^2 50% ~3 \4 _5</text></form></definition>
+</sense>
+</entry>
+<!-- From the corpus; its form starts with U+034F. Its two relations, to entries outside this file, are removed. -->
+<entry dateCreated="2016-08-19T07:36:47Z" dateModified="2026-07-10T15:15:11Z" id="͏ʃəbri_2b7e9880-38f5-46ac-bc2e-3b3567db706e" guid="2b7e9880-38f5-46ac-bc2e-3b3567db706e">
+<lexical-unit>
+<form lang="oc-FR-fonipa"><text>͏ʃəbri</text></form>
+</lexical-unit>
+<trait  name="morph-type" value="stem"/>
+<citation>
+<form lang="oc-FR-fonipa"><text>͏ʃəbri</text></form>
+</citation>
+<note>
+<form lang="fr"><text>QuestionnaireLexical1 ,<span lang="oc-FR-fonipa">CheckedDanielle2016 CheckedDanielle2016 CheckedDanielle2016</span></text></form>
+</note>
+<variant>
+<form lang="oc-FR-fonipa"><text>ʃœbri</text></form>
+<trait  name="morph-type" value="stem"/>
+</variant>
+<variant>
+<form lang="oc-FR-fonipa"><text>ʃəbri</text></form>
+<trait  name="morph-type" value="stem"/>
+</variant>
+<variant>
+<form lang="oc-FR-fonipa"><text>ʃøbri</text></form>
+<trait  name="morph-type" value="stem"/>
+</variant>
+<sense id="80380097-1465-4c94-8b8c-fd65995ad9a8">
+<grammatical-info value="Nom">
+</grammatical-info>
+<gloss lang="fr"><text>chevreau</text></gloss>
+<trait name ="semantic-domain-ddp4" value="1.6 Animaux"/>
+</sense>
+</entry>
+</lift>

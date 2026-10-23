@@ -19,6 +19,7 @@ import fr.cnrs.lacito.liftapi.model.TextSpan;
 import fr.cnrs.lacito.liftapi.xml.LiftDictionaryXmlReader;
 import fr.cnrs.lacito.liftapi.xml.LiftWriterSession;
 import java.io.File;
+import java.io.OutputStream;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -412,6 +413,36 @@ public final class LiftDictionary {
         } catch (Exception e) {
             throw new WrittingLiftDocumentException(e);
         }
+    }
+
+    /**
+     * Write the dictionary to a stream, in the Lift-XML vocabulary, as {@link #save(File)}
+     * would write it to the file it was read from. The stream is flushed, not closed.
+     *
+     * <p>The {@code href}s of ranges defined in external files are written relative to the
+     * directory of the file the dictionary was read from (the working directory when there
+     * is none), so that they name the same files.
+     *
+     * @param out the stream written
+     * @throws WrittingLiftDocumentException
+     */
+    public void save(OutputStream out) throws WrittingLiftDocumentException {
+        try (LiftWriterSession liftWriter = new LiftWriterSession(out, baseDirectory())) {
+            liftWriter.marshall(this);
+        } catch (Exception e) {
+            throw new WrittingLiftDocumentException(e);
+        }
+    }
+
+    /** The file the dictionary was read from; empty for a dictionary built in memory. */
+    public java.util.Optional<File> getSourceFile() {
+        return java.util.Optional.ofNullable(source);
+    }
+
+    /** The directory of the file the dictionary was read from, or the working directory. */
+    private java.nio.file.Path baseDirectory() {
+        java.nio.file.Path dir = source == null ? null : source.getAbsoluteFile().toPath().getParent();
+        return dir != null ? dir : java.nio.file.Path.of("").toAbsolutePath();
     }
 
     // Utility methods

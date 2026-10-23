@@ -11,6 +11,8 @@ module fr.cnrs.lacito.liftapi {
     // part of this module's public API: `requires transitive` is deliberate.
     requires transitive javafx.base;
     requires info.picocli;
+    // The JSON settings of the LaTeX export; no JSON type is in the API.
+    requires com.fasterxml.jackson.jr.ob;
 
     // The public API. Everything a consumer needs is here: a dictionary, the model it
     // holds, and the fluent API for extending it.
@@ -19,6 +21,9 @@ module fr.cnrs.lacito.liftapi {
     exports fr.cnrs.lacito.liftapi.model;
     // The changes of a dictionary, as reversible events (undo, transactions).
     exports fr.cnrs.lacito.liftapi.change;
+    // The export to LaTeX and PDF. Its stylesheets are resources of this package, read by
+    // its own classes: they need no opens.
+    exports fr.cnrs.lacito.liftapi.export;
 
     // fr.cnrs.lacito.liftapi.xml and fr.cnrs.lacito.liftapi.internal are deliberately
     // NOT exported. Serialization is reached through LiftDictionary.loadDictionaryFromFile
