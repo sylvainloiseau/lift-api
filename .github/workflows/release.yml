@@ -40,7 +40,9 @@ jobs:
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
 
       - name: Set the version from the tag
-        run: mvn -B -ntp versions:set -DnewVersion="${GITHUB_REF_NAME#v}" -DgenerateBackupPoms=false
+        run: |
+          mvn --version
+          mvn -B -ntp versions:set -DnewVersion="${GITHUB_REF_NAME#v}" -DgenerateBackupPoms=false
 
       - name: Test, sign and publish
         run: mvn -B -ntp -P release deploy
