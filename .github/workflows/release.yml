@@ -1,6 +1,8 @@
 # Publishes lift-api to Maven Central when a version tag is pushed:
 #   git tag v0.1.0 && git push origin v0.1.0
 # The version released is the tag without its "v"; the pom keeps its -SNAPSHOT version.
+# The library goes to Maven Central; the command-line jar (with its dependencies) is
+# attached to the GitHub release of the tag.
 #
 # Repository secrets it needs (Settings > Secrets and variables > Actions):
 #   CENTRAL_TOKEN_USERNAME, CENTRAL_TOKEN_PASSWORD  the user token generated on
@@ -15,16 +17,17 @@ on:
       - 'v*'
 
 permissions:
-  contents: read
+  # To create the GitHub release.
+  contents: write
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Java 25, the Central credentials and the signing key
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '25'
@@ -45,3 +48,9 @@ jobs:
           CENTRAL_TOKEN_USERNAME: ${{ secrets.CENTRAL_TOKEN_USERNAME }}
           CENTRAL_TOKEN_PASSWORD: ${{ secrets.CENTRAL_TOKEN_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Attach the command-line jar to the GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: target/lift-api-*-jar-with-dependencies.jar

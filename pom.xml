@@ -84,6 +84,9 @@
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
                     </descriptorRefs>
+                    <!-- The command-line jar is not installed nor deployed: Maven Central gets the
+                         library only; the release workflow attaches this jar to the GitHub release. -->
+                    <attach>false</attach>
                     <archive>
                         <manifest>
                             <mainClass>fr.cnrs.lacito.liftapi.cli.Main</mainClass>
