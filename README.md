@@ -18,14 +18,36 @@ has been elaborated for descriptive linguistics.
 
 # Installation
 
+## As a library
+
+lift-api is on Maven Central: declare it in the `pom.xml` of your project, no repository or
+token needed.
+
+```xml
+<dependency>
+  <groupId>io.github.sylvainloiseau</groupId>
+  <artifactId>lift-api</artifactId>
+  <version>0.1.0</version>
+</dependency>
 ```
+
+## As a command-line tool
+
+Download `lift-api-0.1.0-jar-with-dependencies.jar` from the
+[GitHub release v0.1.0](https://github.com/sylvainloiseau/lift-api/releases/tag/v0.1.0)
+([direct link](https://github.com/sylvainloiseau/lift-api/releases/download/v0.1.0/lift-api-0.1.0-jar-with-dependencies.jar);
+the [latest release](https://github.com/sylvainloiseau/lift-api/releases/latest) has the
+newest version), then run it with Java 25 or later (see [CLI](#cli)):
+
+```
+java -jar lift-api-0.1.0-jar-with-dependencies.jar <dictionaryFile>
 ```
 
 # Usage
 
 ## Dictionary creation
 
-Reading a file:
+### Reading a file:
 
 ```java
 import java.io.File;
@@ -39,7 +61,7 @@ LiftDictionary lf = LiftDictionary.loadDictionaryFromFile(file);
 lf.save();
 ```
 
-Building from scratch:
+### Building from scratch:
 
 ```java
 import fr.cnrs.lacito.liftapi.LiftDictionary;
@@ -271,18 +293,6 @@ For a specific test:
 
 ```bash
 mvn test -pl lift-api -Dtest=MultiTextTest#testTextAndSeveralSpan
-```
-
-## Using it as a dependency
-
-Released versions are on Maven Central: no repository to declare, no token.
-
-```xml
-<dependency>
-  <groupId>io.github.sylvainloiseau</groupId>
-  <artifactId>lift-api</artifactId>
-  <version>0.1.0</version>
-</dependency>
 ```
 
 ## Releasing
