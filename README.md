@@ -14,7 +14,8 @@ has been elaborated for descriptive linguistics.
 - maintain a registry of the features set and their features: manipulate feature names, count, etc.
 - maintain a registry of all metalanguage or object language forms, number of occurrences of each languages
 - maintain a registry of cross-references between components
-- offer methods to mutate the dictionary, with two API (a fluent API or a low-level API): create components, update component properties, delete or move components, etc.
+- offer methods to mutate the dictionary with a fluent API: create components, update component properties, delete or move components, etc.
+- every change of a dictionary is an event that can be reported, reverted and reapplied
 
 # Installation
 
@@ -118,7 +119,7 @@ import fr.cnrs.lacito.liftapi.LiftDictionary;
 
 Every change of a dictionary is reported as a reversible event: a component added or
 removed, a value changed (a text, a date, a type…), a form, a feature, a definition, a
-language. Each can be reverted and reapplied, which is what an undo history needs.
+language. Each can be reverted and reapplied.
 
 ```java
 import fr.cnrs.lacito.liftapi.change.ModelChange;
@@ -298,4 +299,4 @@ mvn test -pl lift-api -Dtest=MultiTextTest#testTextAndSeveralSpan
 ## Releasing
 
 Pushing a tag `vX.Y.Z` runs `.github/workflows/release.yml`, which tests, signs and
-publishes version `X.Y.Z` to Maven Central (the secrets it needs are listed at its top).
+publishes version `X.Y.Z` to Maven Central.
