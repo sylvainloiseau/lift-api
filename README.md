@@ -299,13 +299,3 @@ mvn test -pl lift-api -Dtest=MultiTextTest#testTextAndSeveralSpan
 
 Pushing a tag `vX.Y.Z` runs `.github/workflows/release.yml`, which tests, signs and
 publishes version `X.Y.Z` to Maven Central (the secrets it needs are listed at its top).
-
-## Installing into the local Maven repository
-
-Since this is a multi-module Maven project, install from the repository root:
-
-```bash
-mvn install
-```
-
-This builds and installs both `lift-api` and `dictionary-editor-fx` into your local Maven repository.

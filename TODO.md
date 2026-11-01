@@ -1,5 +1,6 @@
+## merge entries
 
-## 
+## To be checked
 
 LiftDictionaryCounterManager.discoverFields / attachTargetOnField: a TreeSet of non-Comparable definitions (dead code today, §7).
 LiftFieldAndTraitDefinition.setResolvedRange has no guard. Changing the range of a definition in use leaves its traits holding features of the old set. Refuse it while used, as setDataModel does. A TODO.md entry.

@@ -4,7 +4,7 @@ Numbers between parentheses refer to page in the LIFT specification : **Lexicon 
 
 ## ID
 
-ID only on entry and sense for now: add them one example, or even on all components?
+ID only on entry and sense for now: add them on example, or even on all components?
 
 ## Ambiguity of `field-definition`
 
@@ -42,4 +42,4 @@ Spec says (21):
 > referenced Lift Ranges file, with the id attribute repeated to link from the Lift
 > Ranges file back to the LIFT file..
 
-How is suppression of a range-element expressed?
+How e.g. to suppress a range-element?

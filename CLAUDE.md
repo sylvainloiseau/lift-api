@@ -1,9 +1,7 @@
 # lift-api — notes for Claude
 
 Java library that models LIFT (Lexicon Interchange FormaT) dictionaries: load/save LIFT XML
-(v0.13 and v0.15), walk and query the model, and mutate it. It is one module of the Maven
-multi-module project in `..` (`multilingual-dictionary-editor`); the sibling `../lift-gui`
-is a JavaFX editor that binds directly to this model.
+(v0.13 and v0.15), walk and query the model, and mutate it.
 
 ## Build & test
 
