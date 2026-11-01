@@ -3,7 +3,7 @@
 A library for working with dictionaries in LIFT format (<a
 href="https://github.com/sillsdev/lift-standard">https://github.com/sillsdev/lift-standard</a>).
 
-The LIFT dictionary format allows to represent complex linguistic structures and
+The LIFT dictionary format allows to represent complex lexical structures and
 has been elaborated for descriptive linguistics.
 
 # Features
