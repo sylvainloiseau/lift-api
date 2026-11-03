@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDocumentLoadingException;
+import fr.cnrs.lacito.liftapi.LoadDiagnostic;
+import fr.cnrs.lacito.liftapi.LoadOptions;
 import fr.cnrs.lacito.liftapi.change.ModelChange;
 import fr.cnrs.lacito.liftapi.model.Feature;
 import fr.cnrs.lacito.liftapi.model.FeatureSet;
@@ -139,8 +141,10 @@ class ExternalRangesTest {
         assertTrue(d.getHeader().getFeatureSet("moods").getExternalDefinitionFile().isEmpty());
 
         File file = dir.resolve("test.lift").toFile();
+        assertTrue(d.getLoadDiagnostics().stream().anyMatch(w -> w.kind() == LoadDiagnostic.Kind.MISSING_EXTERNAL_RANGE
+            && w.subject().equals("moods")), d.getLoadDiagnostics().toString());
         assertThrows(LiftDocumentLoadingException.class,
-            () -> new LiftDictionaryXmlReader(file, LiftDictionary.makeBuilder().build(), true).parse());
+            () -> LiftDictionary.loadDictionaryFromFile(file, LoadOptions.defaults().withStrict(true)));
     }
 
     @Test

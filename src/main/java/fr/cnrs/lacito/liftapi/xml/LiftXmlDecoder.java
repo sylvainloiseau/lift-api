@@ -3,6 +3,8 @@ package fr.cnrs.lacito.liftapi.xml;
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDictionaryLanguagesManager;
 import fr.cnrs.lacito.liftapi.LiftVersion;
+import fr.cnrs.lacito.liftapi.LoadDiagnostic;
+import fr.cnrs.lacito.liftapi.LoadOptions;
 import fr.cnrs.lacito.liftapi.builder.AbstractLiftElementBuilder;
 import fr.cnrs.lacito.liftapi.builder.AbstractLiftElementWithFieldAndNoteAndIdBuilder;
 import fr.cnrs.lacito.liftapi.builder.AbstractLiftElementWithoutFieldBuilder;
@@ -27,6 +29,7 @@ import fr.cnrs.lacito.liftapi.model.FeatureSet;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.HasAnnotation;
 import fr.cnrs.lacito.liftapi.model.HasField;
+import fr.cnrs.lacito.liftapi.model.HasGrammaticalInfo;
 import fr.cnrs.lacito.liftapi.model.HasNote;
 import fr.cnrs.lacito.liftapi.model.HasPronunciation;
 import fr.cnrs.lacito.liftapi.model.HasRelations;
@@ -51,7 +54,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.logging.Logger;
 
 import org.xml.sax.Attributes;
 import org.xml.sax.Locator;
@@ -67,8 +69,9 @@ import org.xml.sax.Locator;
  * <ul>
  * <li>which builder an element calls for, and what each of its attributes means - the
  * builder method it maps to. An attribute LIFT does not define on that element is
- * logged as a warning, since it is most likely a mistake in the file, and stored in
- * {@code AbstractLiftRoot.getOtherXmlAttributes()}; it is not written back on save;</li>
+ * reported ({@link LoadDiagnostic.Kind#UNKNOWN_ATTRIBUTE}), since it is most likely a
+ * mistake in the file, and stored in {@code AbstractLiftRoot.getOtherXmlAttributes()}; it
+ * is not written back on save;</li>
  * <li>the spellings that differ between LIFT 0.13 and 0.15 ({@code @type} or
  * {@code @name} on a field, {@code <field tag>} in a 0.13 header);</li>
  * <li>what a file may refer to before declaring it: the {@code option-range} of a
@@ -104,11 +107,16 @@ import org.xml.sax.Locator;
  * is set when the {@code <range>} closes, once the set is filled, and makes it read-only.
  *
  * A range the file lacks, or a file that is not found, gives an empty range with a
- * warning (FLEx leaves empty ranges out of its ranges file), or an error in strict mode.
+ * diagnostic (FLEx leaves empty ranges out of its ranges file), or an error in strict mode.
+ *
+ * <h2>Diagnostics</h2>
+ *
+ * Everything the reader skips, keeps without saving, or finds undeclared is reported
+ * through {@link #diagnose}, never only logged: it reaches
+ * {@code LiftDictionary.getLoadDiagnostics()} at the end of the document. In a strict load
+ * what would be lost on save fails the load instead.
  */
 final class LiftXmlDecoder {
-
-    private static final Logger LOGGER = Logger.getLogger(LiftXmlDecoder.class.getName());
 
     private static final BuilderInternals.Access BUILDERS = BuilderInternals.get();
 
@@ -142,12 +150,17 @@ final class LiftXmlDecoder {
     /** The line of each definition with an {@code option-range}, for the error if the range is missing. */
     private final Map<LiftFieldAndTraitDefinition, Integer> optionRangeLines = new HashMap<>();
 
-    /** The undeclared ranges and the undeclared values ("range\u0000value") already warned about. */
-    private final Set<String> undeclaredRangesWarned = new HashSet<>();
-    private final Set<String> undeclaredValuesWarned = new HashSet<>();
+    /** What the reader noticed: the one channel for everything it skips or keeps without saving. */
+    private final LoadDiagnostics diagnostics;
+
+    /** The {@code .lift} file read, for the diagnostics. */
+    private final Path source;
 
     /** Where the parser is, for the warnings; {@code null} if the parser gives none. */
     private Locator locator;
+
+    /** The local name of the element being opened, for the diagnostics about its attributes. */
+    private String currentElement;
 
     /** Whether a missing external range is an error rather than a warning. */
     private final boolean strict;
@@ -179,23 +192,39 @@ final class LiftXmlDecoder {
     private final Set<Feature> rangeElementsDeclared = Collections.newSetFromMap(new IdentityHashMap<>());
 
     /**
-     * The names of traits and fields already warned about: their definition is for the
-     * other kind of component, so they do not take it (one warning per name, not per
-     * trait).
+     * @param source the {@code .lift} file read, against whose directory the {@code href}
+     *        of ranges are resolved
+     * @param options whether the load is strict (a missing external range, and what would
+     *        be lost on save, are errors rather than diagnostics), and the limit of the
+     *        diagnostics
      */
-    private final Set<String> namesWarnedAboutTheirDefinitionKind = new HashSet<>();
-
-    /**
-     * @param baseDirectory the directory of the {@code .lift} file, against which the
-     *        {@code href} of ranges are resolved
-     * @param strict whether a missing external range is an error rather than a warning
-     */
-    LiftXmlDecoder(LiftDictionary dictionary, Path baseDirectory, boolean strict) {
+    LiftXmlDecoder(LiftDictionary dictionary, Path source, LoadOptions options) {
         this.dictionary = dictionary;
         this.header = dictionary.getHeader();
         this.factory = dictionary.getComponentBuilder();
-        this.externalRanges = new ExternalRangesFiles(baseDirectory);
-        this.strict = strict;
+        this.source = source;
+        this.externalRanges = new ExternalRangesFiles(source.getParent());
+        this.strict = options.strict();
+        this.diagnostics = new LoadDiagnostics(options);
+    }
+
+    /**
+     * Reports a problem of the file at the current position: in the {@code .lift} file, or
+     * in the ranges file being replayed.
+     *
+     * @param subject what it is about, under which its occurrences are counted
+     * @throws IllegalStateException in a strict load, if the kind loses data on save
+     */
+    void diagnose(LoadDiagnostic.Kind kind, String subject, String message) {
+        diagnostics.report(kind, subject, message,
+            replaying ? openRangeFile : source,
+            locator == null ? -1 : locator.getLineNumber(),
+            locator == null ? -1 : locator.getColumnNumber());
+    }
+
+    /** The local name of the element being opened: set by the handler before it calls this decoder. */
+    void setCurrentElement(String localName) {
+        this.currentElement = localName;
     }
 
     /** Whether the handler is replaying a recorded range of an external file. */
@@ -251,40 +280,35 @@ final class LiftXmlDecoder {
                     "'; supported versions are 0.13 and 0.15"
             );
         }
-        dictionary.setLiftProducer(attributes.getValue(LiftVocabulary.PRODUCER_ATTRIBUTE));
+        // The producer is optional (both schemas): without one, the dictionary keeps its own.
+        String producer = attributes.getValue(LiftVocabulary.PRODUCER_ATTRIBUTE);
+        if (producer != null) {
+            dictionary.setLiftProducer(producer);
+        }
         MODEL.setUndeclaredFeatureListener(header, this::warnAboutAnUndeclaredValue);
     }
 
     /**
      * A value a component uses and its range does not declare: a bare, undeclared feature
-     * was created. It is kept, but not written. Warned once per range and value; in a range
-     * the file does not declare at all, once for the range.
+     * was created. It is kept, but not written. One diagnostic per range and value; in a
+     * range the file does not declare at all, one for the range.
      */
     private void warnAboutAnUndeclaredValue(Feature value) {
         FeatureSet range = value.getParentFeatureSet();
         if (!range.isDeclared()) {
             warnAboutAnUndeclaredRange(range);
-        } else if (undeclaredValuesWarned.add(range.getId() + "\u0000" + value.getId())) {
-            warn("The value \"" + value.getId() + "\" is not declared in the range " + range.getId()
+        } else {
+            diagnose(LoadDiagnostic.Kind.UNDECLARED_VALUE, range.getId() + "/" + value.getId(),
+                "The value \"" + value.getId() + "\" is not declared in the range " + range.getId()
                 + where() + "; it is kept, but not saved in the header.");
         }
     }
 
-    /** A built-in range the file does not declare, needed by a value or a definition: warned once. */
+    /** A built-in range the file does not declare, needed by a value or a definition: one diagnostic. */
     private void warnAboutAnUndeclaredRange(FeatureSet range) {
-        if (undeclaredRangesWarned.add(range.getId())) {
-            warn("The range " + range.getId() + " is not declared in the file" + where()
-                + "; its values are kept, but not saved.");
-        }
-    }
-
-    /**
-     * A warning about the definitions of the file: logged, and kept in the dictionary's
-     * load warnings ({@code LiftDictionary.getLoadWarnings()}).
-     */
-    private void warn(String message) {
-        LOGGER.warning(message);
-        dictionary.getMutator().recordLoadWarning(message);
+        diagnose(LoadDiagnostic.Kind.UNDECLARED_RANGE, range.getId(),
+            "The range " + range.getId() + " is not declared in the file" + where()
+            + "; its values are kept, but not saved.");
     }
 
     /** " (line n)", or nothing if the parser gives no position. */
@@ -298,9 +322,8 @@ final class LiftXmlDecoder {
      */
     void endDocument() {
         MODEL.setUndeclaredFeatureListener(header, null);
-        undeclaredRangesWarned.clear();
-        undeclaredValuesWarned.clear();
         dictionary.resolveReferences();
+        dictionary.getMutator().setLoadDiagnostics(diagnostics.toList(), diagnostics.losesDataOnSave());
     }
 
     /**
@@ -471,17 +494,18 @@ final class LiftXmlDecoder {
         }
         LiftFieldAndTraitDefinition definition = header.getFieldsAndTraitsDefinitions(name);
         boolean fits = forATrait ? definition.fitsTraits() : definition.fitsFields();
-        if (!fits && namesWarnedAboutTheirDefinitionKind.add((forATrait ? "trait " : "field ") + name)) {
-            LOGGER.warning(() -> "The definition " + name + " is for " + (forATrait ? "fields" : "traits")
+        if (!fits) {
+            diagnose(LoadDiagnostic.Kind.DEFINITION_KIND_MISMATCH, name,
+                "The definition " + name + " is for " + (forATrait ? "fields" : "traits")
                 + ": the " + (forATrait ? "traits" : "fields") + " of that name do not take it"
-                + (locator == null ? "" : " (line " + locator.getLineNumber() + ")") + ".");
+                + where() + ".");
         }
     }
 
     Frame grammaticalInfo(AbstractLiftRoot parent, Attributes attributes) {
         String value = attribute(attributes, LiftVocabulary.VALUE_ATTRIBUTE);
         if (value == null) throw new IllegalArgumentException("Grammatical info code cannot be null");
-        return rest(Frame.of(factory.grammaticalInfo((LiftSense) parent, value)), attributes,
+        return rest(Frame.of(factory.grammaticalInfo((HasGrammaticalInfo) parent, value)), attributes,
             LiftVocabulary.VALUE_ATTRIBUTE);
     }
 
@@ -625,10 +649,9 @@ final class LiftXmlDecoder {
     }
 
     private void other(AbstractLiftRoot element, String name, String value) {
-        LOGGER.warning(() -> "Attribute " + name + "=\"" + value + "\" is not defined on "
-            + element.getClass().getSimpleName()
-            + (locator == null ? "" : " (line " + locator.getLineNumber() + ")")
-            + "; it will not be saved");
+        diagnose(LoadDiagnostic.Kind.UNKNOWN_ATTRIBUTE, currentElement + "@" + name,
+            "The attribute " + name + "=\"" + value + "\" is not defined on <" + currentElement + ">"
+            + where() + "; it is kept, but will not be saved.");
         MODEL.putOtherXmlAttribute(element, name, value);
     }
 
@@ -713,7 +736,8 @@ final class LiftXmlDecoder {
                 if (strict) {
                     throw new IllegalArgumentException("The range " + id + " cannot be read: " + lookup.problem() + ".");
                 }
-                warn("The range " + id + " is empty: " + lookup.problem() + where() + ".");
+                diagnose(LoadDiagnostic.Kind.MISSING_EXTERNAL_RANGE, id,
+                    "The range " + id + " is empty: " + lookup.problem() + where() + ".");
             } else {
                 rangeToReplay = lookup.range();
                 applyRangeAttributes(set, lookup.range().attributes());
@@ -792,7 +816,8 @@ final class LiftXmlDecoder {
 
         boolean declaredAlready = set.hasFeature(id) && rangeElementsDeclared.contains(set.getFeature(id));
         if (declaredAlready && !(readingInlineOverride() && !set.getFeature(id).isDeclaredInline())) {
-            warn("The range element " + id + " of the range " + set.getId()
+            diagnose(LoadDiagnostic.Kind.DUPLICATE_RANGE_ELEMENT, set.getId() + "/" + id,
+                "The range element " + id + " of the range " + set.getId()
                 + " is declared twice; the second declaration is ignored" + where() + ".");
             return null;
         }
@@ -854,7 +879,9 @@ final class LiftXmlDecoder {
         if (header.containsFieldsAndTraitsDefinitions(name)) {
             // Files exported by FieldWorks may declare a definition twice: the last
             // declaration wins, as it always did.
-            LOGGER.warning("Field or trait definition declared twice, the last one is kept: " + name);
+            diagnose(LoadDiagnostic.Kind.DUPLICATE_DEFINITION, name,
+                "The field or trait definition " + name + " is declared twice; the last declaration is kept"
+                + where() + ".");
             LiftFieldAndTraitDefinition existing = header.getFieldsAndTraitsDefinitions(name);
             // The definitions met here are all declarations: a trait or a field of an
             // undeclared name creates none. The only components that could use one by

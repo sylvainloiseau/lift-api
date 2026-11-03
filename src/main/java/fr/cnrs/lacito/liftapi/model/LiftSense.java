@@ -13,7 +13,7 @@ import javafx.collections.ObservableList;
 
 public final class LiftSense
     extends AbstractIdentifiable
-    implements HasGlosses, HasRelations, HasSense, HasReversal
+    implements HasGlosses, HasRelations, HasSense, HasReversal, HasGrammaticalInfo
 {
 
     // Plain field until a property is asked for (see AbstractExtensibleWithoutField).

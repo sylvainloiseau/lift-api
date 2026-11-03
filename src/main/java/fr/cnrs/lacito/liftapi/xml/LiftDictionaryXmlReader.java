@@ -2,6 +2,8 @@ package fr.cnrs.lacito.liftapi.xml;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDocumentLoadingException;
+import fr.cnrs.lacito.liftapi.LoadOptions;
+import fr.cnrs.lacito.liftapi.NotALiftDocumentException;
 import fr.cnrs.lacito.liftapi.model.DuplicateIdException;
 
 import java.io.File;
@@ -23,29 +25,24 @@ public final class LiftDictionaryXmlReader {
 
     private final File f;
 
-    /**
-     * When {@code true}, recoverable XML errors reported by the parser abort the
-     * load instead of only being logged.
-     */
-    private final boolean strict;
+    /** Strictness, and the limit of the diagnostics. */
+    private final LoadOptions options;
 
     private final LiftDictionary dictionary;
 
     /**
-     * Constructs a LiftDictionaryXmlReader with the specified file, dictionary, and validation flag.
-     *
      * @param f the XML file to parse
      * @param dictionary the dictionary to populate
-     * @param strict whether recoverable XML errors should abort the load
+     * @param options whether the load is strict, and the limit of the diagnostics
      */
     public LiftDictionaryXmlReader(
         File f,
         LiftDictionary dictionary,
-        boolean strict
+        LoadOptions options
     ) {
         this.f = f;
         this.dictionary = dictionary;
-        this.strict = strict;
+        this.options = options;
     }
 
     public void parse() throws LiftDocumentLoadingException {
@@ -67,10 +64,15 @@ public final class LiftDictionaryXmlReader {
             throw new LiftDocumentLoadingException(e);
         }
 
-        LiftSaxHandler lsh = new LiftSaxHandler(dictionary, strict, f);
+        LiftSaxHandler lsh = new LiftSaxHandler(dictionary, options, f);
         try {
             saxParser.parse(f, lsh);
         } catch (SAXException e) {
+            NotALiftDocumentException notLift = notALiftDocument(e);
+            if (notLift != null) {
+                LOGGER.log(Level.SEVERE, notLift.getMessage() + ": " + f.getAbsolutePath());
+                throw notLift;
+            }
             LOGGER.log(
                 Level.SEVERE,
                 "Invalid XML while parsing LIFT file: " + f.getAbsolutePath(),
@@ -94,6 +96,17 @@ public final class LiftDictionaryXmlReader {
             );
             throw new LiftDocumentLoadingException(exception);
         }
+    }
+
+    /** The refusal of the root element, if that is what stopped the parse. */
+    private static NotALiftDocumentException notALiftDocument(SAXException e) {
+        // SAXException.getCause() is the exception it wraps.
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            if (t instanceof NotALiftDocumentException n) {
+                return n;
+            }
+        }
+        return null;
     }
 
 }

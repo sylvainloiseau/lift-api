@@ -211,15 +211,26 @@ class UndeclaredValuesTest {
     @Test
     void theReaderWarnsOnceAboutEachUndeclaredValueAndRange() throws Exception {
         LiftDictionary d = load(lift(HEADER, ENTRIES));
-        List<String> warnings = d.getLoadWarnings();
+        List<LoadDiagnostic> diagnostics = d.getLoadDiagnostics();
+        String all = diagnostics.toString();
 
-        assertEquals(1, warnings.stream().filter(w -> w.contains("\"blue\"")).count(), warnings.toString());
-        assertEquals(1, warnings.stream().filter(w -> w.contains("\"reference\"")).count(), warnings.toString());
+        assertEquals(1, diagnostics.stream().filter(w -> w.kind() == LoadDiagnostic.Kind.UNDECLARED_VALUE
+            && w.subject().endsWith("/blue")).count(), all);
+        assertEquals(1, diagnostics.stream().filter(w -> w.kind() == LoadDiagnostic.Kind.UNDECLARED_VALUE
+            && w.subject().endsWith("/reference")).count(), all);
         // One for the range, not one per value.
-        assertEquals(1, warnings.stream().filter(w -> w.contains("grammatical-info")).count(), warnings.toString());
-        assertFalse(warnings.stream().anyMatch(w -> w.contains("Noun") || w.contains("Verb")), warnings.toString());
-        assertTrue(warnings.stream().allMatch(w -> w.contains("(line ")), warnings.toString());
-        assertTrue(LiftDictionary.makeBuilder().build().getLoadWarnings().isEmpty());
+        assertEquals(1, diagnostics.stream().filter(w -> w.kind() == LoadDiagnostic.Kind.UNDECLARED_RANGE
+            && w.subject().equals("grammatical-info")).count(), all);
+        assertFalse(diagnostics.stream().anyMatch(w -> w.subject().contains("Noun") || w.subject().contains("Verb")), all);
+        assertTrue(diagnostics.stream().allMatch(w -> w.message().contains("(line ") && w.line() > 0), all);
+        // What the file uses without declaring it is kept and written back: nothing is lost.
+        assertTrue(diagnostics.stream().allMatch(w -> w.severity() == LoadDiagnostic.Severity.INFO), all);
+        assertFalse(d.losesDataOnSave());
+        assertTrue(LiftDictionary.makeBuilder().build().getLoadDiagnostics().isEmpty());
+        // The 0.1.0 method, deprecated: the messages of the diagnostics.
+        @SuppressWarnings("removal")
+        List<String> warnings = d.getLoadWarnings();
+        assertEquals(diagnostics.stream().map(LoadDiagnostic::message).toList(), warnings);
     }
 
     @Test
@@ -239,7 +250,8 @@ class UndeclaredValuesTest {
         assertSame(d.getHeader().getNoteTypeManager(),
             d.getHeader().getFieldsAndTraitsDefinitions("kind").getResolvedFeatureSet().orElseThrow());
         assertFalse(d.getHeader().getNoteTypeManager().isDeclared());
-        assertTrue(d.getLoadWarnings().stream().anyMatch(w -> w.contains("note-type")), d.getLoadWarnings().toString());
+        assertTrue(d.getLoadDiagnostics().stream().anyMatch(w -> w.kind() == LoadDiagnostic.Kind.UNDECLARED_RANGE
+            && w.subject().equals("note-type")), d.getLoadDiagnostics().toString());
         assertTrue(save(d).contains("option-range=\"note-type\""));
     }
 

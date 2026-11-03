@@ -6,6 +6,7 @@ import fr.cnrs.lacito.liftapi.LiftDictionaryRegistry;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
 import fr.cnrs.lacito.liftapi.model.FeatureSet;
 import fr.cnrs.lacito.liftapi.model.HasAnnotation;
+import fr.cnrs.lacito.liftapi.model.HasGrammaticalInfo;
 import fr.cnrs.lacito.liftapi.model.HasField;
 import fr.cnrs.lacito.liftapi.model.HasNote;
 import fr.cnrs.lacito.liftapi.model.HasPronunciation;
@@ -205,13 +206,14 @@ public class DictionaryComponentBuilderFactory {
     }
 
     /**
-     * Create a builder for the grammatical information of a sense.
+     * Create a builder for the grammatical information of a sense, or of a reversal (or
+     * the {@code <main>} of a reversal).
      *
-     * @param parent the sense described
+     * @param parent the sense or reversal described
      * @param partOfSpeech the part of speech, created in the header's grammatical-info
      *        range if not declared there yet
      */
-    public GrammaticalInfoBuilder grammaticalInfo(LiftSense parent, String partOfSpeech) {
+    public GrammaticalInfoBuilder grammaticalInfo(HasGrammaticalInfo parent, String partOfSpeech) {
         return new GrammaticalInfoBuilder(dictionary, parent, partOfSpeech);
     }
 

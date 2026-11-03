@@ -3,7 +3,7 @@ package fr.cnrs.lacito.liftapi.builder;
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.model.Feature;
 import fr.cnrs.lacito.liftapi.model.GrammaticalInfo;
-import fr.cnrs.lacito.liftapi.model.LiftSense;
+import fr.cnrs.lacito.liftapi.model.HasGrammaticalInfo;
 
 /**
  * Builder for creating {@link GrammaticalInfo} instances with a fluent API.
@@ -16,24 +16,25 @@ import fr.cnrs.lacito.liftapi.model.LiftSense;
  *       .build();
  * </pre>
  *
- * A sense holds at most one grammatical information, so building a second one for the
- * same sense replaces the first; the replaced component is removed from the dictionary
+ * The parent is a sense, or a reversal (or the {@code <main>} of a reversal): see
+ * {@link HasGrammaticalInfo}. It holds at most one grammatical information, so building a
+ * second one for the same parent replaces the first; the replaced component is removed from the dictionary
  * rather than left registered but unreachable.
  */
 public final class GrammaticalInfoBuilder
-    extends AbstractLiftElementWithoutFieldBuilder<GrammaticalInfo, LiftSense> {
+    extends AbstractLiftElementWithoutFieldBuilder<GrammaticalInfo, HasGrammaticalInfo> {
 
     /**
      * Create a builder for the grammatical information of {@code parent}.
      *
-     * @param dictionary the dictionary the sense belongs to
-     * @param parent the sense this grammatical information describes
+     * @param dictionary the dictionary the parent belongs to
+     * @param parent the sense or reversal this grammatical information describes
      * @param partOfSpeech the part of speech; created in the grammatical-info range of
      *        the header if it is not declared there yet
      */
     protected GrammaticalInfoBuilder(
         LiftDictionary dictionary,
-        LiftSense parent,
+        HasGrammaticalInfo parent,
         String partOfSpeech
     ) {
         this(
@@ -46,20 +47,20 @@ public final class GrammaticalInfoBuilder
     /**
      * Create a builder for the grammatical information of {@code parent}.
      *
-     * @param dictionary the dictionary the sense belongs to
-     * @param parent the sense this grammatical information describes
+     * @param dictionary the dictionary the parent belongs to
+     * @param parent the sense or reversal this grammatical information describes
      * @param partOfSpeech the part of speech, taken from the header's
      *        grammatical-info range
      */
     protected GrammaticalInfoBuilder(
         LiftDictionary dictionary,
-        LiftSense parent,
+        HasGrammaticalInfo parent,
         Feature partOfSpeech
     ) {
         super(GrammaticalInfo.create(partOfSpeech), dictionary, parent);
         if (parent == null) {
             throw new IllegalArgumentException(
-                "Grammatical information must belong to a sense"
+                "Grammatical information must belong to a sense or a reversal"
             );
         }
     }
@@ -94,11 +95,11 @@ public final class GrammaticalInfoBuilder
 
     /**
      * Build the grammatical information, registering it in the dictionary and setting
-     * it on the sense.
+     * it on its parent.
      */
     @Override
     public GrammaticalInfo build() {
-        // A sense holds a single grammatical information: LiftSense.setGrammaticalInfo,
+        // A sense or a reversal holds a single grammatical information: setGrammaticalInfo,
         // which attach() calls, deletes the previous one first.
         super.attach();
         return element;

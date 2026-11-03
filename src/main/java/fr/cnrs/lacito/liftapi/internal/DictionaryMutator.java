@@ -1,6 +1,7 @@
 package fr.cnrs.lacito.liftapi.internal;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
+import fr.cnrs.lacito.liftapi.LoadDiagnostic;
 import fr.cnrs.lacito.liftapi.LiftDictionaryLanguagesManager;
 import fr.cnrs.lacito.liftapi.builder.AbstractLiftElementBuilder;
 import fr.cnrs.lacito.liftapi.model.AbstractExtensibleWithoutField;
@@ -12,6 +13,7 @@ import fr.cnrs.lacito.liftapi.model.Feature;
 import fr.cnrs.lacito.liftapi.model.FeatureSet;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.GrammaticalInfo;
+import fr.cnrs.lacito.liftapi.model.HasGrammaticalInfo;
 import fr.cnrs.lacito.liftapi.model.HasAnnotation;
 import fr.cnrs.lacito.liftapi.model.HasField;
 import fr.cnrs.lacito.liftapi.model.HasNote;
@@ -126,17 +128,32 @@ public final class DictionaryMutator {
      */
     private final LiftDictionary owner;
 
-    /** The warnings of the reader about the definitions of the file (see {@code LiftDictionary.getLoadWarnings()}). */
-    private final List<String> loadWarnings = new ArrayList<>();
+    /** What the reader noticed while loading the file (see {@code LiftDictionary.getLoadDiagnostics()}). */
+    private List<LoadDiagnostic> loadDiagnostics = List.of();
 
-    /** Records a warning of the reader. */
-    public void recordLoadWarning(String message) {
-        loadWarnings.add(message);
+    /** Whether saving leaves out part of the file read (see {@code LiftDictionary.losesDataOnSave()}). */
+    private boolean loadLosesDataOnSave;
+
+    /**
+     * Hands over what the reader noticed, at the end of a load. The reader keeps its own
+     * state until then: this is only where the dictionary keeps the result.
+     *
+     * @param diagnostics read-only
+     * @param losesDataOnSave whether one of them, listed or not, loses data on save
+     */
+    public void setLoadDiagnostics(List<LoadDiagnostic> diagnostics, boolean losesDataOnSave) {
+        this.loadDiagnostics = diagnostics;
+        this.loadLosesDataOnSave = losesDataOnSave;
     }
 
-    /** The warnings of the reader, read-only. */
-    public List<String> loadWarnings() {
-        return Collections.unmodifiableList(loadWarnings);
+    /** What the reader noticed, read-only. */
+    public List<LoadDiagnostic> loadDiagnostics() {
+        return loadDiagnostics;
+    }
+
+    /** Whether saving leaves out part of the file read. */
+    public boolean loadLosesDataOnSave() {
+        return loadLosesDataOnSave;
     }
 
     public DictionaryMutator(LiftDictionary owner, DictionaryRegisters registers) {
@@ -751,6 +768,11 @@ public final class DictionaryMutator {
             // matches: listing them here too would visit each one twice.
         }
 
+        if (node instanceof LiftReversal r) {
+            // Its nested reversals and its <main> come from the HasReversal branch below.
+            r.getGrammaticalInfo().ifPresent(children::add);
+        }
+
         if (node instanceof LiftExample x) {
             children.addAll(x.getTranslationComponents());
         }
@@ -924,7 +946,7 @@ public final class DictionaryMutator {
             // The list of reversals: the <main> slot has its own method, attachMain.
             case LiftReversal reversal -> ((HasReversal) parent).addReversal(reversal);
             case GrammaticalInfo gi ->
-                ((LiftSense) parent).setGrammaticalInfo(gi);
+                ((HasGrammaticalInfo) parent).setGrammaticalInfo(gi);
             case LiftMedia media -> ((LiftPronunciation) parent).addMedia(media);
             case LiftIllustration illustration ->
                 ((LiftSense) parent).addIllustration(illustration);

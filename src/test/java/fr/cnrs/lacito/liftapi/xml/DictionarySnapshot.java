@@ -215,6 +215,11 @@ public final class DictionarySnapshot {
     private void reversal(String p, LiftReversal r) {
         emit(p + ".type", r.getType() == null ? "" : r.getType().getId());
         multiText(p + ".form", r.getForms());
+        emit(p + ".gramInfo", r.getGrammaticalInfo().map(g -> g.getGramInfoValue().getId()).orElse(""));
+        r.getGrammaticalInfo().ifPresent(g -> {
+            int t = 0;
+            for (LiftTrait x : g.getTraits()) trait(p + ".gramInfo.trait#" + (t++), x);
+        });
         if (r.getMain() != null) {
             reversal(p + ".main", r.getMain());
         } else {

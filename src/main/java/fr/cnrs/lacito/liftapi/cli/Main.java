@@ -2,6 +2,7 @@ package fr.cnrs.lacito.liftapi.cli;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.LiftDocumentLoadingException;
+import fr.cnrs.lacito.liftapi.LoadOptions;
 import java.io.File;
 import java.io.PrintWriter;
 import java.util.Set;
@@ -59,8 +60,12 @@ public final class Main implements Runnable {
     }
 
     static LiftDictionary load(CommandSpec spec, File file) {
+        return load(spec, file, LoadOptions.defaults());
+    }
+
+    static LiftDictionary load(CommandSpec spec, File file, LoadOptions options) {
         try {
-            return LiftDictionary.loadDictionaryFromFile(file);
+            return LiftDictionary.loadDictionaryFromFile(file, options);
         } catch (LiftDocumentLoadingException e) {
             throw new CommandLine.ExecutionException(spec.commandLine(), "Cannot read " + file + ": " + e.getMessage(), e);
         }

@@ -625,6 +625,10 @@ public class LiftWriterSession implements AutoCloseable {
         }
         MultiTextWriters.writeMultiText(out, rev.getForms());
         writeReversalMain(rev.getMain());
+        // reversal-content is an interleave: the place of <grammatical-info> is free.
+        if (rev.getGrammaticalInfo().isPresent()) {
+            writeGrammaticalInfo(rev.getGrammaticalInfo().get());
+        }
         out.writeEndElement();
         out.writeCharacters(NEW_LINE);
     }
@@ -641,6 +645,9 @@ public class LiftWriterSession implements AutoCloseable {
         out.writeStartElement(LiftVocabulary.MAIN_LOCAL_NAME);
         MultiTextWriters.writeMultiText(out, main.getForms());
         writeReversalMain(main.getMain());
+        if (main.getGrammaticalInfo().isPresent()) {
+            writeGrammaticalInfo(main.getGrammaticalInfo().get());
+        }
         out.writeEndElement();
     }
 

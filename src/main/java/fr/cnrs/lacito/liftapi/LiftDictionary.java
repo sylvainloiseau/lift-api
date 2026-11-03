@@ -144,16 +144,48 @@ public final class LiftDictionary {
     }
 
     /**
-     * What the reader warned about the definitions of the file it read, in order: the
-     * ranges the file does not declare, the values a range does not declare (kept, but not
-     * saved: see {@code FeatureSet.isDeclared()} and {@code Feature.isDeclared()}), the
-     * external ranges that could not be found, the range elements declared twice. Each is
-     * warned about once. Empty for a dictionary that was not read from a file.
+     * What the reader noticed while loading the file, in order of first occurrence: the
+     * elements and attributes it skipped or will not save, the recoverable XML errors, the
+     * declarations made twice, the external ranges it could not find, and what the file uses
+     * without declaring it (kept and written back: see {@code FeatureSet.isDeclared()} and
+     * {@code Feature.isDeclared()}). The same problem met again is counted
+     * ({@link LoadDiagnostic#occurrences()}), not listed again. Empty for a dictionary that
+     * was not read from a file.
+     *
+     * @return a read-only list
+     * @see #losesDataOnSave()
+     */
+    public List<LoadDiagnostic> getLoadDiagnostics() {
+        return mutator.loadDiagnostics();
+    }
+
+    /**
+     * The messages of the {@linkplain #getLoadDiagnostics() load diagnostics}, in order.
+     *
+     * Kept for the callers of 0.1.0, where it held only the warnings about the header's
+     * declarations. It now holds every diagnostic, including those whose content is not
+     * saved, which a list of strings cannot tell apart: use {@link #getLoadDiagnostics()}
+     * and {@link #losesDataOnSave()}.
      *
      * @return a read-only list of messages
+     * @deprecated for removal in the release after the one that adds
+     *             {@link #getLoadDiagnostics()}: use that
      */
+    @Deprecated(forRemoval = true)
     public List<String> getLoadWarnings() {
-        return mutator.loadWarnings();
+        return getLoadDiagnostics().stream().map(LoadDiagnostic::message).toList();
+    }
+
+    /**
+     * Whether saving this dictionary leaves out part of the file it was read from: whether
+     * one of the {@linkplain #getLoadDiagnostics() diagnostics} of the load
+     * {@linkplain LoadDiagnostic.Kind#losesDataOnSave() loses data on save}, including
+     * those past the limit of {@link LoadOptions#maxDiagnostics()}. An application can
+     * check it before overwriting the file read. {@code false} for a dictionary that was not
+     * read from a file.
+     */
+    public boolean losesDataOnSave() {
+        return mutator.loadLosesDataOnSave();
     }
 
     /**
@@ -236,17 +268,44 @@ public final class LiftDictionary {
 
     // Static methods for instantiation
 
+    /**
+     * Loads a LIFT file, with the {@linkplain LoadOptions#defaults() default options}: see
+     * {@link #loadDictionaryFromFile(File, LoadOptions)}.
+     */
     public static final LiftDictionary loadDictionaryFromFile(File f)
         throws LiftDocumentLoadingException {
-        //long size = f.length();
-        //long dictionarySizeUnits = (int) (size / 1024 / 1024);
-        // the zero-argument constructor should be called
+        return loadDictionaryFromFile(f, LoadOptions.defaults());
+    }
+
+    /**
+     * Loads a LIFT file (version 0.13 or 0.15), and the {@code .lift-ranges} files its
+     * header refers to.
+     *
+     * Refused: a file that is not well-formed XML; a document whose root element is not
+     * {@code <lift>} in no namespace ({@link NotALiftDocumentException}, raised at the
+     * first start tag); a version other than 0.13 and 0.15; what the model refuses (a
+     * duplicate id, a definition taking its values from a range that does not exist...).
+     *
+     * Reported, and the load goes on ({@link #getLoadDiagnostics()}): an element that is
+     * not LIFT (another name, a namespace, a {@code <lift>} other than the root), skipped
+     * with all it holds; an attribute LIFT does not define there; a recoverable XML error;
+     * a declaration made twice; a missing external range; what the file uses without
+     * declaring it. In a {@linkplain LoadOptions#strict() strict} load, the first of them
+     * that would be lost on save fails the load instead.
+     *
+     * @param f the {@code .lift} file
+     * @param options strictness, and the limit of the diagnostics listed
+     * @throws LiftDocumentLoadingException if the file cannot be loaded; the message gives
+     *         the line when the parser knows it
+     */
+    public static final LiftDictionary loadDictionaryFromFile(File f, LoadOptions options)
+        throws LiftDocumentLoadingException {
         LiftDictionary d = new LiftDictionary();
 
         LiftDictionaryXmlReader r = new LiftDictionaryXmlReader(
             f,
             d,
-            false
+            options
         );
         r.parse();
         d.source = f;

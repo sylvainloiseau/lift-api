@@ -8,10 +8,12 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import fr.cnrs.lacito.liftapi.model.Feature;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.GrammaticalInfo;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftExample;
+import fr.cnrs.lacito.liftapi.model.LiftReversal;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
 
@@ -120,6 +122,55 @@ public class DeletionTest {
         assertNull(gi.getUUID());
         assertNull(trait.getUUID());
         assertFalse(d.getLiftDictionaryRegistry().getGrammaticalInfos().contains(gi));
+    }
+
+    /**
+     * A reversal holds a grammatical info too (LIFT reversal-content and reversal-main):
+     * it is registered with the reversal, goes with it, and its part of speech is in use.
+     */
+    @Test
+    public void aGrammaticalInfoOfAReversalIsRegisteredDeletedAndCountedAsAUse() {
+        LiftDictionary d = dictionary();
+        LiftEntry entry = entry(d, "cat");
+        LiftSense sense = sense(d, entry, "cat");
+        LiftReversal reversal = d.getComponentBuilder().reversal(sense)
+            .withForm("en", "cat")
+            .withGrammaticalInfo("Noun", g -> g.addTrait("number", "sg"))
+            .build();
+        GrammaticalInfo gi = reversal.getGrammaticalInfo().orElseThrow();
+        LiftTrait trait = gi.getTraits().get(0);
+        assertSame(reversal, gi.getParent());
+        assertSame(reversal, gi.getParentNode());
+        assertNotNull(gi.getUUID());
+        assertNotNull(trait.getUUID());
+        assertTrue(d.getLiftDictionaryRegistry().getGrammaticalInfos().contains(gi));
+
+        // A part of speech used only by a reversal is in use: it cannot be removed.
+        Feature noun = d.getHeader().getGrammaticalInfoManager().getFeature("Noun");
+        assertTrue(d.getHeader().isUsed(noun));
+        assertEquals(1, d.getHeader().countUses(noun));
+
+        // Replaced: the previous one goes, unregistered.
+        reversal.setGrammaticalInfo(GrammaticalInfo.create(noun));
+        assertNull(gi.getUUID());
+        assertNull(trait.getUUID());
+        assertNull(gi.getParent());
+        GrammaticalInfo second = reversal.getGrammaticalInfo().orElseThrow();
+        assertNotNull(second.getUUID());
+
+        // Deleting the reversal takes its grammatical info with it.
+        sense.deleteReversal(reversal);
+        assertNull(second.getUUID());
+        assertFalse(d.getHeader().isUsed(noun));
+
+        // And on the <main> of a reversal.
+        LiftReversal other = d.getComponentBuilder().reversal(sense).withForm("en", "feline")
+            .withMain(m -> m.withForm("en", "animal").withGrammaticalInfo("Noun")).build();
+        GrammaticalInfo ofMain = other.getMain().getGrammaticalInfo().orElseThrow();
+        assertNotNull(ofMain.getUUID());
+        other.getMain().deleteGrammaticalInfo();
+        assertTrue(other.getMain().getGrammaticalInfo().isEmpty());
+        assertNull(ofMain.getUUID());
     }
 
     @Test

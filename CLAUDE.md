@@ -24,12 +24,12 @@ Java library that models LIFT (Lexicon Interchange FormaT) dictionaries: load/sa
 
 | Package | Exported | Role |
 |---|---|---|
-| (root) | yes | `LiftDictionary` (entry point: load/save/addEntry/removeEntry/search), `LiftDictionaryRegistry` (read-only observable views of all components), `LiftDictionaryLanguagesManager` (object- vs meta-language sets + occurrence counts), `LiftDictionaryCounterManager`, `LiftDictionaryBuilder`, `LiftVersion` |
+| (root) | yes | `LiftDictionary` (entry point: load/save/addEntry/removeEntry/search), `LiftDictionaryRegistry` (read-only observable views of all components), `LiftDictionaryLanguagesManager` (object- vs meta-language sets + occurrence counts), `LiftDictionaryCounterManager`, `LiftDictionaryBuilder`, `LiftVersion`, `LoadOptions` / `LoadDiagnostic` (what the reader noticed) / `NotALiftDocumentException` |
 | `change` | yes | The changes of a dictionary as reversible events: `ModelChange` (sealed) and its records, `ModelProperty`, `ChangeRecorder` (transactions). Read its `package-info` |
 | `model` | yes | The LIFT data model (~50 classes). `Lift*` component classes, `Has*` capability interfaces, `MultiText`/`Form`/`TextSpan` text model, `FeatureSet`/`Feature` (= LIFT `range`/`range-element`), `LiftHeader`, `LiftFieldAndTraitDefinition` |
 | `builder` | yes | Fluent API, reached via `dictionary.getComponentBuilder()` (`DictionaryComponentBuilderFactory`). The only code that creates components (the XML reader included): builders accept what the LIFT schema accepts, no editorial checks. Read its `package-info` |
 | `internal` | **no** | `DictionaryMutator` (the only code that writes indexes), `DictionaryRegisters` (the index maps), `ChangeSupport` (listeners), `ModelInternals` (the model's package-private wiring: `setUUID`, `setOwningDictionary`…), `BuilderInternals` (what only the XML reader may do with a builder: reach the element under construction), `LiftDictionaryUUIDManager` (internal UUIDs: per-dictionary prefix + counter, not random — never write them to a file; default LIFT ids are separate random UUIDs) |
-| `xml` | **no** | SAX reader (`LiftDictionaryXmlReader` → `LiftSaxHandler`, the document structure → `LiftXmlDecoder`, elements and attributes turned into builder calls), writer (`LiftWriterSession`, `*Writers`), `LiftVocabulary` (element/attribute names) |
+| `xml` | **no** | SAX reader (`LiftDictionaryXmlReader` → `LiftSaxHandler`, the document structure → `LiftXmlDecoder`, elements and attributes turned into builder calls; `LoadDiagnostics` collects what it reports), writer (`LiftWriterSession`, `*Writers`), `LiftVocabulary` (element/attribute names) |
 | `cli` | no (opened to picocli) | `Main` |
 
 `internal`/`xml` types are `public` only for cross-package access inside the module; the
@@ -137,6 +137,16 @@ Summary:
     undeclared range (not per value), with the line; the warnings about definitions are
     also kept in `LiftDictionary.getLoadWarnings()`. An `option-range` naming a range that is
     neither declared nor built in fails the load, with the definition's name and line.
+- **The input is checked, and what is dropped is reported.** The root must be `<lift>` in no
+  namespace, or the load fails at the first start tag (`NotALiftDocumentException`). Inside,
+  an element that is not LIFT (other name, any namespace, a nested `<lift>`) is skipped with
+  its subtree. Everything the reader skips, keeps without saving (unknown attributes),
+  finds declared twice, or undeclared goes through `LiftXmlDecoder.diagnose` →
+  `xml/LoadDiagnostics` → `LiftDictionary.getLoadDiagnostics()` / `losesDataOnSave()`,
+  never only the logger: keyed by kind + subject, counted, first position kept, capped by
+  `LoadOptions.maxDiagnostics`. `LoadDiagnostic.Kind.losesDataOnSave()` decides what a
+  strict load (`LoadOptions.strict`) refuses; INFO kinds (undeclared ranges/values) never
+  fail a load. A new reader warning = a new `Kind`, not a `LOGGER.warning`.
 - `MultiText` has an optional language manager: once registered, adding a `Form` in a
   language the dictionary doesn't declare throws. Registration of a pre-filled MultiText
   (parse, moved subtree) declares its languages instead. Each MultiText is either

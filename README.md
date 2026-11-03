@@ -62,6 +62,30 @@ LiftDictionary lf = LiftDictionary.loadDictionaryFromFile(file);
 lf.save();
 ```
 
+A file is refused (`LiftDocumentLoadingException`, with the line) if it is not well-formed
+XML, if its root element is not `<lift>` in no namespace (`NotALiftDocumentException`), or
+if its version is not 0.13 or 0.15.
+
+What the reader skips, keeps without saving, or finds undeclared is not only logged: it is
+listed, as `LoadDiagnostic`s. Each has a kind, a severity, the file and line of its first
+occurrence, and a count:
+
+```java
+for (LoadDiagnostic d : lf.getLoadDiagnostics()) {
+    System.err.println(d.severity() + ": " + d.message() + " (" + d.occurrences() + "x)");
+}
+if (lf.losesDataOnSave()) {
+    // An unknown element or attribute, a declaration made twice...: saving over the
+    // file read would not give it back. Warn the user before lf.save().
+}
+```
+
+A strict load fails instead, on the first problem that saving would lose:
+
+```java
+LiftDictionary.loadDictionaryFromFile(file, LoadOptions.defaults().withStrict(true));
+```
+
 ### Building from scratch:
 
 ```java
@@ -150,13 +174,55 @@ Loading a file reports nothing, and costs nothing more. See the javadoc of the
 
 ## CLI
 
-Utility for loading a dictionary:
+The jar with dependencies is the `lift-api` command line (`picocli`): below, `lift-api`
+stands for `java -jar lift-api-<version>-jar-with-dependencies.jar` (a release, see
+[Installation](#as-a-command-line-tool), or `target/` after `mvn package`). Its subcommands
+are `info` and `latex` (see [LaTeX export](#latex-export)); `lift-api --help` lists them,
+and `lift-api <command> --help` gives the options of each.
+
+### `info`: what a dictionary holds, and what the reader noticed
 
 ```
-java -jar lift-api/target/lift-api-0.1-SNAPSHOT-jar-with-dependencies.jar <dictionaryFile>
+lift-api info [--strict] <dictionaryFile>
 ```
 
-Will print error message or quick summary (the same as `lift-api info <dictionaryFile>`).
+The diagnostics, `--strict` and the exit code 3 are new since 0.1.0.
+
+`lift-api <dictionaryFile>`, without a subcommand, runs `info`. It reads the file, prints a
+summary on the standard output, then, on the standard error, the load diagnostics: one line
+each, with its severity, its line, and how many times it was met.
+
+```
+$ lift-api info DictionaryLift20261022.lift
+Entries: 2604
+Senses: 2687
+Examples: 7
+Meta languages: en (7627), fr (7798), oc-FR-fonipa (2), qaa-x-spec (4)
+Object languages: oc-FR-fonipa (3287)
+warning: The range dialect is empty: the ranges file DictionaryLift20261022.lift-ranges has no range dialect (line 6).
+warning: The range element non of the range paradigm is declared twice; the second declaration is ignored (line 769). (2 times) [DictionaryLift20261022.lift-ranges]
+warning: The field or trait definition Particularism is declared twice; the last declaration is kept (line 88).
+info: The value "Prénom" is not declared in the range grammatical-info (line 164); it is kept, but not saved in the header.
+...
+```
+
+An element that is not LIFT is reported once, with a count:
+
+```
+warning: The element <custom> (line 2) is not a LIFT element: it is skipped with its content, which will not be saved. (2 times)
+```
+
+- `warning`: a problem in the file; what it is about is not saved (an element that is not
+  LIFT, an attribute LIFT does not define there, a declaration made twice), or it is a
+  missing external range.
+- `info`: what the file uses without declaring it; it is kept and saved as it was read.
+- `error`: a recoverable XML error.
+
+A document whose root element is not `<lift>` (an HTML page, a `.lift-ranges` file...) is
+refused. With `--strict`, the first problem that saving would lose fails the command.
+
+Exit codes: `0` read; `1` cannot be read (not well-formed, not a LIFT document, a strict load
+failed); `2` bad command line; `3` read, but saving it would lose part of the file.
 
 ## LaTeX export
 

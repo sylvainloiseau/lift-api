@@ -1,9 +1,11 @@
 package fr.cnrs.lacito.liftapi.model;
 
 import fr.cnrs.lacito.liftapi.change.ModelProperty;
+import java.util.Optional;
 import javafx.beans.property.ReadOnlyListProperty;
 import javafx.beans.property.ReadOnlyListWrapper;
 import javafx.beans.property.ReadOnlyObjectProperty;
+import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 
@@ -17,16 +19,25 @@ import javafx.collections.ObservableList;
  *   <li>An optional {@code @type} attribute</li>
  *   <li>A multitext (forms in one or several languages)</li>
  *   <li>An optional recursive {@code <main>} sub-element (itself a reversal-main)</li>
+ *   <li>An optional {@code <grammatical-info>}, in a reversal and in its {@code <main>}
+ *       (see {@link HasGrammaticalInfo})</li>
  * </ul>
  *
  * @see LiftSense
  */
 public final class LiftReversal
     extends AbstractLiftRoot
-    implements HasType, HasReversal
+    implements HasType, HasReversal, HasGrammaticalInfo
 {
 
     private LiftReversal main;
+
+    /**
+     * The grammatical info: a component in a single slot, as on a sense. Its property,
+     * created on demand, only mirrors it.
+     */
+    private GrammaticalInfo grammaticalInfo;
+    private ReadOnlyObjectWrapper<GrammaticalInfo> grammaticalInfoProperty;
 
     final ObservableList<LiftReversal> reversals = FXCollections.observableArrayList();
     private ObservableList<LiftReversal> reversalsView;
@@ -148,6 +159,53 @@ public final class LiftReversal
     }
 
     @Override
+    public Optional<GrammaticalInfo> getGrammaticalInfo() {
+        return Optional.ofNullable(grammaticalInfo);
+    }
+
+    @Override
+    public ReadOnlyObjectProperty<GrammaticalInfo> grammaticalInfoProperty() {
+        if (grammaticalInfoProperty == null) {
+            grammaticalInfoProperty = new ReadOnlyObjectWrapper<>(this, "grammaticalInfo", grammaticalInfo);
+        }
+        return grammaticalInfoProperty.getReadOnlyProperty();
+    }
+
+    private void storeGrammaticalInfo(GrammaticalInfo gi) {
+        this.grammaticalInfo = gi;
+        if (grammaticalInfoProperty != null) {
+            grammaticalInfoProperty.set(gi);
+        }
+    }
+
+    /**
+     * Attach a grammatical information to this reversal, in place of the current one,
+     * which is deleted (and unregistered) first; {@code gi} is registered if this reversal
+     * belongs to a dictionary.
+     *
+     * @param gi the grammatical information, or {@code null} to delete the current one
+     */
+    @Override
+    public void setGrammaticalInfo(GrammaticalInfo gi) {
+        if (gi == null) {
+            deleteGrammaticalInfo();
+            return;
+        }
+        if (gi == grammaticalInfo) {
+            return;
+        }
+        deleteGrammaticalInfo();
+        storeGrammaticalInfo(gi);
+        gi.setParent(this);
+        adopted(gi);
+    }
+
+    /** Drop the grammatical information of this reversal (used when unlinking it). */
+    void clearGrammaticalInfo() {
+        storeGrammaticalInfo(null);
+    }
+
+    @Override
     public ReadOnlyObjectProperty<Feature> typeProperty() {
         return typeProperty.getReadOnlyProperty();
     }
@@ -190,6 +248,17 @@ public final class LiftReversal
     public void deleteMain() {
         if (main != null) {
             removeChild(main);
+        }
+    }
+
+    /**
+     * Remove this reversal's grammatical information, unregistering it - and the traits
+     * it carries - if this reversal belongs to a dictionary. Does nothing if there is none.
+     */
+    @Override
+    public void deleteGrammaticalInfo() {
+        if (grammaticalInfo != null) {
+            removeChild(grammaticalInfo);
         }
     }
 }

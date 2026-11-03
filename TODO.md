@@ -1,3 +1,9 @@
+# TODO
+
+## remove deprecated on next release
+
+Remove the deprecated getLoadWarnings().
+
 ## merge entries
 
 ## To be checked
@@ -108,3 +114,7 @@ In GUI, the table of range and range value, undeclared feature should appears in
 Regarding your paragraph "A second violation turned up:": those built-in ranges are written even when they are not used because they are hard-coded and created by default by the header. I agree with your fix: Record whether the file declared each built-in range. One that wasn't declared would not be written, unless something was explicitly added to it.
 
 Please write the plan according to this.
+
+## Non lift vocabulary
+
+Please make a plan for a better control of the input XML dictionary file. For now, a document that is well-formed but contains no lift vocabulary element raise no error and produce an empty dictionary. Saving it means that previous non-lift element have silently gone. Please investigate this and offer some reasonable guards: at least chack that the root element is lift, and maybe add unknown elements to the warning events (the list of warnings that contain also the undeclared range found in the document for instance), that can be displayed. Please make a well-designed plan, offer suggestions for a clean, future-proof and standard design, and also take care of not impacting performance too much.

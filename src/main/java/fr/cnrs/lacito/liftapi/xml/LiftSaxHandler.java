@@ -1,12 +1,16 @@
 package fr.cnrs.lacito.liftapi.xml;
 
 import fr.cnrs.lacito.liftapi.LiftDictionary;
+import fr.cnrs.lacito.liftapi.LoadDiagnostic;
+import fr.cnrs.lacito.liftapi.LoadOptions;
+import fr.cnrs.lacito.liftapi.NotALiftDocumentException;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
 import fr.cnrs.lacito.liftapi.model.DuplicateIdException;
 import fr.cnrs.lacito.liftapi.model.Feature;
 import fr.cnrs.lacito.liftapi.model.FeatureSet;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.HasAnnotation;
+import fr.cnrs.lacito.liftapi.model.HasGrammaticalInfo;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftField;
 import fr.cnrs.lacito.liftapi.model.LiftFieldAndTraitDefinition;
@@ -46,6 +50,17 @@ import org.xml.sax.helpers.LocatorImpl;
  * {@link #characters} and {@link #endElement}, as if it were written there; errors then
  * name the ranges file and its line. The {@code <range>}'s own children follow, and
  * override it.
+ *
+ * <h2>What is not LIFT</h2>
+ *
+ * The root element must be {@code <lift>} in no namespace: anything else is refused at the
+ * first start tag ({@code NotALiftDocumentException}), before anything is built. Inside
+ * the document, an element that is not LIFT - another name, an element in a namespace
+ * (LIFT elements are in none, whatever their local name), a {@code <lift>} other than the
+ * root - is skipped with its whole subtree and reported, once per name with a count, as a
+ * {@code LoadDiagnostic} ({@link LiftXmlDecoder#diagnose}); a strict load fails on it
+ * instead. Nothing is only logged. The checks cost one boolean and one
+ * {@code uri.isEmpty()} per element.
  */
 public final class LiftSaxHandler extends DefaultHandler {
 
@@ -63,6 +78,12 @@ public final class LiftSaxHandler extends DefaultHandler {
      * part of the LIFT vocabulary. 0 when not skipping.
      */
     private int skipDepth = 0;
+
+    /** Whether the root element has been met (and accepted: it is {@code <lift>}). */
+    private boolean rootSeen;
+
+    /** Whether the {@code <lift>} root has been opened: any {@code <lift>} after it is not LIFT. */
+    private boolean liftStarted;
 
     private final LiftXmlDecoder decoder;
 
@@ -94,16 +115,16 @@ public final class LiftSaxHandler extends DefaultHandler {
 
     /**
      * @param dictionary the dictionary the components read are added to
-     * @param strict when {@code true}, recoverable parse errors abort the parse
-     *        instead of only being logged, and so does an external range that cannot be
-     *        found
+     * @param options when strict, recoverable parse errors abort the parse instead of
+     *        being reported, and so do an external range that cannot be found and what
+     *        would be lost on save (an unknown element or attribute...)
      * @param source the file read, against whose directory the {@code href} of ranges
      *        are resolved
      */
-    public LiftSaxHandler(LiftDictionary dictionary, boolean strict, File source) {
-        Path directory = source.getAbsoluteFile().toPath().getParent();
-        this.decoder = new LiftXmlDecoder(dictionary, directory, strict);
-        this.strict = strict;
+    public LiftSaxHandler(LiftDictionary dictionary, LoadOptions options, File source) {
+        Path file = source.getAbsoluteFile().toPath();
+        this.decoder = new LiftXmlDecoder(dictionary, file, options);
+        this.strict = options.strict();
     }
 
     /** The {@code <form>} or {@code <gloss>} currently open, or {@code null}. */
@@ -151,7 +172,7 @@ public final class LiftSaxHandler extends DefaultHandler {
     public void error(SAXParseException e) throws SAXException {
         String message = describe("Error", e);
         if (strict) throw new SAXException(message, e);
-        LOGGER.severe(message);
+        decoder.diagnose(LoadDiagnostic.Kind.XML_ERROR, null, message);
     }
 
     @Override
@@ -194,17 +215,55 @@ public final class LiftSaxHandler extends DefaultHandler {
     }
 
     /**
-     * Log an element the LIFT vocabulary does not cover and skip its whole subtree.
+     * Report an element that is not LIFT, and skip its whole subtree. The diagnostic is
+     * counted at the root of the subtree only, not for what it holds.
      *
-     * Aborting the parse instead would make any file with a single unexpected
-     * element unreadable - including the {@code lift-ranges} documents this package
-     * writes itself.
+     * Aborting the parse instead (unless the load is strict) would make any file with a
+     * single unexpected element unreadable.
+     *
+     * @param uri the element's namespace, empty for none
+     * @param why what is wrong with it, after "The element <x> (line n)"
      */
-    private void skipUnknownElement(String localName, String where) {
-        LOGGER.warning(
-            "Skipping unknown LIFT element <" + localName + "> (" + where + ")."
-        );
+    private void skipUnknownElement(String uri, String localName, String why) {
+        skip(LoadDiagnostic.Kind.UNKNOWN_ELEMENT, uri.isEmpty() ? localName : "{" + uri + "}" + localName,
+            "The element <" + localName + ">" + where() + " " + why
+            + ": it is skipped with its content, which will not be saved.");
+    }
+
+    /** Report an element and skip its whole subtree. */
+    private void skip(LoadDiagnostic.Kind kind, String subject, String message) {
+        decoder.diagnose(kind, subject, message);
         skipDepth = 1;
+    }
+
+    /** " (line n)", or " (line n of the ranges file f)", or nothing if the parser gives no position. */
+    private String where() {
+        if (locator == null) return "";
+        return " (line " + locator.getLineNumber()
+            + (replayedFile == null ? "" : " of the ranges file " + replayedFile.getFileName()) + ")";
+    }
+
+    /**
+     * The root element must be {@code <lift>} in no namespace: anything else is refused at
+     * once, before anything is read. A ranges file opened instead of the {@code .lift} file
+     * is told apart.
+     */
+    private void checkRoot(String uri, String localName) throws SAXException {
+        String message;
+        if (uri.isEmpty() && LiftVocabulary.LIFT_LOCAL_NAME.equals(localName)) {
+            return;
+        } else if (uri.isEmpty() && LiftVocabulary.LIFT_RANGES_ROOT.equals(localName)) {
+            message = "This is a ranges file (root element <lift-ranges>), not a LIFT dictionary:"
+                + " open the .lift file that refers to it";
+        } else if (LiftVocabulary.LIFT_LOCAL_NAME.equals(localName)) {
+            message = "The root element <lift> is in the namespace " + uri
+                + "; LIFT elements are in no namespace: this is not a LIFT document";
+        } else {
+            message = "The root element is <" + localName + ">"
+                + (uri.isEmpty() ? "" : " (namespace " + uri + ")")
+                + ", not <lift>: this is not a LIFT document";
+        }
+        throw new SAXException(new NotALiftDocumentException(message + where() + "."));
     }
 
     @Override
@@ -214,6 +273,10 @@ public final class LiftSaxHandler extends DefaultHandler {
         String qName,
         Attributes attributes
     ) throws SAXException {
+        if (!rootSeen) {
+            checkRoot(uri, localName);
+            rootSeen = true;
+        }
         if (skipDepth > 0) {
             skipDepth++;
             super.startElement(uri, localName, qName, attributes);
@@ -228,7 +291,12 @@ public final class LiftSaxHandler extends DefaultHandler {
                 multiTextStack.size()
         );
         try {
-            if (open(localName, attributes)) {
+            decoder.setCurrentElement(localName);
+            if (!uri.isEmpty()) {
+                // LIFT elements are in no namespace, whatever their local name.
+                skipUnknownElement(uri, localName, "is in the namespace " + uri
+                    + " (LIFT elements are in none)");
+            } else if (open(localName, attributes)) {
                 pushMultiText(localName);
             }
         } catch (RuntimeException e) {
@@ -289,6 +357,12 @@ public final class LiftSaxHandler extends DefaultHandler {
     private boolean open(String localName, Attributes attributes) {
         switch (localName) {
             case LiftVocabulary.LIFT_LOCAL_NAME:
+                if (liftStarted) {
+                    // Only the root may be <lift>: one inside would reset the version.
+                    skipUnknownElement("", localName, "is inside the document: only the root may be <lift>");
+                    return false;
+                }
+                liftStarted = true;
                 decoder.startLift(attributes);
                 break;
             case LiftVocabulary.ENTRY_LOCAL_NAME:
@@ -386,12 +460,12 @@ public final class LiftSaxHandler extends DefaultHandler {
                 frames.push(decoder.trait(top(), attributes));
                 break;
             case LiftVocabulary.GRAM_INFO_LOCAL_NAME:
-                if (top() instanceof LiftSense) {
+                // In a sense, a reversal, and the <main> of a reversal.
+                if (top() instanceof HasGrammaticalInfo) {
                     frames.push(decoder.grammaticalInfo(top(), attributes));
                 } else {
-                    // The schema also allows grammatical-info inside a reversal, which
-                    // the model does not represent; skip it rather than fail the parse.
-                    skipUnknownElement(localName, "grammatical-info outside a sense");
+                    skipUnknownElement("", localName,
+                        "is only allowed in <sense>, <subsense>, <reversal> and <main>");
                     return false;
                 }
                 break;
@@ -436,7 +510,7 @@ public final class LiftSaxHandler extends DefaultHandler {
             case LiftVocabulary.USAGE_LOCAL_NAME:
                 break;
             default:
-                skipUnknownElement(localName, "startElement, first switch");
+                skipUnknownElement("", localName, "is not a LIFT element");
                 return false;
         }
         return true;

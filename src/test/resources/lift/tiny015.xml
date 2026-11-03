@@ -3,7 +3,8 @@
   A small LIFT 0.15 dictionary exercising the constructs where the writer used to
   diverge from lift-0.15.rng: field/@name, field-definition/@name, the <label>
   wrapper of URLRef-content, <subsense>, nested <reversal>/<main>, range-element
-  hierarchy via @parent, and annotations inside a <form>.
+  hierarchy via @parent, annotations inside a <form>, and <grammatical-info> in a
+  <reversal> and its <main>.
 -->
 <lift producer="lift-api test" version="0.15">
 <header>
@@ -59,7 +60,8 @@
 <illustration href="pictures/nala.png"><label><form lang="en"><text>a picture</text></form></label></illustration>
 <reversal type="reversal-en">
 <form lang="en"><text>which kind</text></form>
-<main><form lang="en"><text>interrogatives</text></form></main>
+<main><form lang="en"><text>interrogatives</text></form><grammatical-info value="Noun"/></main>
+<grammatical-info value="Pronoun"><trait name="register" value="formal"/></grammatical-info>
 </reversal>
 <example source="text 3">
 <form lang="tww"><text>nala ma?</text></form>

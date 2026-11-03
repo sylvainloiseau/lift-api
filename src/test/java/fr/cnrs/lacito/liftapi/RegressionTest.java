@@ -1336,4 +1336,17 @@ public class RegressionTest {
             """));
         assertTrue(e.getMessage().contains("line 4"), e.getMessage());
     }
+
+    /**
+     * The {@code producer} of {@code <lift>} is optional in both schemas: a file without one
+     * failed to load ("liftProducer cannot be null"). It keeps the dictionary's producer.
+     */
+    @Test
+    public void aLiftWithoutProducerLoads(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+        java.nio.file.Path file = dir.resolve("test.lift");
+        java.nio.file.Files.writeString(file, "<lift version=\"0.15\"><entry id=\"a\"/></lift>");
+        LiftDictionary d = LiftDictionary.loadDictionaryFromFile(file.toFile());
+        assertEquals(1, d.getLiftDictionaryRegistry().nEntries());
+        assertEquals(LiftDictionary.makeBuilder().build().getLiftProducer(), d.getLiftProducer());
+    }
 }

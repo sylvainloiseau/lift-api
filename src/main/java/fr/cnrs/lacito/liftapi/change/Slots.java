@@ -6,6 +6,7 @@ import java.util.OptionalInt;
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.model.AbstractLiftRoot;
 import fr.cnrs.lacito.liftapi.model.GrammaticalInfo;
+import fr.cnrs.lacito.liftapi.model.HasGrammaticalInfo;
 import fr.cnrs.lacito.liftapi.model.HasAnnotation;
 import fr.cnrs.lacito.liftapi.model.HasField;
 import fr.cnrs.lacito.liftapi.model.HasNote;
@@ -98,7 +99,7 @@ final class Slots {
             case LiftNote n -> ((HasNote) parent).addNote(n);
             case LiftField f -> ((HasField) parent).addField(f);
             case LiftTranslation t -> ((LiftExample) parent).addTranslation(t);
-            case GrammaticalInfo g -> ((LiftSense) parent).setGrammaticalInfo(g);
+            case GrammaticalInfo g -> ((HasGrammaticalInfo) parent).setGrammaticalInfo(g);
             default -> throw new IllegalArgumentException(
                 "Cannot add a " + component.getClass().getSimpleName() + " back to its parent.");
         }
@@ -128,7 +129,7 @@ final class Slots {
             case LiftNote n -> ((HasNote) parent).deleteNote(n);
             case LiftField f -> ((HasField) parent).deleteField(f);
             case LiftTranslation t -> ((LiftExample) parent).deleteTranslation(t);
-            case GrammaticalInfo g -> ((LiftSense) parent).deleteGrammaticalInfo();
+            case GrammaticalInfo g -> ((HasGrammaticalInfo) parent).deleteGrammaticalInfo();
             default -> throw new IllegalArgumentException(
                 "Cannot delete a " + component.getClass().getSimpleName() + " from its parent.");
         }

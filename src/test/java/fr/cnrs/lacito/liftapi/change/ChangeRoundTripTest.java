@@ -506,7 +506,7 @@ class ChangeRoundTripTest {
         new Op("reversal", c -> {
             LiftSense s = c.sense();
             FeatureSet types = c.d.getHeader().getInverseTypeManager();
-            switch (c.r.nextInt(4)) {
+            switch (c.r.nextInt(7)) {
                 case 0 -> {
                     LiftReversal rev = new LiftReversal(c.type(types));
                     rev.getForms().add(new Form(c.metaLang(), c.fresh()));
@@ -517,6 +517,12 @@ class ChangeRoundTripTest {
                     LiftReversal main = new LiftReversal(c.type(types));
                     c.pick(c.reg().getReversals()).setMain(main);
                 }
+                // The grammatical info of a reversal (or of a <main>, also a reversal).
+                case 3 -> c.pick(c.reg().getReversals())
+                    .setGrammaticalInfo(c.type(c.d.getHeader().getGrammaticalInfoManager()));
+                case 4 -> c.pick(c.reg().getReversals()).deleteGrammaticalInfo();
+                case 5 -> c.pick(c.reg().getReversals()).getGrammaticalInfo().orElseThrow(Skip::new)
+                    .setGramInfoValue(c.type(c.d.getHeader().getGrammaticalInfoManager()));
                 default -> c.pick(c.reg().getReversals()).deleteMain();
             }
         }),

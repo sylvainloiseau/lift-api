@@ -29,10 +29,42 @@ class MainTest {
     @Test
     void aFileAloneStillPrintsTheLanguages() {
         Run r = run(sample());
-        assertEquals(0, r.exit(), r.err());
+        // The sample has the corpus' FLEx header, which declares a range element and two
+        // definitions twice: read, but saving would not keep the duplicates.
+        assertEquals(3, r.exit(), r.err());
+        assertTrue(r.err().contains("declared twice"), r.err());
         assertTrue(r.out().contains("Entries: 11"));
         assertTrue(r.out().contains("Object languages: oc-FR-fonipa"));
         assertEquals(r.out(), run("info", sample()).out());
+    }
+
+    @Test
+    void infoPrintsTheLoadDiagnosticsAndSaysWhenSavingWouldLoseData(@TempDir Path dir) throws Exception {
+        Path lift = dir.resolve("d.lift");
+        Files.writeString(lift, """
+            <lift version="0.15" producer="p">
+            <entry id="a"><custom/></entry>
+            <entry id="b"><custom/></entry>
+            </lift>
+            """);
+        Run r = run("info", lift.toString());
+        assertEquals(3, r.exit(), r.err());
+        assertTrue(r.out().contains("Entries: 2"), r.out());
+        assertTrue(r.err().contains("warning: The element <custom> (line 2)") && r.err().contains("(2 times)"), r.err());
+
+        Run strict = run("info", "--strict", lift.toString());
+        assertEquals(1, strict.exit(), strict.err());
+        assertTrue(strict.err().contains("custom"), strict.err());
+    }
+
+    @Test
+    void infoRefusesADocumentThatIsNotLift(@TempDir Path dir) throws Exception {
+        Path html = dir.resolve("page.lift");
+        Files.writeString(html, "<html><body/></html>");
+        Run r = run(html.toString());
+        assertEquals(1, r.exit(), r.err());
+        assertTrue(r.err().contains("not a LIFT document"), r.err());
+        assertEquals("", r.out());
     }
 
     @Test

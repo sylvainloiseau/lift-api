@@ -18,6 +18,7 @@ import fr.cnrs.lacito.liftapi.model.LiftReversal;
  *       .withType("en")
  *       .withForm("en", "house")
  *       .withMain(m -> m.withForm("en", "building"))
+ *       .withGrammaticalInfo("Noun")
  *       .build();
  * </pre>
  *
@@ -94,6 +95,29 @@ public class ReversalBuilder extends AbstractLiftElementBuilder<LiftReversal, Ha
         ReversalBuilder mb = main(dictionary, element);
         config.accept(mb);
         mb.build();
+        return this;
+    }
+
+    /**
+     * Set the part of speech of this reversal (its {@code <grammatical-info>}), in place of
+     * the current one.
+     *
+     * @param pos the part of speech, created in the header's grammatical-info range if it
+     *        is not declared there yet
+     */
+    public ReversalBuilder withGrammaticalInfo(String pos) {
+        new GrammaticalInfoBuilder(dictionary, element, pos).build();
+        return this;
+    }
+
+    /**
+     * Set the part of speech of this reversal, and configure its grammatical information
+     * further: to add the traits a {@code <grammatical-info>} may carry, for instance.
+     */
+    public ReversalBuilder withGrammaticalInfo(String pos, Consumer<GrammaticalInfoBuilder> config) {
+        GrammaticalInfoBuilder gb = new GrammaticalInfoBuilder(dictionary, element, pos);
+        config.accept(gb);
+        gb.build();
         return this;
     }
 

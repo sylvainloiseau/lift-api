@@ -505,7 +505,11 @@ public abstract sealed class AbstractLiftRoot implements LiftObject
                 o.setParent(null);
             }
             case GrammaticalInfo o -> {
-                if (o.getParent() != null) o.getParent().clearGrammaticalInfo();
+                switch (o.getParent()) {
+                    case LiftSense s -> s.clearGrammaticalInfo();
+                    case LiftReversal r -> r.clearGrammaticalInfo();
+                    case null -> { }
+                }
                 o.setParent(null);
             }
             default -> throw new IllegalStateException(

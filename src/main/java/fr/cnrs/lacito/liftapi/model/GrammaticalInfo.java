@@ -7,7 +7,9 @@ import javafx.collections.ObservableList;
 
 
 /**
- * A component containing a reference to part of speech together with {@link LiftTrait}, to be registered to a {@link LiftSense}.
+ * A component containing a reference to part of speech together with {@link LiftTrait}, held
+ * by a {@link LiftSense} or a {@link LiftReversal} (and the {@code <main>} of a reversal):
+ * see {@link HasGrammaticalInfo}.
  *
  * <pre>
  * &lt;grammatical-info value="Noun"&gt;
@@ -34,7 +36,7 @@ public final class GrammaticalInfo
     final ObservableList<LiftTrait> traits = FXCollections.observableArrayList();
     private ObservableList<LiftTrait> traitsView;
 
-    private LiftSense parent;
+    private HasGrammaticalInfo parent;
 
     protected GrammaticalInfo(Feature v) {
         this.value = new TrackedProperty<>(this, ModelProperty.GRAMMATICAL_INFO_VALUE, v);
@@ -44,7 +46,7 @@ public final class GrammaticalInfo
      * Create a grammatical information for the given part of speech.
      *
      * This only allocates the component: it is detached, and stays inert until it is
-     * wired to a sense that belongs to a dictionary.
+     * wired to a sense or a reversal that belongs to a dictionary.
      *
      * @param value the part of speech
      * @return the new component, attached to nothing
@@ -72,21 +74,21 @@ public final class GrammaticalInfo
     }
 
     /**
-     * The sense this grammatical information belongs to.
+     * The sense or reversal this grammatical information belongs to.
      *
-     * @return the parent sense, or {@code null} once detached
+     * @return the parent, or {@code null} once detached
      */
-    public LiftSense getParent() {
+    public HasGrammaticalInfo getParent() {
         return parent;
     }
 
     /**
-     * Protected: this method is called by the parent when it adopts this annotation.
-     * 
-     * @param parent the sense this belongs to, or {@code null} when detaching
+     * Protected: this method is called by the parent when it adopts this grammatical info.
+     *
+     * @param parent the sense or reversal this belongs to, or {@code null} when detaching
      *        (see {@link AbstractLiftRoot#detach()})
      */
-    protected void setParent(LiftSense parent) {
+    protected void setParent(HasGrammaticalInfo parent) {
         this.parent = parent;
     }
 
@@ -138,7 +140,7 @@ public final class GrammaticalInfo
 
     @Override
     public AbstractLiftRoot getParentNode() {
-        return parent;
+        return (AbstractLiftRoot) parent;
     }
 
     // --------------------------------------------------------
