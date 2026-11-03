@@ -16,6 +16,9 @@ has been elaborated for descriptive linguistics.
 - maintain a registry of cross-references between components
 - offer methods to mutate the dictionary with a fluent API: create components, update component properties, delete or move components, etc.
 - every change of a dictionary is an event that can be reported, reverted and reapplied
+- export the dictionary as CSV or typeset it with xelatex.
+
+For a graphical application built on `lift-api`, see [DictionaryEditor](https://github.com/sylvainloiseau/DictionaryEditor). 
 
 # Installation
 

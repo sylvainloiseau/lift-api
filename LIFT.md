@@ -43,3 +43,9 @@ Spec says (21):
 > Ranges file back to the LIFT file..
 
 How e.g. to suppress a range-element?
+
+## History
+
+No history section in the header
+
+## no duplicate should be allowed of range-element of or range or field-definition
