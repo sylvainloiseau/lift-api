@@ -70,9 +70,17 @@ final class LoadDiagnostics {
 
     private boolean losesDataOnSave;
 
+    /** True when nothing is logged: the document read is one this library just wrote (an extract). */
+    private final boolean quiet;
+
     LoadDiagnostics(LoadOptions options) {
+        this(options, false);
+    }
+
+    LoadDiagnostics(LoadOptions options, boolean quiet) {
         this.strict = options.strict();
         this.max = options.maxDiagnostics();
+        this.quiet = quiet;
     }
 
     /**
@@ -105,6 +113,9 @@ final class LoadDiagnostics {
             return;
         }
         pending.put(key, new Pending(kind, message, file, line, column, subject));
+        if (quiet) {
+            return;
+        }
         LOGGER.log(switch (kind.severity()) {
             case INFO -> Level.INFO;
             case WARNING -> Level.WARNING;

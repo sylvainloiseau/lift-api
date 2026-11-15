@@ -426,19 +426,75 @@ public final class LiftDictionary {
      *         sense of this dictionary
      */
     public void resolveReferences() {
-        for (String targetId : List.copyOf(registry.getReferencedTargetIds())) {
-            AbstractIdentifiable target = registry.getEntryOrSenseByLiftId(targetId);
-            if (target == null) {
-                throw new IllegalArgumentException(
-                    "Reference id " + targetId + " not found in entries or senses."
-                );
-            }
-            for (HasRefId source : List.copyOf(registry.getReferencesTo(targetId))) {
-                if (source.getRefObject() != target) {
-                    source.setRefObject(target);
-                }
-            }
-        }
+        mutator.resolveReferences(false);
+    }
+
+    /** The LIFT ids of the entries {@link #extract} added as targets of references; empty otherwise. */
+    private java.util.Set<String> referenceStubIds = java.util.Set.of();
+
+    /**
+     * A new, standalone dictionary holding deep copies of these entries of this dictionary,
+     * with the default options ({@link ExtractOptions#DEFAULT}).
+     *
+     * @see #extract(java.util.Collection, ExtractOptions)
+     */
+    public LiftDictionary extract(java.util.Collection<LiftEntry> entries) {
+        return extract(entries, ExtractOptions.DEFAULT);
+    }
+
+    /**
+     * A new, standalone dictionary holding deep copies of these entries of this dictionary:
+     * a snapshot that later changes to either dictionary do not reach.
+     *
+     * <ul>
+     * <li>The entries are copied in the order given (an entry given twice is copied once),
+     * with everything {@link #save(File)} writes of them: LIFT ids and guids are kept; UUIDs
+     * are the new dictionary's own.</li>
+     * <li>The header: with {@link ExtractOptions.HeaderScope#USED}, the header description,
+     * and the ranges, values and field and trait definitions the entries use (a value comes
+     * with the values above it); a range read from an external file is copied into the
+     * extract itself. With {@link ExtractOptions.HeaderScope#FULL}, the whole header, external
+     * ranges read again from their files.</li>
+     * <li>A relation or a variant whose target is in the extract points to the copy. A
+     * target outside it stays an id ({@link ExtractOptions.ReferenceTargets#IDS_ONLY}), or is
+     * given a stub entry with its LIFT id, its forms and its senses' ids and glosses
+     * ({@link ExtractOptions.ReferenceTargets#STUBS}; see {@link #isReferenceStub}).</li>
+     * <li>The extract shares no object and no listener with this dictionary. It has no source
+     * file ({@link #save(File)} needs one), no load diagnostics, the same LIFT version and
+     * producer.</li>
+     * </ul>
+     *
+     * The copy goes through this library's writer and reader, in memory, so that it holds
+     * exactly what a save and a reload would give. Like the rest of the model, this is not
+     * thread-safe: no other thread may use this dictionary meanwhile; the extract may then be
+     * handed to another thread.
+     *
+     * @param entries entries of this dictionary
+     * @param options how much of the header, and what becomes of references going out
+     * @return the extract
+     * @throws IllegalArgumentException if an entry does not belong to this dictionary
+     */
+    public LiftDictionary extract(java.util.Collection<LiftEntry> entries, ExtractOptions options) {
+        java.util.Objects.requireNonNull(entries, "entries");
+        java.util.Objects.requireNonNull(options, "options");
+        LiftDictionary copy = new LiftDictionary();
+        java.util.Set<String> stubs = fr.cnrs.lacito.liftapi.xml.LiftExtractor.extractInto(
+            this, entries, options, copy, baseDirectory(), source);
+        copy.referenceStubIds = stubs;
+        return copy;
+    }
+
+    /**
+     * Whether an entry of this dictionary is a stub that {@link #extract} added only so that
+     * a reference has a target ({@link ExtractOptions.ReferenceTargets#STUBS}): it has the
+     * LIFT id, the forms and the senses' ids and glosses of the entry referred to, nothing else.
+     *
+     * @param entry an entry
+     * @return false for every entry of a dictionary that is not an extract
+     */
+    public boolean isReferenceStub(LiftEntry entry) {
+        return entry != null && entry.getOwningDictionary() == this
+            && entry.getId().map(referenceStubIds::contains).orElse(false);
     }
 
     private void reportEntryAdded(LiftEntry entry, boolean registers) {

@@ -175,6 +175,29 @@ Loading a file reports nothing, and costs nothing more. See the javadoc of the
         }
 ```
 
+## Extracting entries
+
+`extract` copies entries into a new, standalone dictionary: a snapshot that later changes
+to either dictionary do not reach (to show an entry on another thread while the dictionary
+keeps changing, keep a state, or export a selection).
+
+```java
+        LiftDictionary one = dictionary.extract(List.of(word));      // the header values it uses
+        LiftDictionary all = dictionary.extract(entries,
+            ExtractOptions.DEFAULT.withHeader(ExtractOptions.HeaderScope.FULL));
+        LiftDictionary shown = dictionary.extract(List.of(word),
+            ExtractOptions.DEFAULT.withReferences(ExtractOptions.ReferenceTargets.STUBS));
+        shown.isReferenceStub(target);   // an entry added only so that a relation has a target
+```
+
+- The copy holds what `save` writes of the entries, through the library's writer and
+  reader: LIFT ids and guids are kept, the components are new objects.
+- `USED` (the default) copies the ranges, values and definitions the entries use, so the
+  cost follows the entries, not the header: about 0.4 ms per entry on a 2,600-entry field
+  dictionary whose ranges hold thousands of values. `FULL` copies the whole header.
+- A reference to an entry that is not extracted keeps its id (`IDS_ONLY`), or points to a
+  stub holding the target's forms and glosses (`STUBS`).
+
 ## CLI
 
 The jar with dependencies is the `lift-api` command line (`picocli`): below, `lift-api`

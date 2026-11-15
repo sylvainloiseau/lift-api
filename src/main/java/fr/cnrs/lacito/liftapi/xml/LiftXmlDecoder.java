@@ -199,13 +199,25 @@ final class LiftXmlDecoder {
      *        diagnostics
      */
     LiftXmlDecoder(LiftDictionary dictionary, Path source, LoadOptions options) {
+        this(dictionary, source, options, false);
+    }
+
+    /**
+     * True when the document is an extract this library wrote ({@code LiftDictionary.extract}):
+     * nothing is logged, no load diagnostic is kept, and a reference to an entry or a sense
+     * outside the extract stays an id.
+     */
+    private final boolean extract;
+
+    LiftXmlDecoder(LiftDictionary dictionary, Path source, LoadOptions options, boolean extract) {
+        this.extract = extract;
         this.dictionary = dictionary;
         this.header = dictionary.getHeader();
         this.factory = dictionary.getComponentBuilder();
         this.source = source;
         this.externalRanges = new ExternalRangesFiles(source.getParent());
         this.strict = options.strict();
-        this.diagnostics = new LoadDiagnostics(options);
+        this.diagnostics = new LoadDiagnostics(options, extract);
     }
 
     /**
@@ -322,6 +334,10 @@ final class LiftXmlDecoder {
      */
     void endDocument() {
         MODEL.setUndeclaredFeatureListener(header, null);
+        if (extract) {
+            dictionary.getMutator().resolveReferences(true);
+            return;
+        }
         dictionary.resolveReferences();
         dictionary.getMutator().setLoadDiagnostics(diagnostics.toList(), diagnostics.losesDataOnSave());
     }

@@ -141,6 +141,34 @@ public final class DictionaryMutator {
      * @param diagnostics read-only
      * @param losesDataOnSave whether one of them, listed or not, loses data on save
      */
+    /**
+     * Point every relation and variant to the entry or sense its LIFT id names: the work of
+     * {@link LiftDictionary#resolveReferences()}.
+     *
+     * @param tolerateMissing whether a reference to an id that is neither an entry nor a sense
+     *        of the dictionary stays an id ({@code LiftDictionary.extract}) rather than failing
+     * @throws IllegalArgumentException for a missing target, unless {@code tolerateMissing}
+     */
+    public void resolveReferences(boolean tolerateMissing) {
+        var registry = owner.getLiftDictionaryRegistry();
+        for (String targetId : List.copyOf(registry.getReferencedTargetIds())) {
+            AbstractIdentifiable target = registry.getEntryOrSenseByLiftId(targetId);
+            if (target == null) {
+                if (tolerateMissing) {
+                    continue;
+                }
+                throw new IllegalArgumentException(
+                    "Reference id " + targetId + " not found in entries or senses."
+                );
+            }
+            for (HasRefId source : List.copyOf(registry.getReferencesTo(targetId))) {
+                if (source.getRefObject() != target) {
+                    source.setRefObject(target);
+                }
+            }
+        }
+    }
+
     public void setLoadDiagnostics(List<LoadDiagnostic> diagnostics, boolean losesDataOnSave) {
         this.loadDiagnostics = diagnostics;
         this.loadLosesDataOnSave = losesDataOnSave;

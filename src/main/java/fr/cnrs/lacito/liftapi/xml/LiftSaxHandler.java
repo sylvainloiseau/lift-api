@@ -122,8 +122,16 @@ public final class LiftSaxHandler extends DefaultHandler {
      *        are resolved
      */
     public LiftSaxHandler(LiftDictionary dictionary, LoadOptions options, File source) {
+        this(dictionary, options, source, false);
+    }
+
+    /**
+     * @param extract true for a document written by {@code LiftDictionary.extract}: see
+     *        {@link LiftXmlDecoder}
+     */
+    public LiftSaxHandler(LiftDictionary dictionary, LoadOptions options, File source, boolean extract) {
         Path file = source.getAbsoluteFile().toPath();
-        this.decoder = new LiftXmlDecoder(dictionary, file, options);
+        this.decoder = new LiftXmlDecoder(dictionary, file, options, extract);
         this.strict = options.strict();
     }
 

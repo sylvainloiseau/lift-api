@@ -85,6 +85,9 @@ public class LiftWriterSession implements AutoCloseable {
      */
     private boolean complete = false;
 
+    /** The part of the header written; {@code null} for all of it. */
+    private HeaderSelection selection;
+
     /** The LIFT version being written; several elements are spelled differently per version. */
     private LiftVersion version = LiftVersion.V0_15;
 
@@ -138,6 +141,26 @@ public class LiftWriterSession implements AutoCloseable {
      * header is written in full.
      */
     public void marshall(LiftDictionary d, java.util.function.Predicate<LiftEntry> entries) throws Exception {
+        List<LiftEntry> selected = new java.util.ArrayList<>();
+        List<LiftEntry> all = d.getLiftDictionaryRegistry().getEntries();
+        if (all != null) {
+            for (LiftEntry e : all) {
+                if (e != null && entries.test(e)) {
+                    selected.add(e);
+                }
+            }
+        }
+        marshall(d, selected, List.of(), null);
+    }
+
+    /**
+     * Marshall an extract ({@code LiftDictionary.extract}): these entries in this order, then
+     * stubs of entries referred to (LIFT id, forms, senses' ids and glosses), and the part of
+     * the header {@code header} selects ({@code null}: all of it).
+     */
+    void marshall(LiftDictionary d, List<LiftEntry> entries, List<LiftEntry> stubs, HeaderSelection header)
+        throws Exception {
+        this.selection = header;
         try {
             initializeWriter();
 
@@ -156,19 +179,17 @@ public class LiftWriterSession implements AutoCloseable {
                 d.getLiftProducer()
             );
 
-            LiftHeader header = d.getHeader();
-            if (header != null) {
-                writeHeader(header);
+            LiftHeader liftHeader = d.getHeader();
+            if (liftHeader != null) {
+                writeHeader(liftHeader);
             }
             out.writeCharacters(NEW_LINE);
 
-            List<LiftEntry> all = d.getLiftDictionaryRegistry().getEntries();
-            if (all != null) {
-                for (LiftEntry e : all) {
-                    if (e != null && entries.test(e)) {
-                        writeEntry(e);
-                    }
-                }
+            for (LiftEntry e : entries) {
+                writeEntry(e);
+            }
+            for (LiftEntry e : stubs) {
+                writeStub(e);
             }
             out.writeCharacters(NEW_LINE);
 
@@ -280,7 +301,8 @@ public class LiftWriterSession implements AutoCloseable {
         // declare is not written: its values come back on reload, from the components that
         // use them.
         List<FeatureSet> ranges = AbstractPropertyWriters.sortedBy(header.getFeatureSets(), FeatureSet::getId)
-            .stream().filter(FeatureSet::isDeclared).toList();
+            .stream().filter(FeatureSet::isDeclared)
+            .filter(fs -> selection == null || selection.sets().contains(fs)).toList();
         if (!ranges.isEmpty()) {
             out.writeStartElement(LiftVocabulary.HEADER_RANGES_LOCAL_NAME);
             for (FeatureSet r : ranges) {
@@ -290,7 +312,8 @@ public class LiftWriterSession implements AutoCloseable {
         }
 
         Collection<LiftFieldAndTraitDefinition> fields = AbstractPropertyWriters.sortedBy(
-            header.getFieldsAndTraitsDefinitions(), LiftFieldAndTraitDefinition::getName);
+            header.getFieldsAndTraitsDefinitions(), LiftFieldAndTraitDefinition::getName)
+            .stream().filter(fd -> selection == null || selection.definitions().contains(fd)).toList();
         if (fields != null && !fields.isEmpty()) {
             out.writeStartElement(
                 LiftVocabulary.HEADER_FIELDS_DEFINITION_LOCAL_NAME
@@ -317,7 +340,8 @@ public class LiftWriterSession implements AutoCloseable {
     private void writeHeaderRange(XMLStreamWriter w, FeatureSet range) throws Exception {
         w.writeStartElement(LiftVocabulary.HEADER_RANGE_LOCAL_NAME);
         w.writeAttribute(LiftVocabulary.ID_ATTRIBUTE, range.getId());
-        if (range.isExternallyDefined()) {
+        // An extract copies an external range into itself: only what the entries use.
+        if (range.isExternallyDefined() && selection == null) {
             w.writeAttribute(
                 LiftVocabulary.HREF_ATTRIBUTE,
                 ExternalRangesFiles.hrefForSaving(
@@ -360,7 +384,7 @@ public class LiftWriterSession implements AutoCloseable {
         // The values the range does not declare are not written: the reload creates them
         // from the components that use them.
         for (Feature e : AbstractPropertyWriters.sortedBy(range.getFeatures().values(), Feature::getId)) {
-            if (e.isDeclared()) {
+            if (e.isDeclared() && (selection == null || selection.features().contains(e))) {
                 writeHeaderRangeElement(w, e);
             }
         }
@@ -681,6 +705,30 @@ public class LiftWriterSession implements AutoCloseable {
 
     private void writeSense(LiftSense sense) throws Exception {
         writeSense(sense, LiftVocabulary.SENSE_LOCAL_NAME);
+    }
+
+    /** The stub of an entry referred to from an extract: its LIFT id, forms, senses' ids and glosses. */
+    private void writeStub(LiftEntry entry) throws Exception {
+        out.writeStartElement(LiftVocabulary.ENTRY_LOCAL_NAME);
+        AbstractPropertyWriters.writeAbstractIdentifiable(out, entry);
+        out.writeStartElement(LiftVocabulary.LEXICAL_UNIT_LOCAL_NAME);
+        MultiTextWriters.writeMultiText(out, entry.getForms());
+        out.writeEndElement();
+        for (LiftSense sense : entry.getSenses()) {
+            writeStubSense(sense, LiftVocabulary.SENSE_LOCAL_NAME);
+        }
+        out.writeEndElement();
+        out.writeCharacters(NEW_LINE);
+    }
+
+    private void writeStubSense(LiftSense sense, String elementName) throws Exception {
+        out.writeStartElement(elementName);
+        AbstractPropertyWriters.writeAbstractIdentifiable(out, sense);
+        MultiTextWriters.writeMultiText(out, LiftVocabulary.GLOSS_LOCAL_NAME, sense.getGlosses());
+        for (LiftSense sub : sense.getSenses()) {
+            writeStubSense(sub, LiftVocabulary.SUBSENSE_LOCAL_NAME);
+        }
+        out.writeEndElement();
     }
 
     /**
